@@ -88,8 +88,12 @@ pub async fn fetch_locator<'a>(context: &InstallContext<'a>, locator: &Locator, 
     let original_data
         = dependencies_it.next().unwrap().as_fetched();
 
-    let package_cache = context.package_cache
-        .expect("The package cache is required to fetch a patch package");
+    let package_cache
+        = context.package_cache
+            .expect("The package cache is required to fetch a patch package");
+
+    let cache_packer
+        = package_cache.packer();
 
     let package_subdir
         = locator.ident.nm_subdir();
@@ -148,7 +152,7 @@ pub async fn fetch_locator<'a>(context: &InstallContext<'a>, locator: &Locator, 
             .prepare_npm_entries(&package_subdir)
             .collect::<Vec<_>>();
 
-        Ok(package_cache.bundle_entries(patched_entries)?)
+        Ok(cache_packer.pack(patched_entries)?)
     }).await?;
 
     let package_json_entry

@@ -44,6 +44,23 @@ impl CacheEntry {
     }
 }
 
+pub struct CachePacker {
+    compression_algorithm: Option<zpm_formats::CompressionAlgorithm>,
+}
+
+impl CachePacker {
+    pub fn pack<'a>(&self, entries: Vec<Entry<'a>>) -> Result<Vec<u8>, Error> {
+        let archive = entries
+            .into_iter()
+            .update_crc32()
+            .compress(self.compression_algorithm)
+            .collect::<Vec<_>>()
+            .to_zip();
+
+        Ok(archive)
+    }
+}
+
 pub struct CompositeCache {
     pub compression_algorithm: Option<zpm_formats::CompressionAlgorithm>,
 
@@ -60,15 +77,10 @@ impl CompositeCache {
         }
     }
 
-    pub fn bundle_entries(&self, entries: Vec<Entry>) -> Result<Vec<u8>, Error> {
-        let archive = entries
-            .into_iter()
-            .update_crc32()
-            .compress(self.compression_algorithm)
-            .collect::<Vec<_>>()
-            .to_zip();
-
-        Ok(archive)
+    pub fn packer(&self) -> CachePacker {
+        CachePacker {
+            compression_algorithm: self.compression_algorithm,
+        }
     }
 
     pub fn key_path(&self, key: &Locator, ext: &str) -> Path {

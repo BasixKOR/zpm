@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use reqwest::StatusCode;
+use tokio::task::JoinError;
 use zpm_utils::{DataType, Path, PathError, ToHumanString};
 
 #[derive(thiserror::Error, Clone, Debug)]
@@ -25,6 +26,9 @@ pub enum Error {
 
     #[error(transparent)]
     JsonError(#[from] zpm_parsers::Error),
+
+    #[error("Internal error: Join failed ({0})")]
+    JoinFailed(#[from] Arc<JoinError>),
 
     #[error("Failed to execute the {program} binary: {error}", program = DataType::Code.colorize(&.0), error = .1.to_string())]
     FailedToExecuteBinary(String, Arc<std::io::Error>),
@@ -89,6 +93,12 @@ impl From<std::str::Utf8Error> for Error {
 
 impl From<reqwest::Error> for Error {
     fn from(value: reqwest::Error) -> Self {
+        Error::from(Arc::new(value))
+    }
+}
+
+impl From<JoinError> for Error {
+    fn from(value: JoinError) -> Self {
         Error::from(Arc::new(value))
     }
 }

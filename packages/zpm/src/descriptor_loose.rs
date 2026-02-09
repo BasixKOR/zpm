@@ -123,30 +123,37 @@ impl LooseDescriptor {
     pub async fn resolve(&self, context: &InstallContext<'_>, options: &ResolveOptions) -> Result<LooseResolution, Error> {
         match self {
             LooseDescriptor::Range(RangeLooseDescriptor {range: Range::Tarball(params)}) => {
-                let path
-                    = Path::try_from(&params.path)?;
+                let params_path
+                    = params.path.clone();
 
-                let tgz_content = path
-                    .fs_read_prealloc()?;
+                let ident = tokio::task::spawn_blocking(move || -> Result<Ident, Error> {
+                    let path
+                        = Path::try_from(&params_path)?;
 
-                let tar_content
-                    = tar::unpack_tgz(&tgz_content)?;
+                    let tgz_content = path
+                        .fs_read_prealloc()?;
 
-                let package_json_entry
-                    = tar_iter::TarIterator::new(&tar_content)
-                        .filter_map(|entry| entry.ok())
-                        .strip_first_segment()
-                        .find(|entry| entry.name.basename() == Some("package.json"));
+                    let tar_content
+                        = tar::unpack_tgz(&tgz_content)?;
 
-                let Some(package_json_entry) = package_json_entry else {
-                    return Err(Error::ManifestNotFound(path.with_join_str("package.json")));
-                };
+                    let package_json_entry
+                        = tar_iter::TarIterator::new(&tar_content)
+                            .filter_map(|entry| entry.ok())
+                            .strip_first_segment()
+                            .find(|entry| entry.name.basename() == Some("package.json"));
 
-                let manifest
-                    = parse_manifest_from_bytes(&package_json_entry.data)?;
+                    let Some(package_json_entry) = package_json_entry else {
+                        return Err(Error::ManifestNotFound(path.with_join_str("package.json")));
+                    };
 
-                let ident = manifest.name
-                    .ok_or_else(|| Error::MissingPackageName)?;
+                    let manifest
+                        = parse_manifest_from_bytes(&package_json_entry.data)?;
+
+                    let ident = manifest.name
+                        .ok_or_else(|| Error::MissingPackageName)?;
+
+                    Ok(ident)
+                }).await??;
 
                 let descriptor
                     = Descriptor::new(ident, TarballRange {path: params.path.clone()}.into());

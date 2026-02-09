@@ -8,8 +8,12 @@ use crate::{
 use super::PackageData;
 
 pub async fn fetch_locator<'a>(context: &InstallContext<'a>, locator: &Locator, params: &FolderReference, is_mock_request: bool, dependencies: Vec<InstallOpResult>) -> Result<FetchResult, Error> {
-    let package_cache = context.package_cache
-        .expect("The package cache is required for fetching folder packages");
+    let package_cache
+        = context.package_cache
+            .expect("The package cache is required for fetching folder packages");
+
+    let cache_packer
+        = package_cache.packer();
 
     if is_mock_request {
         let archive_path = package_cache
@@ -38,7 +42,7 @@ pub async fn fetch_locator<'a>(context: &InstallContext<'a>, locator: &Locator, 
                 .prepare_npm_entries(&package_subdir)
                 .collect::<Vec<_>>();
 
-        Ok(package_cache.bundle_entries(entries)?)
+        Ok(cache_packer.pack(entries)?)
     }).await?;
 
     let first_entry

@@ -9,8 +9,12 @@ use crate::{
 use super::PackageData;
 
 pub async fn fetch_locator<'a>(context: &InstallContext<'a>, locator: &Locator, params: &TarballReference, is_mock_request: bool, dependencies: Vec<InstallOpResult>) -> Result<FetchResult, Error> {
-    let package_cache = context.package_cache
-        .expect("The package cache is required for fetching tarball packages");
+    let package_cache
+        = context.package_cache
+            .expect("The package cache is required for fetching tarball packages");
+
+    let cache_packer
+        = package_cache.packer();
 
     if is_mock_request {
         let archive_path = package_cache
@@ -31,21 +35,28 @@ pub async fn fetch_locator<'a>(context: &InstallContext<'a>, locator: &Locator, 
 
     let package_subdir
         = locator.ident.nm_subdir();
+    let package_subdir_for_entries
+        = package_subdir.clone();
 
     let cached_blob = package_cache.upsert_blob(locator.clone(), ".zip", || async {
         let tgz_data
             = tarball_path.fs_read()?;
-        let tar_data
-            = zpm_formats::tar::unpack_tgz(&tgz_data)?;
 
-        let entries
-            = zpm_formats::tar::entries_from_tar(&tar_data)?
-                .into_iter()
-                .strip_first_segment()
-                .prepare_npm_entries(&package_subdir)
-                .collect();
+        let archive = tokio::task::spawn_blocking(move || -> Result<Vec<u8>, Error> {
+            let tar_data
+                = zpm_formats::tar::unpack_tgz(&tgz_data)?;
 
-        Ok(package_cache.bundle_entries(entries)?)
+            let entries
+                = zpm_formats::tar::entries_from_tar(&tar_data)?
+                    .into_iter()
+                    .strip_first_segment()
+                    .prepare_npm_entries(&package_subdir_for_entries)
+                    .collect::<Vec<_>>();
+
+            Ok(cache_packer.pack(entries)?)
+        }).await??;
+
+        Ok(archive)
     }).await?;
 
     let first_entry
