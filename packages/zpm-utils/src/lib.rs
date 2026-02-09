@@ -1,6 +1,7 @@
 mod colors;
 mod ci;
 mod errors;
+mod ecow;
 mod glob;
 mod hash;
 mod internal;
@@ -23,6 +24,7 @@ pub mod tree;
 pub use crate::colors::*;
 pub use crate::ci::*;
 pub use crate::errors::*;
+pub use crate::ecow::*;
 pub use crate::glob::*;
 pub use crate::hash::*;
 pub use crate::misc::*;
@@ -37,3 +39,5 @@ pub use crate::shell::*;
 pub use crate::system::*;
 pub use crate::time::*;
 pub use crate::url::*;
+
+pub extern crate ecow as ecow_crate;
