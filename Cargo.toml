@@ -33,7 +33,7 @@ zpm-utils = { path = "packages/zpm-utils" }
 
 assert_cmd = "2.0.17"
 base64 = "0.22.0"
-blake2 = "0.10.6"
+blake2b_simd = "1"
 bytes = "1"
 brotli = "8.0.1"
 chrono = { version = "0.4.38", features = ["serde"] }

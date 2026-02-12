@@ -98,11 +98,13 @@ impl Descriptor {
     }
 
     pub fn virtualized_for(&self, parent: &Locator) -> Descriptor {
-        let serialized = parent.to_file_string();
+        self.virtualized_with_hash(Hash64::from_string(parent))
+    }
 
+    pub fn virtualized_with_hash(&self, hash: Hash64) -> Descriptor {
         let range = Range::Virtual(VirtualRange {
             inner: Box::new(self.range.clone()),
-            hash: Hash64::from_string(&serialized),
+            hash,
         });
 
         Descriptor {

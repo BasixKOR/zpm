@@ -64,11 +64,13 @@ impl Locator {
     }
 
     pub fn virtualized_for(&self, parent: &Locator) -> Locator {
-        let serialized = parent.to_file_string();
+        self.virtualized_with_hash(Hash64::from_string(parent))
+    }
 
+    pub fn virtualized_with_hash(&self, hash: Hash64) -> Locator {
         let reference = Reference::Virtual(VirtualReference {
             inner: Box::new(self.reference.clone()),
-            hash: Hash64::from_string(&serialized),
+            hash,
         });
 
         Locator {
