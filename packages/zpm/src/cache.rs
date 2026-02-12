@@ -5,7 +5,7 @@ use std::sync::Arc;
 use std::collections::HashSet;
 use std::sync::Mutex;
 use itertools::Itertools;
-use zpm_formats::{iter_ext::IterExt, zip::ToZip, Entry};
+use zpm_formats::{zip::ToZip, Entry};
 use zpm_macro_enum::zpm_enum;
 use zpm_primitives::Locator;
 use zpm_utils::{Hash64, Path};
@@ -49,15 +49,14 @@ pub struct CachePacker {
 }
 
 impl CachePacker {
-    pub fn pack<'a>(&self, entries: Vec<Entry<'a>>) -> Result<Vec<u8>, Error> {
-        let archive = entries
-            .into_iter()
-            .update_crc32()
-            .compress(self.compression_algorithm)
-            .collect::<Vec<_>>()
-            .to_zip();
+    pub fn pack<'a>(&self, mut entries: Vec<Entry<'a>>) -> Result<Vec<u8>, Error> {
+        if let Some(algorithm) = self.compression_algorithm {
+            for entry in &mut entries {
+                entry.compress_in_place(algorithm);
+            }
+        }
 
-        Ok(archive)
+        Ok(entries.to_zip())
     }
 }
 

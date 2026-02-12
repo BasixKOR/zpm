@@ -35,14 +35,23 @@ pub async fn fetch_locator<'a>(context: &InstallContext<'a>, locator: &Locator, 
     let package_subdir
         = locator.ident.nm_subdir();
 
-    let pkg_blob = package_cache.upsert_blob(locator.clone(), ".zip", || async {
-        let entries
-            = zpm_formats::entries_from_folder(&context_directory)?
-                .into_iter()
-                .prepare_npm_entries(&package_subdir)
-                .collect::<Vec<_>>();
+    let package_subdir_for_entries
+        = package_subdir.clone();
+    let context_directory_for_entries
+        = context_directory.clone();
 
-        Ok(cache_packer.pack(entries)?)
+    let pkg_blob = package_cache.upsert_blob(locator.clone(), ".zip", || async {
+        let archive = tokio::task::spawn_blocking(move || -> Result<Vec<u8>, Error> {
+            let entries
+                = zpm_formats::entries_from_folder(&context_directory_for_entries)?
+                    .into_iter()
+                    .prepare_npm_entries(&package_subdir_for_entries)
+                    .collect::<Vec<_>>();
+
+            cache_packer.pack(entries)
+        }).await??;
+
+        Ok(archive)
     }).await?;
 
     let first_entry
