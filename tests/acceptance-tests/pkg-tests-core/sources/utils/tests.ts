@@ -1204,7 +1204,10 @@ export const getHttpsCertificates = async () => {
     config: [`[v3_req]`, `basicConstraints = critical,CA:TRUE\``].join(`\n`),
   });
 
-  const serverCSRResult = await createCSR({commonName: `localhost`});
+  const serverCSRResult = await createCSR({
+    commonName: `localhost`,
+    altNames: [`localhost`],
+  });
 
   const serverCertificate = await createCertificate({
     csr: serverCSRResult.csr,

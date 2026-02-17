@@ -73,6 +73,11 @@
       "description": "Whether to run postinstall scripts",
       "default": true
     },
+    "enableStrictSsl": {
+      "type": "boolean",
+      "description": "Whether SSL errors should be treated as errors",
+      "default": true
+    },
     "enableTimers": {
       "type": "boolean",
       "description": "Whether to show timers in the output",
@@ -97,6 +102,31 @@
       "type": "usize",
       "description": "The number of times to retry a network request",
       "default": 3
+    },
+    "httpProxy": {
+      "type": ["string", "null"],
+      "description": "Proxy to use when making an HTTP request"
+    },
+    "httpTimeout": {
+      "type": "u64",
+      "description": "Amount of time to wait in milliseconds before cancelling pending HTTP requests",
+      "default": 60000
+    },
+    "httpsCaFilePath": {
+      "type": ["zpm_utils::Path", "null"],
+      "description": "Path to a file containing one or multiple Certificate Authority signing certificates"
+    },
+    "httpsCertFilePath": {
+      "type": ["zpm_utils::Path", "null"],
+      "description": "Path to a file containing a certificate chain in PEM format"
+    },
+    "httpsKeyFilePath": {
+      "type": ["zpm_utils::Path", "null"],
+      "description": "Path to a file containing a private key in PEM format"
+    },
+    "httpsProxy": {
+      "type": ["string", "null"],
+      "description": "Define a proxy to use when making an HTTPS request"
     },
     "localCacheFolderName": {
       "type": "string",

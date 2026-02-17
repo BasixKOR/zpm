@@ -605,6 +605,11 @@ macro_rules! merge_settings_impl {
             }
         }
 
+    };
+}
+
+macro_rules! merge_optional_settings_impl {
+    ($type:ty) => {
         impl MergeSettings for Setting<Option<$type>> {
             type Intermediate = Option<Interpolated<$type>>;
 
@@ -653,10 +658,16 @@ macro_rules! merge_settings_impl {
                         )
                     });
 
-                    return inner.map_or_else(default, |inner| Self {
-                        value: Some(inner.value),
-                        source: inner.source,
-                    });
+                    return inner.map_or_else(
+                        || Self {
+                            value: None,
+                            source: Source::User,
+                        },
+                        |inner| Self {
+                            value: Some(inner.value),
+                            source: inner.source,
+                        }
+                    );
                 }
 
                 if let Partial::Value(project) = project {
@@ -669,10 +680,16 @@ macro_rules! merge_settings_impl {
                         )
                     });
 
-                    return inner.map_or_else(default, |inner| Self {
-                        value: Some(inner.value),
-                        source: inner.source,
-                    });
+                    return inner.map_or_else(
+                        || Self {
+                            value: None,
+                            source: Source::Project,
+                        },
+                        |inner| Self {
+                            value: Some(inner.value),
+                            source: inner.source,
+                        }
+                    );
                 }
 
                 default()
@@ -698,8 +715,8 @@ macro_rules! merge_settings_impl {
 
                 tree::Node {
                     label,
-                    value: Some(AbstractValue::new(self.value.clone())),
-                    children: None,
+                    value: None,
+                    children: Some(tree::TreeNodeChildren::Map(fields)),
                 }
             }
         }
@@ -709,6 +726,12 @@ macro_rules! merge_settings_impl {
 macro_rules! merge_settings {
     ($type:ty, $from_str:expr) => {
         merge_settings_impl!($type, $from_str);
+    };
+}
+
+macro_rules! merge_optional_settings {
+    ($type:ty) => {
+        merge_optional_settings_impl!($type);
     };
 }
 
@@ -940,13 +963,19 @@ pub use types::*;
 // Rust doesn't support specialization, so we can't have a blanket implementation for FromStr
 // and a different one for Option<T: FromStr>; instead we manually generate whatever we need.
 merge_settings!(std::time::Duration, |s: &str| FromFileString::from_file_string(s).unwrap());
+merge_optional_settings!(std::time::Duration);
 
 merge_settings!(String, |s: &str| FromFileString::from_file_string(s).unwrap());
 merge_settings!(bool, |s: &str| FromFileString::from_file_string(s).unwrap());
 merge_settings!(usize, |s: &str| FromFileString::from_file_string(s).unwrap());
 merge_settings!(u64, |s: &str| FromFileString::from_file_string(s).unwrap());
+merge_optional_settings!(String);
+merge_optional_settings!(bool);
+merge_optional_settings!(usize);
+merge_optional_settings!(u64);
 
 merge_settings!(zpm_formats::CompressionAlgorithm, |s: &str| FromFileString::from_file_string(s).unwrap());
+merge_optional_settings!(zpm_formats::CompressionAlgorithm);
 
 merge_settings!(zpm_primitives::Descriptor, |s: &str| FromFileString::from_file_string(s).unwrap());
 merge_settings!(zpm_primitives::FilterDescriptor, |s: &str| FromFileString::from_file_string(s).unwrap());
@@ -956,14 +985,31 @@ merge_settings!(zpm_primitives::Locator, |s: &str| FromFileString::from_file_str
 merge_settings!(zpm_primitives::PeerRange, |s: &str| FromFileString::from_file_string(s).unwrap());
 merge_settings!(zpm_primitives::Range, |s: &str| FromFileString::from_file_string(s).unwrap());
 merge_settings!(zpm_primitives::Reference, |s: &str| FromFileString::from_file_string(s).unwrap());
+merge_optional_settings!(zpm_primitives::Descriptor);
+merge_optional_settings!(zpm_primitives::FilterDescriptor);
+merge_optional_settings!(zpm_primitives::Ident);
+merge_optional_settings!(zpm_primitives::IdentGlob);
+merge_optional_settings!(zpm_primitives::Locator);
+merge_optional_settings!(zpm_primitives::PeerRange);
+merge_optional_settings!(zpm_primitives::Range);
+merge_optional_settings!(zpm_primitives::Reference);
 
 merge_settings!(zpm_semver::RangeKind, |s: &str| FromFileString::from_file_string(s).unwrap());
+merge_optional_settings!(zpm_semver::RangeKind);
 
 merge_settings!(zpm_utils::Cpu, |s: &str| FromFileString::from_file_string(s).unwrap());
 merge_settings!(zpm_utils::Glob, |s: &str| FromFileString::from_file_string(s).unwrap());
 merge_settings!(zpm_utils::Libc, |s: &str| FromFileString::from_file_string(s).unwrap());
 merge_settings!(zpm_utils::Os, |s: &str| FromFileString::from_file_string(s).unwrap());
 merge_settings!(zpm_utils::Secret<String>, |s: &str| FromFileString::from_file_string(s).unwrap());
+merge_optional_settings!(zpm_utils::Cpu);
+merge_optional_settings!(zpm_utils::Glob);
+merge_optional_settings!(zpm_utils::Libc);
+merge_optional_settings!(zpm_utils::Os);
+merge_optional_settings!(zpm_utils::Secret<String>);
 
 merge_settings!(crate::types::NodeLinker, |s: &str| FromFileString::from_file_string(s).unwrap());
 merge_settings!(crate::types::PnpFallbackMode, |s: &str| FromFileString::from_file_string(s).unwrap());
+merge_optional_settings!(crate::types::NodeLinker);
+merge_optional_settings!(crate::types::PnpFallbackMode);
+merge_optional_settings!(Path);
