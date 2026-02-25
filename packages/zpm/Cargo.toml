@@ -45,11 +45,13 @@ zpm-primitives = { workspace = true }
 zpm-semver = { workspace = true }
 zpm-switch = { workspace = true }
 zpm-sync = { workspace = true }
+zpm-tasks = { workspace = true }
 zpm-utils = { workspace = true }
 brotli = { workspace = true }
 env_logger = { workspace = true }
 hickory-resolver = { workspace = true }
 indexmap = { workspace = true, features = ["serde"]}
+interprocess = { workspace = true, features = ["tokio"] }
 sha2 = { workspace = true }
 hex = { workspace = true }
 p256 = { workspace = true }

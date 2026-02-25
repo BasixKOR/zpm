@@ -1,0 +1,2 @@
+doc:
+  cd documentation && yarn astro dev
