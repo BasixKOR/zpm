@@ -1,10 +1,10 @@
 use std::{collections::{BTreeMap, BTreeSet}, hash::Hash, marker::PhantomData, sync::LazyLock};
 
 use chrono::{DateTime, Utc};
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use zpm_config::PackageExtension;
 use zpm_primitives::{Descriptor, GitRange, Ident, Locator, PatchRange, PeerRange, Range, Reference, RegistrySemverRange, RegistryTagRange, SemverDescriptor, SemverPeerRange, WorkspaceIdentRange};
-use zpm_utils::{Hash64, IoResultExt, Path, System, ToHumanString, UrlEncoded};
+use zpm_utils::{Hash64, Hash64Writer, IoResultExt, Path, System, ToHumanString, UrlEncoded};
 use rkyv::Archive;
 use serde::{Deserialize, Serialize};
 use zpm_utils::{FromFileString, ToFileString};
@@ -33,7 +33,7 @@ pub struct InstallContext<'a> {
     pub check_checksums: bool,
     pub check_resolutions: bool,
     pub prune_dev_dependencies: bool,
-    pub enforced_resolutions: BTreeMap<Descriptor, Locator>,
+    pub enforced_resolutions: BTreeMap<Descriptor, Option<Locator>>,
     pub refresh_lockfile: bool,
     pub install_time: DateTime<Utc>,
     pub mode: Option<InstallMode>,
@@ -77,7 +77,7 @@ impl<'a> InstallContext<'a> {
         self
     }
 
-    pub fn set_enforced_resolutions(mut self, enforced_resolutions: BTreeMap<Descriptor, Locator>) -> Self {
+    pub fn set_enforced_resolutions(mut self, enforced_resolutions: BTreeMap<Descriptor, Option<Locator>>) -> Self {
         self.enforced_resolutions = enforced_resolutions;
         self
     }
@@ -488,11 +488,23 @@ impl<'a> GraphCache<InstallContext<'a>, InstallOp<'a>, InstallOpResult, Error> f
                 return Ok(None);
             }
 
+            // enforced_resolutions semantics:
+            // - None (not in map): use lockfile resolution if available
+            // - Some(None): skip lockfile, force re-resolution
+            // - Some(Some(locator)): force resolution to specific locator
             let enforced_resolution
                 = ctx.enforced_resolutions.get(descriptor);
 
+            // If Some(None), skip lockfile lookup entirely and force re-resolution
+            if enforced_resolution == Some(&None) {
+                return Ok(None);
+            }
+
+            // Get the enforced locator if any (flatten Option<Option<Locator>> to Option<Locator>)
+            let enforced_locator = enforced_resolution.and_then(|opt| opt.as_ref());
+
             if let Some(locator) = self.lockfile.resolutions.get(descriptor) {
-                if enforced_resolution.map_or(true, |enforced_resolution| locator == enforced_resolution) {
+                if enforced_locator.map_or(true, |enforced| locator == enforced) {
                     if self.lockfile.metadata.version != LockfileMetadata::new().version || ctx.refresh_lockfile {
                         return Ok(Some(InstallOpResult::Pinned(PinnedResult {
                             locator: locator.clone(),
@@ -506,7 +518,7 @@ impl<'a> GraphCache<InstallContext<'a>, InstallOp<'a>, InstallOpResult, Error> f
                 }
             }
 
-            if let Some(locator) = enforced_resolution {
+            if let Some(locator) = enforced_locator {
                 return Ok(Some(InstallOpResult::Pinned(PinnedResult {
                     locator: locator.clone(),
                 })));
@@ -811,7 +823,16 @@ impl<'a> InstallManager<'a> {
             .with_roots(self.result.roots.clone())
             .run();
 
+        let project
+            = self.context.project
+                .expect("The project is required to compute workspace hashes");
+
         self.result.lockfile.resolutions = self.result.install_state.descriptor_to_locator.clone();
+
+        self.result.lockfile.workspaces = project.workspaces.par_iter()
+            .map(|workspace| (workspace.name.clone(), self.compute_workspace_hash(&workspace.locator())))
+            .collect::<BTreeMap<_, _>>();
+
         self.result.lockfile_changed = self.result.lockfile != self.initial_lockfile;
 
         self.result.skip_build = self.context.mode == Some(InstallMode::SkipBuild);
@@ -865,6 +886,45 @@ impl<'a> InstallManager<'a> {
         self.result.install_state.content_flags.insert(locator, content_flags);
 
         Ok(())
+    }
+
+    fn compute_workspace_hash(&self, root_locator: &Locator) -> Hash64 {
+        let mut hash_writer
+            = Hash64Writer::new();
+
+        let mut visited
+            = BTreeSet::new();
+
+        let mut queue
+            = vec![root_locator.clone()];
+
+        while let Some(locator) = queue.pop() {
+            if !visited.insert(locator.clone()) {
+                continue;
+            }
+
+            hash_writer.update(locator.to_file_string());
+
+            if let Some(resolution) = self.result.install_state.normalized_resolutions.get(&locator) {
+                for dependency_descriptor in resolution.dependencies.values() {
+                    if let Some(dep_locator) = self.result.install_state.descriptor_to_locator.get(dependency_descriptor) {
+                        if !visited.contains(dep_locator) {
+                            queue.push(dep_locator.clone());
+                        }
+                    }
+                }
+
+                for variant_descriptor in &resolution.variants {
+                    if let Some(variant_locator) = self.result.install_state.descriptor_to_locator.get(variant_descriptor) {
+                        if !visited.contains(variant_locator) {
+                            queue.push(variant_locator.clone());
+                        }
+                    }
+                }
+            }
+        }
+
+        hash_writer.finalize()
     }
 }
 
