@@ -55,34 +55,34 @@ jobs:
 
       - name: Build Yarn (base)
         working-directory: ../base
-        run: cargo build --release -p zpm --bin yarn-bin
+        run: cargo build --profile release-lto -p zpm --bin yarn-bin
 
       - name: Build Yarn (head)
         working-directory: ../head
-        run: cargo build --release -p zpm --bin yarn-bin
+        run: cargo build --profile release-lto -p zpm --bin yarn-bin
 
       - name: Start mock proxy
         working-directory: ../head
         run: |
-          ./target/release/yarn-bin debug mock-proxy -p 4873 https://registry.npmjs.org &
+          ./target/release-lto/yarn-bin debug mock-proxy -p 4873 https://registry.npmjs.org &
           echo "YARN_NPM_REGISTRY_SERVER=http://localhost:4873" >> $GITHUB_ENV
           echo "YARN_UNSAFE_HTTP_WHITELIST=localhost" >> $GITHUB_ENV
 
       - name: Run benchmark cold (base)
         working-directory: ../base
-        run: ./target/release/yarn-bin debug bench gatsby install-full-cold
+        run: ./target/release-lto/yarn-bin debug bench gatsby install-full-cold
 
       - name: Run benchmark cold (head)
         working-directory: ../head
-        run: ./target/release/yarn-bin debug bench gatsby install-full-cold
+        run: ./target/release-lto/yarn-bin debug bench gatsby install-full-cold
 
       - name: Run benchmark warm with lockfile (base)
         working-directory: ../base
-        run: ./target/release/yarn-bin debug bench gatsby install-cache-and-lock
+        run: ./target/release-lto/yarn-bin debug bench gatsby install-cache-and-lock
 
       - name: Run benchmark warm with lockfile (head)
         working-directory: ../head
-        run: ./target/release/yarn-bin debug bench gatsby install-cache-and-lock
+        run: ./target/release-lto/yarn-bin debug bench gatsby install-cache-and-lock
 
       - name: Generate benchmark comment
         uses: actions/github-script@v7
