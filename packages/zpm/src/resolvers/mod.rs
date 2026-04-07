@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use rkyv::Archive;
 use serde::{Deserialize, Serialize};
 use serde::de::IgnoredAny;
-use zpm_primitives::{Descriptor, Ident, Locator, PeerRange, Range, Reference, Registry, RegistryReference, SemverPeerRange, WorkspaceIdentRange, WorkspaceIdentReference, descriptor_map_serializer, descriptor_map_deserializer};
+use zpm_primitives::{Descriptor, Ident, Locator, PeerRange, PypiRegistryReference, Range, Reference, Registry, RegistryReference, SemverPeerRange, WorkspaceIdentRange, WorkspaceIdentReference, descriptor_map_serializer, descriptor_map_deserializer};
 use zpm_utils::Requirements;
 
 use zpm_parsers::JsonDocument;
@@ -18,6 +18,7 @@ pub mod folder;
 pub mod git;
 pub mod link;
 pub mod patch;
+pub mod pypi;
 pub mod portal;
 pub mod npm;
 pub mod semver;
@@ -157,6 +158,12 @@ pub fn try_resolve_descriptor_sync(context: InstallContext<'_>, descriptor: Desc
         Range::RegistryTag(params) if params.ident.is_some()
             => Ok(SyncResolutionAttempt::Success(npm::resolve_aliased(&descriptor, dependencies)?)),
 
+        Range::PypiSpecifier(params) if params.ident.is_some()
+            => Ok(SyncResolutionAttempt::Success(pypi::resolve_aliased(&descriptor, dependencies)?)),
+
+        Range::PypiTag(params) if params.ident.is_some()
+            => Ok(SyncResolutionAttempt::Success(pypi::resolve_aliased(&descriptor, dependencies)?)),
+
         Range::Link(params)
             => Ok(SyncResolutionAttempt::Success(link::resolve_descriptor(&context, &descriptor, params)?)),
 
@@ -226,6 +233,16 @@ pub async fn resolve_descriptor(context: InstallContext<'_>, descriptor: Descrip
             false => npm::resolve_tag_descriptor(&context, &descriptor, params).await,
         },
 
+        Range::PypiSpecifier(params) => match params.ident.is_some() {
+            true => pypi::resolve_aliased(&descriptor, dependencies),
+            false => pypi::resolve_specifier_descriptor(&context, &descriptor, params).await,
+        },
+
+        Range::PypiTag(params) => match params.ident.is_some() {
+            true => pypi::resolve_aliased(&descriptor, dependencies),
+            false => pypi::resolve_tag_descriptor(&context, &descriptor, params).await,
+        },
+
         Range::WorkspacePath(params)
             => workspace::resolve_path_descriptor(&context, &descriptor, params),
 
@@ -271,6 +288,16 @@ pub async fn resolve_locator(context: InstallContext<'_>, locator: Locator, depe
 
         Reference::Registry(params)
             => npm::resolve_locator(&context, &locator, params).await,
+
+        Reference::PypiShorthand(params)
+            => pypi::resolve_locator(&context, &locator, &PypiRegistryReference {
+                ident: locator.ident.clone(),
+                version: params.version.clone(),
+                url: params.url.clone(),
+            }).await,
+
+        Reference::PypiRegistry(params)
+            => pypi::resolve_locator(&context, &locator, params).await,
 
         Reference::Virtual(_)
             => Err(Error::Unsupported)?,
