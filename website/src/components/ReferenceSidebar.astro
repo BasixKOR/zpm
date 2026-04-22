@@ -1,0 +1,97 @@
+---
+import DocsSidebar from './DocsSidebar.astro';
+import type { SidebarGroup, SidebarItem } from './sidebar';
+
+interface Props {
+  activePage: string;
+}
+
+const { activePage } = Astro.props;
+
+const cliSections: { subtitle: string; items: SidebarItem[] }[] = [
+  {
+    subtitle: 'Install',
+    items: [
+      { label: 'install', href: 'cli-add.html' },
+      { label: 'import', href: 'cli-add.html' },
+      { label: 'rebuild', href: 'cli-add.html' },
+    ],
+  },
+  {
+    subtitle: 'Manage',
+    items: [
+      { label: 'add', href: 'cli-add.html', active: true },
+      { label: 'remove', href: 'cli-add.html' },
+      { label: 'up', href: 'cli-add.html' },
+      { label: 'dedupe', href: 'cli-add.html' },
+      { label: 'why', href: 'cli-add.html' },
+    ],
+  },
+  {
+    subtitle: 'Workspaces',
+    items: [
+      { label: 'workspace', href: 'cli-add.html' },
+      { label: 'workspaces foreach', href: 'cli-add.html' },
+      { label: 'workspaces list', href: 'cli-add.html' },
+    ],
+  },
+  {
+    subtitle: 'Run',
+    items: [
+      { label: 'run', href: 'cli-add.html' },
+      { label: 'exec', href: 'cli-add.html' },
+      { label: 'dlx', href: 'cli-add.html' },
+      { label: 'node', href: 'cli-add.html' },
+    ],
+  },
+  {
+    subtitle: 'Publish',
+    items: [
+      { label: 'pack', href: 'cli-add.html' },
+      { label: 'npm publish', href: 'cli-add.html' },
+      { label: 'npm tag', href: 'cli-add.html' },
+    ],
+  },
+  {
+    subtitle: 'Project',
+    items: [
+      { label: 'init', href: 'cli-add.html' },
+      { label: 'set version', href: 'cli-add.html' },
+      { label: 'config', href: 'cli-add.html' },
+      { label: 'constraints', href: 'cli-add.html' },
+      { label: 'patch', href: 'cli-add.html' },
+      { label: 'patch-commit', href: 'cli-add.html' },
+    ],
+  },
+];
+
+const includedSections = activePage === 'yarnrc'
+  ? cliSections.filter(s => !['Publish', 'Project'].includes(s.subtitle))
+  : cliSections;
+
+const isCliPage = activePage.startsWith('cli-');
+
+const cliItems: SidebarItem[] = includedSections.flatMap(s => [
+  { subtitle: s.subtitle },
+  ...s.items.map(item => {
+    const href = isCliPage && !item.active ? '#' : item.href;
+    return { ...item, sub: true, href } as SidebarItem;
+  }),
+]);
+
+const groups: SidebarGroup[] = [
+  {
+    title: 'Configuration',
+    items: [
+      { label: 'Manifest (package.json)', href: 'manifest.html', active: activePage === 'manifest' },
+      { label: 'Settings (.yarnrc.yml)', href: 'yarnrc.html', active: activePage === 'yarnrc' },
+    ],
+  },
+  {
+    title: 'CLI reference',
+    items: cliItems,
+  },
+];
+---
+
+<DocsSidebar groups={groups} />

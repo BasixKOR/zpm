@@ -1,0 +1,28 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import '../styles/theme.css';
+import '../styles/docs.css';
+
+interface Props {
+  title: string;
+  activePage?: string;
+  mainMaxWidth?: string;
+}
+
+const { title, activePage, mainMaxWidth = '780px' } = Astro.props;
+---
+
+<BaseLayout title={title} variant="docs" activePage={activePage}>
+  <div class="max-w-[1320px] mx-auto px-6 grid grid-cols-1 md:grid-cols-[240px_minmax(0,1fr)] gap-8 lg:gap-14">
+
+    <aside class="docs-sidebar">
+      <slot name="sidebar" />
+    </aside>
+
+    <main class={`docs-main prose pt-10 pb-32 max-w-[${mainMaxWidth}]`}>
+      <slot />
+    </main>
+  </div>
+
+  <script is:inline src="/docs/docs.js"></script>
+</BaseLayout>

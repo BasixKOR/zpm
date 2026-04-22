@@ -1,0 +1,14 @@
+{
+  "name": "@yarnpkg/website",
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "astro": "^5.9.3",
+    "remark-directive": "^4.0.0",
+    "unist-util-visit": "^5.1.0"
+  }
+}

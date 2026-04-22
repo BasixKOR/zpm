@@ -8,6 +8,7 @@
   },
   "workspaces": [
     "documentation",
+    "website",
     "packages/*",
     "tests/acceptance-tests",
     "tests/acceptance-tests/pkg-tests-core",

@@ -1,0 +1,66 @@
+import { visit } from 'unist-util-visit';
+
+const admonitionSvgs = {
+  note: '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="5.5"/><path d="M7 6.5v3.5M7 4v0.5"/></svg>',
+  tip: '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 1v1M7 12v1M1 7h1M12 7h1M3 3l.7.7M10.3 10.3l.7.7M3 11l.7-.7M10.3 3.7l.7-.7"/><circle cx="7" cy="7" r="2.5"/></svg>',
+  warning: '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 2L13 12H1L7 2Z"/><path d="M7 6v3M7 10.5v0.3"/></svg>',
+  danger: '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="5.5"/><path d="M7 4v4M7 9.5v0.3"/></svg>',
+};
+
+export default function rehypeDocs() {
+  return (tree) => {
+    visit(tree, 'element', (node) => {
+      const type = node.properties?.dataAdmonition;
+      if (!type || !admonitionSvgs[type]) return;
+
+      const label = node.properties.dataLabel || type.toUpperCase();
+
+      const header = {
+        type: 'element',
+        tagName: 'div',
+        properties: { className: ['adm-header'] },
+        children: [
+          { type: 'raw', value: admonitionSvgs[type] },
+          {
+            type: 'element',
+            tagName: 'span',
+            properties: {},
+            children: [{ type: 'text', value: label }],
+          },
+        ],
+      };
+
+      const body = {
+        type: 'element',
+        tagName: 'div',
+        properties: { className: ['adm-body'] },
+        children: node.children,
+      };
+
+      node.children = [header, body];
+      delete node.properties.dataAdmonition;
+      delete node.properties.dataLabel;
+    });
+
+    // Lead paragraph: add .lead to the first <p> after <h1>
+    const children = tree.children || [];
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i];
+      if (child.type === 'element' && child.tagName === 'h1') {
+        for (let j = i + 1; j < children.length; j++) {
+          const next = children[j];
+          if (next.type === 'text' && !next.value.trim()) continue;
+          if (next.type === 'element' && next.tagName === 'p') {
+            next.properties = next.properties || {};
+            next.properties.className = [
+              ...(next.properties.className || []),
+              'lead',
+            ];
+          }
+          break;
+        }
+        break;
+      }
+    }
+  };
+}
