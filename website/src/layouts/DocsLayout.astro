@@ -1,15 +1,19 @@
 ---
 import BaseLayout from './BaseLayout.astro';
+import Breadcrumb from '../components/Breadcrumb.astro';
+import PageHeader from '../components/PageHeader.astro';
 import '../styles/theme.css';
 import '../styles/docs.css';
 
 interface Props {
   title: string;
+  description?: string;
+  breadcrumb?: string[];
   activePage?: string;
   mainMaxWidth?: string;
 }
 
-const { title, activePage, mainMaxWidth = '780px' } = Astro.props;
+const { title, description, breadcrumb, activePage, mainMaxWidth = '780px' } = Astro.props;
 ---
 
 <BaseLayout title={title} variant="docs" activePage={activePage}>
@@ -20,6 +24,8 @@ const { title, activePage, mainMaxWidth = '780px' } = Astro.props;
     </aside>
 
     <main class={`docs-main prose pt-10 pb-32 max-w-[${mainMaxWidth}]`}>
+      {breadcrumb && <Breadcrumb segments={breadcrumb} />}
+      {description && <PageHeader title={title} lead={description} />}
       <slot />
     </main>
   </div>

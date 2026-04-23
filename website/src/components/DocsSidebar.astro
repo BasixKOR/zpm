@@ -15,7 +15,7 @@ const { groups } = Astro.props;
       'subtitle' in item
         ? <h5 class="sb-subtitle">{item.subtitle}</h5>
         : <a
-            class:list={['sb-link', { active: item.active, sub: item.sub }]}
+            class:list={['sb-link', { active: item.active, sub: item.sub, mono: item.mono }]}
             href={item.href}
             {...(item.section ? { 'data-section': '' } : {})}
           >{item.label}</a>

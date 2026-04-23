@@ -2,96 +2,74 @@
 import DocsSidebar from './DocsSidebar.astro';
 import type { SidebarGroup, SidebarItem } from './sidebar';
 
+type CliEntry = {id: string; data: {binaryName: string; commandSpec: {primaryPath: string[]; category: string | null}}};
+
 interface Props {
   activePage: string;
+  fields?: string[];
+  cliEntries?: CliEntry[];
+  cliPrefix?: string;
 }
 
-const { activePage } = Astro.props;
+const { activePage, fields, cliEntries, cliPrefix = `cli` } = Astro.props;
 
-const cliSections: { subtitle: string; items: SidebarItem[] }[] = [
-  {
-    subtitle: 'Install',
-    items: [
-      { label: 'install', href: 'cli-add.html' },
-      { label: 'import', href: 'cli-add.html' },
-      { label: 'rebuild', href: 'cli-add.html' },
-    ],
-  },
-  {
-    subtitle: 'Manage',
-    items: [
-      { label: 'add', href: 'cli-add.html', active: true },
-      { label: 'remove', href: 'cli-add.html' },
-      { label: 'up', href: 'cli-add.html' },
-      { label: 'dedupe', href: 'cli-add.html' },
-      { label: 'why', href: 'cli-add.html' },
-    ],
-  },
-  {
-    subtitle: 'Workspaces',
-    items: [
-      { label: 'workspace', href: 'cli-add.html' },
-      { label: 'workspaces foreach', href: 'cli-add.html' },
-      { label: 'workspaces list', href: 'cli-add.html' },
-    ],
-  },
-  {
-    subtitle: 'Run',
-    items: [
-      { label: 'run', href: 'cli-add.html' },
-      { label: 'exec', href: 'cli-add.html' },
-      { label: 'dlx', href: 'cli-add.html' },
-      { label: 'node', href: 'cli-add.html' },
-    ],
-  },
-  {
-    subtitle: 'Publish',
-    items: [
-      { label: 'pack', href: 'cli-add.html' },
-      { label: 'npm publish', href: 'cli-add.html' },
-      { label: 'npm tag', href: 'cli-add.html' },
-    ],
-  },
-  {
-    subtitle: 'Project',
-    items: [
-      { label: 'init', href: 'cli-add.html' },
-      { label: 'set version', href: 'cli-add.html' },
-      { label: 'config', href: 'cli-add.html' },
-      { label: 'constraints', href: 'cli-add.html' },
-      { label: 'patch', href: 'cli-add.html' },
-      { label: 'patch-commit', href: 'cli-add.html' },
-    ],
-  },
-];
+function slugify(s: string): string {
+  return s.toLowerCase()
+    .replace(/[^\w\s-]/g, ``)
+    .replace(/\s+/g, `-`)
+    .replace(/-+/g, `-`)
+    .replace(/^-|-$/g, ``);
+}
 
-const includedSections = activePage === 'yarnrc'
-  ? cliSections.filter(s => !['Publish', 'Project'].includes(s.subtitle))
-  : cliSections;
+const configGroup: SidebarGroup = {
+  title: 'Reference',
+  items: [
+    { label: 'Manifest — package.json', href: '/configuration/manifest.html', active: activePage === 'manifest' },
+    { label: 'Settings — .yarnrc.yml', href: '/configuration/yarnrc.html', active: activePage === 'yarnrc' },
+    { label: 'Yarn CLI', href: '/cli/install.html', active: false},
+    { label: 'Yarn Switch CLI', href: '/switch/switch.html', active: false},
+  ],
+};
 
-const isCliPage = activePage.startsWith('cli-');
+const groups: SidebarGroup[] = [configGroup];
 
-const cliItems: SidebarItem[] = includedSections.flatMap(s => [
-  { subtitle: s.subtitle },
-  ...s.items.map(item => {
-    const href = isCliPage && !item.active ? '#' : item.href;
-    return { ...item, sub: true, href } as SidebarItem;
-  }),
-]);
+if (fields) {
+  groups.push({
+    title: 'Fields',
+    items: fields.map(name => ({
+      label: name,
+      href: `#field-${slugify(name)}`,
+      mono: true,
+    })),
+  });
+}
 
-const groups: SidebarGroup[] = [
-  {
-    title: 'Configuration',
-    items: [
-      { label: 'Manifest (package.json)', href: 'manifest.html', active: activePage === 'manifest' },
-      { label: 'Settings (.yarnrc.yml)', href: 'yarnrc.html', active: activePage === 'yarnrc' },
-    ],
-  },
-  {
-    title: 'CLI reference',
-    items: cliItems,
-  },
-];
+if (cliEntries) {
+  const byCategory = new Map<string, CliEntry[]>();
+  for (const entry of cliEntries) {
+    const cat = entry.data.commandSpec.category;
+    if (!cat) continue;
+    if (!byCategory.has(cat)) byCategory.set(cat, []);
+    byCategory.get(cat)!.push(entry);
+  }
+
+  for (const items of byCategory.values())
+    items.sort((a, b) => a.data.commandSpec.primaryPath.join(` `).localeCompare(b.data.commandSpec.primaryPath.join(` `)));
+
+  for (const [category, entries] of byCategory) {
+    const items: SidebarItem[] = entries.map(entry => {
+      const slug = entry.id.replace(new RegExp(`^${cliPrefix}/`), ``);
+      return {
+        label: `${entry.data.binaryName} ${entry.data.commandSpec.primaryPath.join(` `)}`,
+        href: `/${cliPrefix}/${slug}.html`,
+        active: entry.id === activePage,
+        mono: true,
+      };
+    });
+
+    groups.push({title: category, items});
+  }
+}
 ---
 
 <DocsSidebar groups={groups} />

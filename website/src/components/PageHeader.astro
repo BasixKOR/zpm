@@ -1,4 +1,6 @@
 ---
+import Pill from './Pill.astro';
+
 interface Props {
   title: string;
   lead: string;
@@ -12,7 +14,7 @@ const { title, lead, mono, pill } = Astro.props;
 {(mono || pill) ? (
   <div class="flex items-center gap-3 flex-wrap mb-3">
     <h1 class="!m-0" style="font-family:'JetBrains Mono',monospace; letter-spacing:-0.02em;">{title}</h1>
-    {pill && <span class="pill since">{pill}</span>}
+    {pill && <Pill variant="since">{pill}</Pill>}
   </div>
 ) : (
   <h1>{title}</h1>

@@ -11,43 +11,29 @@
 */
 .prose {
   color: var(--fg);
-  --flow-xs: 8px;
-  --flow-sm: 16px;
-  --flow-md: 24px;
-  --flow-lg: 40px;
-  --flow-xl: 64px;
+  --flow-xs: calc(var(--spacing) * 4);
+  --flow-sm: calc(var(--spacing) * 6);
+  --flow-md: calc(var(--spacing) * 8);
+  --flow-lg: calc(var(--spacing) * 10);
+  --flow-xl: calc(var(--spacing) * 14);
 }
 
 /* 1. Reset — one source of truth */
-.prose > * { margin: 0; }
+:where(.prose > *) { margin: 0; }
 
 /* 2. Default gap between any two siblings */
-.prose > * + * { margin-top: var(--flow-sm); }
+:where(.prose > * + *) { margin-top: var(--flow-md); }
 
 /* 3. Heading → first child (tight when child is plain text) */
-.prose > h1 + * { margin-top: var(--flow-sm); }
-.prose > h2 + * { margin-top: var(--flow-sm); }
-.prose > h3 + * { margin-top: var(--flow-xs); }
-.prose > h4 + * { margin-top: var(--flow-xs); }
-
-/* 4. Blocks get more air (overrides heading→child when child is a block) */
-.prose > * + .terminal,
-.prose > * + .code-block,
-.prose > * + .admonition,
-.prose > * + ol.steps,
-.prose > * + ul,
-.prose > * + ol,
-.prose > .terminal + *,
-.prose > .code-block + *,
-.prose > .admonition + *,
-.prose > ol.steps + *,
-.prose > ul + *,
-.prose > ol + * { margin-top: var(--flow-md); }
+:where(.prose > h1 + *) { margin-top: var(--flow-sm); }
+:where(.prose > h2 + *) { margin-top: var(--flow-sm); }
+:where(.prose > h3 + *) { margin-top: var(--flow-xs); }
+:where(.prose > h4 + *) { margin-top: var(--flow-xs); }
 
 /* 5. Space BEFORE a heading — major section breaks (highest priority) */
-.prose > * + h2 { margin-top: var(--flow-xl); }
-.prose > * + h3 { margin-top: var(--flow-lg); }
-.prose > * + h4 { margin-top: var(--flow-md); }
+:where(.prose > * + h2) { margin-top: var(--flow-lg); }
+:where(.prose > * + h3) { margin-top: var(--flow-lg); }
+:where(.prose > * + h4) { margin-top: var(--flow-md); }
 
 .prose h1 {
   font-size: clamp(32px, 4vw, 44px);
@@ -84,7 +70,11 @@
   color: var(--fg-dim);
   text-wrap: pretty;
 }
+.prose li {
+  text-box: trim-both cap alphabetic;
+}
 .prose p {
+  text-box: trim-both cap alphabetic;
   font-size: 15.5px;
   line-height: 1.68;
   color: var(--fg-dim);
@@ -96,6 +86,12 @@
   text-decoration: none;
   border-bottom: 1px solid color-mix(in oklch, var(--accent) 35%, transparent);
   transition: border-color 0.15s;
+}
+.prose a:has(code:first-child:last-child) {
+  border-bottom: none;
+}
+.prose a:has(code:first-child:last-child) code {
+  text-decoration: underline;
 }
 .prose a:not(.heading-anchor):not(.no-prose-link):hover {
   border-bottom-color: var(--accent);
@@ -162,26 +158,26 @@
 }
 
 /* ─── Ordered list (step-by-step) ─── */
-.prose ol.steps {
+.prose ol {
   list-style: none;
   padding: 0;
   counter-reset: step;
 }
-.prose ol.steps > li {
+.prose ol > li {
   position: relative;
-  padding-left: 52px;
+  display: flex;
+  align-items: first baseline;
   min-height: 32px;
   padding-bottom: 20px;
   counter-increment: step;
 }
-.prose ol.steps > li:last-child {
+.prose ol > li:last-child {
   padding-bottom: 0;
 }
-.prose ol.steps > li::before {
+.prose ol > li::before {
   content: counter(step, decimal-leading-zero);
-  position: absolute;
-  left: 0;
-  top: 0;
+  margin-right: var(--flow-md);
+  flex: none;
   width: 32px;
   height: 32px;
   display: flex;
@@ -196,7 +192,7 @@
   border-radius: 8px;
   letter-spacing: 0.02em;
 }
-.prose ol.steps > li:not(:last-child)::after {
+.prose ol > li:not(:last-child)::after {
   content: '';
   position: absolute;
   left: 15.5px;
@@ -205,40 +201,21 @@
   width: 1px;
   background: var(--line);
 }
-.prose ol.steps > li > p:first-child {
+.prose ol > li > .item > p:first-child {
   color: var(--fg);
   font-weight: 500;
   font-size: 15.5px;
   line-height: 1.45;
   margin-bottom: 6px;
 }
-.prose ol.steps > li > * + * {
+.prose ol > li > .item > * + * {
   margin-top: var(--flow-sm);
-}
-
-/* Standard numbered list fallback */
-.prose ol:not(.steps) {
-  padding-left: 22px;
-  margin: 0;
-  color: var(--fg-dim);
-}
-.prose ol:not(.steps) > li {
-  font-size: 15.5px;
-  line-height: 1.68;
-  padding-left: 4px;
-  margin-top: 6px;
-}
-.prose ol:not(.steps) > li::marker {
-  color: var(--fg-mute);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 13px;
 }
 
 /* ─── Unordered lists ─── */
 .prose ul {
   list-style: none;
   padding: 0;
-  margin: 0;
 }
 .prose ul > li {
   position: relative;
@@ -246,18 +223,55 @@
   font-size: 15.5px;
   line-height: 1.68;
   color: var(--fg-dim);
-  margin-top: 6px;
+  margin-top: var(--flow-sm);
 }
 .prose ul > li::before {
   content: '';
   position: absolute;
   left: 6px;
-  top: 0.68em;
+  top: 0.22em;
   width: 5px;
   height: 5px;
   border-radius: 50%;
   background: var(--accent);
   opacity: 0.7;
+}
+.prose ul > li > * + * {
+  margin-top: var(--flow-sm);
+}
+
+/* ─── Table ─── */
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14.5px;
+  line-height: 1.6;
+}
+.prose thead th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-mute);
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--line-strong);
+}
+.prose tbody td {
+  padding: 10px 14px;
+  color: var(--fg-dim);
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+.prose tbody tr:last-child td {
+  border-bottom: none;
+}
+.prose tbody td code {
+  font-size: 0.88em;
+  padding: 0.12em 0.4em;
+  border-radius: 5px;
+  background: color-mix(in oklch, var(--fg) 8%, transparent);
+  border: 1px solid var(--line);
 }
 
 /* ─── Admonition ─── */
@@ -265,7 +279,7 @@
   border: 1px solid var(--line);
   border-left-width: 3px;
   border-radius: 10px;
-  padding: 14px 18px 16px;
+  padding: var(--flow-xs) var(--flow-sm) var(--flow-sm);
   background: color-mix(in oklch, var(--card) 50%, transparent);
   backdrop-filter: blur(8px);
 }
@@ -277,11 +291,11 @@
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  margin-bottom: 6px;
+  margin-bottom: var(--flow-xs);
 }
 .admonition .adm-header svg { width: 14px; height: 14px; flex-shrink: 0; }
 .admonition .adm-body { color: var(--fg-dim); font-size: 14.5px; line-height: 1.6; }
-.admonition .adm-body > * + * { margin-top: 8px; }
+.admonition .adm-body > * + * { margin-top: var(--flow-md); }
 .admonition .adm-body code {
   background: color-mix(in oklch, var(--fg) 10%, transparent);
   border: 1px solid var(--line);
@@ -454,6 +468,10 @@
 .docs-sidebar a.sb-link.sub.active {
   color: var(--accent);
 }
+.docs-sidebar a.sb-link.mono {
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
 
 /* Scoped media query */
 @media (max-width: 960px) {
@@ -464,147 +482,6 @@
 
 /* State classes for theme toggle etc */
 #copy-btn.copied { color: var(--accent); border-color: var(--accent-line); }
-
-/* ─────────── Reference / field documentation ─────────── */
-
-/* Field block — a documented config key or CLI flag */
-.field {
-  padding: 18px 0 22px;
-  border-top: 1px solid var(--line);
-  scroll-margin-top: 88px;
-}
-.field:first-of-type { border-top: 0; }
-
-.field-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-.field-name {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 15.5px;
-  font-weight: 500;
-  color: var(--fg);
-  letter-spacing: -0.005em;
-}
-.field-name .field-key { color: var(--fg); }
-.field-name .field-sub { color: var(--fg-mute); }
-.field-name .field-op  { color: var(--fg-mute); font-weight: 400; }
-.field-anchor {
-  opacity: 0;
-  color: var(--fg-mute);
-  text-decoration: none;
-  font-weight: 400;
-  transition: opacity 0.15s, color 0.15s;
-  cursor: pointer;
-  user-select: none;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 15px;
-  border: 0;
-  margin-left: -4px;
-}
-.field:hover .field-anchor,
-.field-anchor:focus { opacity: 1; }
-.field-anchor:hover { color: var(--accent); }
-
-.pill {
-  display: inline-flex;
-  align-items: center;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  line-height: 1;
-  padding: 4px 7px;
-  border-radius: 5px;
-  border: 1px solid var(--line);
-  background: color-mix(in oklch, var(--fg) 5%, transparent);
-  color: var(--fg-dim);
-  letter-spacing: 0.01em;
-  white-space: nowrap;
-}
-.pill.type {
-  color: oklch(0.82 0.10 200);
-  border-color: oklch(0.50 0.08 200 / 0.35);
-  background: oklch(0.45 0.09 200 / 0.15);
-}
-html[data-theme="light"] .pill.type {
-  color: oklch(0.40 0.13 200);
-  border-color: oklch(0.60 0.13 200 / 0.35);
-  background: oklch(0.85 0.06 200 / 0.4);
-}
-.pill.required {
-  color: oklch(0.80 0.14 25);
-  border-color: oklch(0.55 0.15 25 / 0.4);
-  background: oklch(0.45 0.14 25 / 0.15);
-}
-html[data-theme="light"] .pill.required {
-  color: oklch(0.50 0.18 25);
-  border-color: oklch(0.60 0.15 25 / 0.4);
-  background: oklch(0.92 0.06 25 / 0.5);
-}
-.pill.since {
-  color: var(--accent);
-  border-color: var(--accent-line);
-  background: var(--accent-soft);
-}
-.pill.default {
-  font-family: 'JetBrains Mono', monospace;
-}
-.pill.default .pill-label {
-  color: var(--fg-mute);
-  margin-right: 4px;
-  font-weight: 400;
-}
-.pill.default .pill-val {
-  color: var(--fg-dim);
-}
-.pill.deprecated {
-  color: var(--fg-mute);
-  text-decoration: line-through;
-  text-decoration-color: oklch(0.70 0.12 25 / 0.6);
-  text-decoration-thickness: 1px;
-}
-
-.field-body {
-  color: var(--fg-dim);
-  font-size: 15px;
-  line-height: 1.68;
-}
-.field-body > * + * { margin-top: 14px; }
-.field-body p { margin: 0; font-size: 15px; line-height: 1.68; color: var(--fg-dim); }
-.field-body ul { padding: 0; margin: 0; list-style: none; }
-.field-body ul > li {
-  position: relative;
-  padding-left: 20px;
-  margin-top: 4px;
-  font-size: 14.5px;
-  line-height: 1.6;
-}
-.field-body ul > li::before {
-  content: '';
-  position: absolute;
-  left: 6px;
-  top: 0.72em;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--accent);
-  opacity: 0.7;
-}
-.field-body code {
-  font-size: 0.88em;
-  padding: 0.12em 0.4em;
-  border-radius: 5px;
-  background: color-mix(in oklch, var(--fg) 8%, transparent);
-  border: 1px solid var(--line);
-}
-
-/* Field list wrapper — tightens internal spacing and resets prose flow */
-.field-list {
-  border-top: 1px solid var(--line-strong);
-  margin-top: 0;
-}
 
 /* CLI synopsis — like terminal but no prompt, subtly different border */
 .synopsis {

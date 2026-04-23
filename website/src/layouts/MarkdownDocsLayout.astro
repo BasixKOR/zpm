@@ -2,7 +2,6 @@
 import DocsLayout from './DocsLayout.astro';
 import ConceptSidebar from '../components/ConceptSidebar.astro';
 import ReferenceSidebar from '../components/ReferenceSidebar.astro';
-import Breadcrumb from '../components/Breadcrumb.astro';
 import PrevNextNav from '../components/PrevNextNav.astro';
 
 const { frontmatter } = Astro.props;
@@ -11,15 +10,13 @@ const breadcrumb = Array.isArray(frontmatter.breadcrumb)
   : ['Docs', frontmatter.breadcrumb];
 ---
 
-<DocsLayout title={frontmatter.title} activePage={frontmatter.activePage} mainMaxWidth={frontmatter.mainMaxWidth}>
+<DocsLayout title={frontmatter.title} description={frontmatter.description} breadcrumb={breadcrumb} activePage={frontmatter.activePage} mainMaxWidth={frontmatter.mainMaxWidth}>
   <Fragment slot="sidebar">
     {frontmatter.sidebar === 'reference'
       ? <ReferenceSidebar activePage={frontmatter.sidebarActivePage || frontmatter.activePage} />
       : <ConceptSidebar activePage={frontmatter.activePage} />
     }
   </Fragment>
-
-  <Breadcrumb segments={breadcrumb} />
 
   <slot />
 

@@ -1,6 +1,8 @@
 ---
+import { getCollection } from 'astro:content';
 import DocsSidebar from './DocsSidebar.astro';
 import type { SidebarGroup } from './sidebar';
+import { getDirForSlug, getMetaForDir, formatLabel } from './sidebar';
 
 interface Props {
   activePage: string;
@@ -8,91 +10,59 @@ interface Props {
 
 const { activePage } = Astro.props;
 
-const getStartedGroups: SidebarGroup[] = [
-  {
-    title: 'Getting started',
-    items: [
-      { label: 'Installation', href: '#installation', active: true, section: true },
-      { label: 'via Corepack', href: '#install-corepack', sub: true, section: true },
-      { label: 'via Homebrew', href: '#install-homebrew', sub: true, section: true },
-      { label: 'via winget', href: '#install-winget', sub: true, section: true },
-      { label: 'Your first project', href: '#your-first-project', section: true },
-      { label: 'Common commands', href: '#common-commands', section: true },
-      { label: 'Migrating from npm', href: '#migrating-from-npm', section: true },
-      { label: 'Editor integration', href: '#editor-integration', section: true },
-      { label: 'Next steps', href: '#next-steps', section: true },
-    ],
-  },
-  {
-    title: 'Core concepts',
-    items: [
-      { label: 'Dependency protocols', href: 'concepts.html#dependency-protocols' },
-      { label: 'Node.js linkers', href: 'concepts.html#nodejs-linkers' },
-      { label: 'Workspaces', href: 'concepts.html#workspaces' },
-      { label: 'Yarn Switch', href: 'concepts.html#yarn-switch' },
-    ],
-  },
-  {
-    title: 'Intermediary concepts',
-    items: [
-      { label: 'Constraints', href: 'concepts.html#constraints' },
-      { label: 'Dependency patches', href: 'concepts.html#dependency-patches' },
-      { label: 'Peer dependencies', href: 'concepts.html#peer-dependencies' },
-      { label: "Plug'n'Play", href: 'concepts.html#plug-n-play' },
-    ],
-  },
-  {
-    title: 'Advanced concepts',
-    items: [
-      { label: 'Zero Installs', href: 'concepts.html#zero-installs' },
-      { label: 'Virtual packages', href: 'concepts.html#virtual-packages' },
-      { label: 'Performances', href: 'concepts.html#performances' },
-    ],
-  },
-];
+const topDirOrder: Record<string, number> = {
+  'getting-started': 0,
+  'concepts': 100,
+  'advanced': 200,
+  'contributing': 300,
+  'appendix': 400,
+};
 
-const conceptsGroups: SidebarGroup[] = [
-  {
-    title: 'Getting started',
-    items: [
-      { label: 'Installation', href: 'get-started.html' },
-      { label: 'Your first project', href: 'get-started.html#your-first-project' },
-      { label: 'Migrating from npm', href: 'get-started.html#migrating-from-npm' },
-    ],
-  },
-  {
-    title: 'Core concepts',
-    items: [
-      { label: 'Overview', href: '#core-concepts', active: true, section: true },
-      { label: 'Dependency protocols', href: '#dependency-protocols', sub: true, section: true },
-      { label: 'Node.js linkers', href: '#nodejs-linkers', sub: true, section: true },
-      { label: 'Workspaces', href: '#workspaces', sub: true, section: true },
-      { label: 'Yarn Switch', href: '#yarn-switch', sub: true, section: true },
-    ],
-  },
-  {
-    title: 'Intermediary concepts',
-    items: [
-      { label: 'Constraints', href: '#constraints', sub: true, section: true },
-      { label: 'Dependency patches', href: '#dependency-patches', sub: true, section: true },
-      { label: 'Node.js versioning', href: '#nodejs-versioning', sub: true, section: true },
-      { label: 'Peer dependencies', href: '#peer-dependencies', sub: true, section: true },
-      { label: 'Workspace profiles', href: '#workspace-profiles', sub: true, section: true },
-      { label: "Plug'n'Play", href: '#plug-n-play', sub: true, section: true },
-      { label: 'Task dependencies', href: '#task-dependencies', sub: true, section: true },
-    ],
-  },
-  {
-    title: 'Advanced concepts',
-    items: [
-      { label: 'Performances', href: '#performances', sub: true, section: true },
-      { label: 'Virtual packages', href: '#virtual-packages', sub: true, section: true },
-      { label: 'Zero Installs', href: '#zero-installs', sub: true, section: true },
-    ],
-  },
-];
+const allDocs = await getCollection('docs');
 
-const groups = activePage === 'get-started' ? getStartedGroups : conceptsGroups;
+const docs = allDocs.filter(doc => {
+  const dir = getDirForSlug(doc.data.slug);
+  if (dir?.startsWith('reference')) return false;
+  if (doc.data.sidebar?.hidden) return false;
+  return true;
+});
+
+const groupMap = new Map<string, { label: string; sortKey: number; docs: typeof docs }>();
+
+for (const doc of docs) {
+  const fsDir = getDirForSlug(doc.data.slug) ?? '.';
+
+  if (!groupMap.has(fsDir)) {
+    const meta = getMetaForDir(fsDir);
+    const topDir = fsDir.split('/')[0];
+    const topOrder = topDirOrder[topDir] ?? 999;
+
+    groupMap.set(fsDir, {
+      label: meta?.label ?? formatLabel(fsDir.split('/').pop()!),
+      sortKey: topOrder + (meta?.order ?? 99),
+      docs: [],
+    });
+  }
+
+  groupMap.get(fsDir)!.docs.push(doc);
+}
+
+const groups: SidebarGroup[] = [...groupMap.values()]
+  .sort((a, b) => a.sortKey - b.sortKey)
+  .map(({ label, docs: groupDocs }) => ({
+    title: label,
+    items: groupDocs
+      .sort((a, b) => {
+        const orderA = a.data.sidebar?.order ?? a.data.sidebar_position ?? 99;
+        const orderB = b.data.sidebar?.order ?? b.data.sidebar_position ?? 99;
+        return orderA - orderB;
+      })
+      .map(doc => ({
+        label: doc.data.title,
+        href: `/${doc.data.slug}.html`,
+        active: doc.data.slug === activePage,
+      })),
+  }));
 ---
 
 <DocsSidebar groups={groups} />
