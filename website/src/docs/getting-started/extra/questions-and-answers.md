@@ -17,9 +17,9 @@ As a result, we decided to retire the `yarn` npm package and only use it for the
 
 While the Yarn Classic line (1.x) remains a pillar of the JavaScript ecosystem, we recommend upgrading if possible. Why's that?
 
-1. New features: On top of the classic features you're already used to, on top of the new ones you'll discover ([`yarn dlx`](/cli/dlx), [builtin `patch:` protocol](https://github.com/yarnpkg/berry/tree/master/packages/plugin-patch), ...), Modern offers plugins extending Yarn's featureset with [changesets](/features/release-workflow), [constraints](/features/constraints), [workspaces](/cli/workspaces/foreach), ...
+1. New features: On top of the classic features you're already used to, on top of the new ones you'll discover ([`yarn dlx`](/cli/dlx), [builtin `patch:` protocol](https://github.com/yarnpkg/berry/tree/master/packages/plugin-patch), ...), Modern offers plugins extending Yarn's featureset with changesets, [constraints](/concepts/constraints), [workspaces](/cli/workspaces/foreach), ...
 
-2. Efficiency: Modern features new install strategies, leading projects to only be a fraction of their past self; as an example, under the default configuration the stock CRA artifacts now only take 45MB instead of 237MB. [Performances](https://p.datadoghq.eu/sb/d2wdprp9uki7gfks-c562c42f4dfd0ade4885690fa719c818) were improved as well, with most installs now only taking a few seconds even on extremely large projects. We even made it possible to reach [zero seconds](/features/caching#zero-installs)!
+2. Efficiency: Modern features new install strategies, leading projects to only be a fraction of their past self; as an example, under the default configuration the stock CRA artifacts now only take 45MB instead of 237MB. [Performances](https://p.datadoghq.eu/sb/d2wdprp9uki7gfks-c562c42f4dfd0ade4885690fa719c818) were improved as well, with most installs now only taking a few seconds even on extremely large projects. We even made it possible to reach [zero seconds](/concepts/zero-installs)!
 
 3. Extensibility: Modern's architecture allows you to build your own features as you need it. No more of you being blocked waiting for us to implement this feature you dream of - you can now do it yourself, according to your own specs! Focused workspaces, custom installs, project validation, ...
 
@@ -31,15 +31,15 @@ While the Yarn Classic line (1.x) remains a pillar of the JavaScript ecosystem, 
 
 Generally, a few main things will need to be taken care of:
 
-1. The settings format changed. We don't read the `.npmrc` or `.yarnrc` files anymore, instead of consuming the settings from the [`.yarnrc.yml` file](https://yarnpkg.com/configuration/yarnrc).
+1. The settings format changed. We don't read the `.npmrc` or `.yarnrc` files anymore, instead of consuming the settings from the [`.yarnrc.yml` file](/configuration/yarnrc).
 
-2. Some third-party packages don't list their dependencies properly and will need to be helped through the [`packageExtensions`](https://yarnpkg.com/configuration/yarnrc#packageExtensions) settings.
+2. Some third-party packages don't list their dependencies properly and will need to be helped through the [`packageExtensions`](/configuration/yarnrc#packageExtensions) settings.
 
-3. Support for text editors is pretty good, but you'll need to run the one-time-setup listed in our [SDK documentation](https://yarnpkg.com/getting-started/editor-sdks).
+3. Support for text editors is pretty good, but you'll need to run the one-time-setup listed in our [SDK documentation](/getting-started/editor-sdks).
 
-4. Some tools (mostly React Native and Flow) will require downgrading to the `node_modules` install strategy by setting the [`nodeLinker`](https://yarnpkg.com/configuration/yarnrc#nodeLinker) setting to `node-modules`. TypeScript doesn't have this problem.
+4. Some tools (mostly React Native and Flow) will require downgrading to the `node_modules` install strategy by setting the [`nodeLinker`](/configuration/yarnrc#nodeLinker) setting to `node-modules`. TypeScript doesn't have this problem.
 
-Most projects will only face those four problems, which can all be fixed in a good afternoon of work. For more detailed instructions, please see the detailed [migration guide](/migration/guide).
+Most projects will only face those four problems, which can all be fixed in a good afternoon of work. For more detailed instructions, please see the detailed [migration guide](/getting-started/breaking-changes).
 
 ## Which files should be gitignored?
 
@@ -69,7 +69,7 @@ If you're not using Zero-Installs:
 
 If you're interested to know more about each of these files:
 
-- `.yarn/cache` and `.pnp.*` may be safely ignored, but you'll need to run `yarn install` to regenerate them between each branch switch - which would be optional otherwise, cf [Zero-Installs](/features/caching#zero-installs).
+- `.yarn/cache` and `.pnp.*` may be safely ignored, but you'll need to run `yarn install` to regenerate them between each branch switch - which would be optional otherwise, cf [Zero-Installs](/concepts/zero-installs).
 
 - `.yarn/install-state.gz` is an optimization file that you shouldn't ever have to commit. It simply stores the exact state of your project so that the next commands can boot without having to resolve your workspaces all over again.
 
@@ -79,9 +79,9 @@ If you're interested to know more about each of these files:
 
 - `.yarn/sdks` contains the editor SDKs generated by `@yarnpkg/sdks`. Whether to keep it in your repository or not is up to you; if you don't, you'll need to follow the editor procedure again on new clones. See [Editor SDKs](/getting-started/editor-sdks) for more details.
 
-- `.yarn/unplugged` should likely always be ignored since they typically hold machine-specific build artifacts. Ignoring it might however prevent [Zero-Installs](/features/caching#zero-installs) from working (to prevent this, set [`enableScripts`](/configuration/yarnrc#enableScripts) to `false`).
+- `.yarn/unplugged` should likely always be ignored since they typically hold machine-specific build artifacts. Ignoring it might however prevent [Zero-Installs](/concepts/zero-installs) from working (to prevent this, set [`enableScripts`](/configuration/yarnrc#enableScripts) to `false`).
 
-- `.yarn/versions` is used by the [version plugin](/features/release-workflow) to store the package release definitions. You will want to keep it within your repository.
+- `.yarn/versions` is used by the version plugin to store the package release definitions. You will want to keep it within your repository.
 
 - `yarn.lock` should always be stored within your repository ([even if you develop a library](#should-lockfiles-be-committed-to-the-repository)).
 
@@ -101,7 +101,7 @@ You can also add a `.gitattributes` file to identify the release and plugin bund
 
 **Yes.**
 
-First, remember that Yarn supports the [`node-modules` install strategy](https://yarnpkg.com/configuration/yarnrc#nodeLinker), which installs package exactly the same as, say, npm would. So if Yarn didn't support ESM, nothing would. If you hear someone say it doesn't, they actually mean "[Yarn PnP](https://yarnpkg.com/features/pnp) doesn't support ESM" - **except it does**, ever since the [3.1](https://dev.to/arcanis/yarn-31-corepack-esm-pnpm-optional-packages--3hak#esm-support).
+First, remember that Yarn supports the [`node-modules` install strategy](/configuration/yarnrc#nodeLinker), which installs package exactly the same as, say, npm would. So if Yarn didn't support ESM, nothing would. If you hear someone say it doesn't, they actually mean "[Yarn PnP](/concepts/pnp) doesn't support ESM" - **except it does**, ever since the [3.1](https://dev.to/arcanis/yarn-31-corepack-esm-pnpm-optional-packages--3hak#esm-support).
 
 So this alone should answer your question. But if you want more details about the PnP and ESM story, then let's talk about ESM itself first. ESM is two things: at its core, it's a spec that got drafted in ES2015. However, no engine implemented it straight away: at this time the spec was pretty much just a syntactic placeholder, with nothing concrete underneath. It's only starting from late 2019 that Node finally received support for native ESM, without requiring an experimental flag. But this support had one major caveat: **the ESM loaders weren't there**. Loaders are the things that allow projects to tell Node how to locate packages and modules on the disk. You probably know some of them: [`@babel/register`](https://babeljs.io/docs/en/babel-register#compiling-plugins-and-presets-on-the-fly), [`ts-node`](https://github.com/TypeStrong/ts-node/discussions/1321), [Jest's mocks](https://github.com/facebook/jest/issues/9430), [Electron](https://github.com/electron/electron/issues/21457), and many more.
 

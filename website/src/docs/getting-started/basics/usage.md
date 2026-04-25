@@ -3,7 +3,6 @@ category: getting-started
 slug: getting-started/usage
 title: Usage
 description: A short overview of Yarn's most used commands.
-sidebar_position: 4
 ---
 
 If you're coming from npm, the main changes are:

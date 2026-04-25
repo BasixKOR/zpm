@@ -3,15 +3,13 @@ category: getting-started
 slug: welcome
 title: Who are we?
 description: A description of Yarn as a project, what we aim to achieve, and what we can do for you.
-sidebar:
-  order: 1
 ---
 
-Yarn is an open-source package manager for JavaScript and TypeScript projects. We aim to provide fast, reliable, and secure way to dependency management, without sacrificing flexibility, ease of use, or ethos.
+Yarn is an open-source package manager for JavaScript and TypeScript projects. We aim to provide a fast, reliable, and secure way to manage dependencies, without sacrificing flexibility, ease of use, or ethos.
 
 Specifically, we focus on the following things:
 
-- **Our users should be in control**; Yarn will not telling everything is fine if something is wrong. It will let you know of potential issues and suggest how to address them, but you'll be in the driver's seat.
+- **Our users should be in control**; Yarn will not tell you everything is fine if something is wrong. It will let you know of potential issues and suggest how to address them, but you'll be in the driver's seat.
 
 - **Our messaging must be clear and concise**; a Yarn install should never take more than a dozen lines in your terminal, and you should trust the tool that the information we print is topical.
 

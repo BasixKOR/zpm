@@ -17,7 +17,7 @@ Reimplementing a codebase comes with challenges, and the two following features 
 
 - Plugins; various other projects (Biome, Oxc, etc) are experimenting on that topic, and we prefer to let them clear the way before building our own solutions.
 
-- Windows support; we already have a path abstraction to prepare for this task, but no tests haven't been run on Windows yet and various things are likely broken. We recommend WSL as a workaround.
+- Windows support; we already have a path abstraction to prepare for this task, but no tests have been run on Windows yet and various things are likely broken. We recommend WSL as a workaround.
 
 ### Important features
 
@@ -25,7 +25,7 @@ Some new features have been implemented. They are not "breaking changes" per se,
 
 - [Native Node.js version management](/concepts/nvm), which allows Yarn to treat Node.js as any other dependency, removing the need for third-party tools like nvm / fnm / volta / ...
 
-- [Workspace profiles](/concepts/profiles), which let you definite set of dependencies to reuse in your workspaces
+- [Workspace profiles](/concepts/profiles), which let you define a set of dependencies to reuse in your workspaces
 
 ### Lockfile
 

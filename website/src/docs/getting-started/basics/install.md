@@ -3,7 +3,6 @@ category: getting-started
 slug: getting-started
 title: Installation
 description: Yarn's in-depth installation guide.
-sidebar_position: 2
 ---
 
 Yarn is intended to be used with [Yarn Switch](/concepts/switch), a tool that lets you use different Yarn versions depending on the project you're in.
@@ -22,7 +21,7 @@ Once Yarn Switch is ready, if you wish to start a new project, running `yarn ini
 yarn switch zpm set version zpm
 ```
 
-It intructs Yarn Switch to download the latest version of Yarn on its `zpm` release branch and run the `yarn set version zpm` command with it. This command will in turn update `packageManager` with the appropriate version.
+It instructs Yarn Switch to download the latest version of Yarn on its `zpm` release branch and run the `yarn set version zpm` command with it. This command will in turn update `packageManager` with the appropriate version.
 
 ## Updating Yarn
 

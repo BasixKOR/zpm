@@ -2,7 +2,7 @@
 category: getting-started
 slug: getting-started/migration-mode
 title: Migration Mode
-description: An advanced mode for gradually migrate large-scale monorepos to Yarn.
+description: An advanced mode for gradually migrating large-scale monorepos to Yarn.
 ---
 
 Migrating to new major releases of Yarn on small repositories is easy thanks to the `packageManager` field. As soon as you update it, either manually or through `yarn set version`, [Yarn Switch](/concepts/switch) will start using this new version. Committing the update in the repository will make sure everyone pulling your repository will use the exact version of Yarn you intended.
@@ -26,7 +26,7 @@ Some default settings will also change:
 - The lockfile will be written in the `.yarn/ignore/migration` folder rather than the project root.
 - The local cache will be disabled; new downloaded packages will be stored in the global system cache.
 
-Those changes are all in the service of one goal: **the Yarn version you're migrating to isn't allowed to have lasting effect on the repository**. This ensure that only contributors who opted-in to the migration can be impacted by potential regressions.
+Those changes are all in the service of one goal: **the Yarn version you're migrating to isn't allowed to have lasting effect on the repository**. This ensures that only contributors who opted-in to the migration can be impacted by potential regressions.
 
 ## How to enable the migration mode?
 
