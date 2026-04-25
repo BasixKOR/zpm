@@ -5,10 +5,6 @@ title: Questions & Answers
 description: A list of answers to commonly asked questions.
 ---
 
-import TableOfContentsList from "@/components/table-of-content/TableOfContentsList.astro";
-
-<TableOfContentsList />
-
 ## Why is the `yarn` package on npm still on 1.x?
 
 Modern releases of Yarn haven't been distributed on npm since 2019.

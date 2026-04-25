@@ -12,15 +12,8 @@ const { variant = 'index', activePage } = Astro.props;
 const isDocs = variant === 'docs';
 const navBgOpacity = isDocs ? '55%' : '25%';
 
-const links = [
-  { label: 'Get Started', key: 'get-started', href: '/welcome.html' },
-  { label: 'Concepts', key: 'concepts', href: '/concepts/switch.html' },
-  { label: 'Reference', key: 'reference', href: '/configuration/manifest.html' },
-  { label: 'Appendix', key: 'appendix', href: '/appendix/workspaces-and-peer-deps.html' },
-  { label: 'Contributing', key: 'contributing', href: '/contributing/welcome.html' },
-  { label: 'Quiz', key: 'quiz', href: '/quiz.html' },
-  { label: 'Blog', key: 'blog', href: '/blog' },
-];
+import navigation from '../../config/navigation.json';
+const links = navigation.topbar;
 
 const activeClass = 'no-underline text-[var(--fg)] font-medium';
 const inactiveClass = 'hover:text-[var(--fg)] transition-colors no-underline text-inherit';

@@ -20,11 +20,13 @@ Some of these protocols have alternative syntaxes, such as the git protocol whic
 | Protocol | Description |
 | --- | --- |
 | `catalog:` | Delegate the dependency to the project configuration. |
-| `file:` | Compile a local folder into a cached archive. |
-| `file:` | Extract a package from a tgz archive. |
+| `exec:` | Generate a package on the fly via a script. |
+| `file:` | Compile a local folder or extract a tgz archive. |
 | `git:` | Retrieve a package from a git repository. |
+| `jsr:` | Download a package from the JSR registry. |
 | `link:` | Pretend the specified folder is a package. |
 | `npm:` | Download a package from the npm registry. |
+| `patch:` | Apply a patch to an existing package. |
 | `portal:` | Connect the project to a package in another folder. |
 | `workspace:` | Connect a workspace to another workspace. |
 

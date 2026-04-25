@@ -103,11 +103,6 @@ This document only covers the data file itself - you should define your own in-m
 You may notice that various places use arrays of tuples in place of maps. This is mostly intended to make it easier to hydrate ES6 maps, but also sometimes to have non-string keys (for instance `packageRegistryData` will have a `null` key in one particular case).
 :::
 
-import pnpSchema from "@/utils/configuration/pnp.json";
-import JsonToDoc from "@/components/JsonToDoc";
-
-<JsonToDoc client:only="preact" json={pnpSchema} />
-
 ## Resolution algorithm
 
 :::note

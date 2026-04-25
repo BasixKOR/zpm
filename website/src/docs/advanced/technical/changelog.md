@@ -5,6 +5,4 @@ title: Changelog
 description: All changes, version by version.
 ---
 
-import Changelog from "../../../../../CHANGELOG.md"
-
-<Changelog />
+See the [CHANGELOG on GitHub](https://github.com/yarnpkg/zpm/blob/main/CHANGELOG.md) for the full list of changes.

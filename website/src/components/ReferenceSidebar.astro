@@ -1,6 +1,7 @@
 ---
 import DocsSidebar from './DocsSidebar.astro';
 import type { SidebarGroup, SidebarItem } from './sidebar';
+import navigation from '../../config/navigation.json';
 
 type CliEntry = {id: string; data: {binaryName: string; commandSpec: {primaryPath: string[]; category: string | null}}};
 
@@ -21,17 +22,31 @@ function slugify(s: string): string {
     .replace(/^-|-$/g, ``);
 }
 
+const refConfig = navigation.sidebars.reference;
+const isProtocolPage = activePage.startsWith('protocol/');
+
 const configGroup: SidebarGroup = {
   title: 'Reference',
-  items: [
-    { label: 'Manifest — package.json', href: '/configuration/manifest.html', active: activePage === 'manifest' },
-    { label: 'Settings — .yarnrc.yml', href: '/configuration/yarnrc.html', active: activePage === 'yarnrc' },
-    { label: 'Yarn CLI', href: '/cli/install.html', active: false},
-    { label: 'Yarn Switch CLI', href: '/switch/switch.html', active: false},
-  ],
+  items: refConfig.links.map(link => ({
+    label: link.label,
+    href: link.href,
+    active: 'page' in link ? activePage === link.page : 'pagePrefix' in link ? activePage.startsWith(link.pagePrefix!) : false,
+  })),
 };
 
 const groups: SidebarGroup[] = [configGroup];
+
+if (isProtocolPage) {
+  groups.push({
+    title: 'Protocols',
+    items: refConfig.protocols.map(p => ({
+      label: p.label,
+      href: p.href,
+      active: activePage === p.page,
+      mono: true,
+    })),
+  });
+}
 
 if (fields) {
   groups.push({

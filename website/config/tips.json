@@ -1,0 +1,8 @@
+[
+  "Yarn's <span class=\"mono\">Plug'n'Play</span> install mode skips <span class=\"mono\">node_modules</span> entirely — a single <span class=\"mono\">.pnp.cjs</span> file resolves every module at runtime.",
+  "A cold install on a 400-package monorepo drops from <strong class=\"text-[var(--fg)] font-medium\">48.4s</strong> with npm to <strong class=\"text-[var(--fg)] font-medium\">14.2s</strong> with Yarn 4 — thanks to parallel fetch and content-addressable caching.",
+  "The <span class=\"mono\">yarn.lock</span> format is deterministic and diff-friendly: reordering never changes the file, and conflicts are resolvable by hand.",
+  "<span class=\"mono\">yarn workspaces foreach</span> runs scripts across every package in topological order — no extra tooling, no Lerna, no glue.",
+  "Zero-install repos commit the offline mirror so <span class=\"mono\">git clone</span> is enough to start coding — no install step, no CI warm-up.",
+  "Every release since 2.0 has been a native ESM binary distributed via <span class=\"mono\">corepack</span> — no global install, version pinned per-project."
+]

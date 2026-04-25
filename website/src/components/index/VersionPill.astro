@@ -1,0 +1,18 @@
+---
+interface Props {
+  label: string;
+  title: string;
+  version: string;
+  accent?: boolean;
+}
+
+const { label, title, version, accent = false } = Astro.props;
+const labelClass = accent
+  ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
+  : 'bg-[color-mix(in_oklch,var(--fg-dim)_18%,transparent)] text-[var(--fg-dim)]';
+---
+
+<span title={title} class="inline-flex items-center gap-2 pl-1 pr-2.5 py-1 border border-[var(--line-strong)] rounded-full text-[11.5px] text-[var(--fg-mute)] tracking-[0.02em]">
+  <span class={`mono px-2 py-0.5 rounded-full ${labelClass} text-[10.5px] tracking-[0.08em] uppercase`}>{label}</span>
+  <span class="mono text-[var(--fg)]">{version}</span>
+</span>

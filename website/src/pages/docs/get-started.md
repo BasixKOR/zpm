@@ -2,7 +2,7 @@
 layout: ../../layouts/MarkdownDocsLayout.astro
 title: "Get Started — Yarn docs"
 activePage: get-started
-sidebar: concept
+sidebar: getting-started
 breadcrumb: Get Started
 prev: { href: "/", label: "Home" }
 next: { href: "concepts.html", label: "Concepts" }

@@ -19,7 +19,7 @@ export interface SidebarGroup {
 }
 
 const metaGlob = import.meta.glob<string>('../docs/**/_meta.{yml,yaml}', { eager: true, query: '?raw', import: 'default' });
-const docGlob = import.meta.glob<{ frontmatter: Record<string, any> }>('../docs/**/*.md', { eager: true });
+const docGlob = import.meta.glob<string>('../docs/**/*.md', { eager: true, query: '?raw', import: 'default' });
 
 const metaLookup = new Map<string, { label: string; order: number }>();
 for (const [filePath, content] of Object.entries(metaGlob)) {
@@ -30,8 +30,8 @@ for (const [filePath, content] of Object.entries(metaGlob)) {
 }
 
 const slugToDir = new Map<string, string>();
-for (const [filePath, mod] of Object.entries(docGlob)) {
-  const slug = mod.frontmatter?.slug;
+for (const [filePath, content] of Object.entries(docGlob)) {
+  const slug = content.match(/^slug:\s*(.+)$/m)?.[1]?.trim();
   if (slug) {
     const relPath = filePath.replace(/^\.\.\/docs\//, '');
     const lastSlash = relPath.lastIndexOf('/');
@@ -56,4 +56,51 @@ export function getGroupLabelForSlug(slug: string): string | undefined {
   if (!dir) return undefined;
   const meta = metaLookup.get(dir);
   return meta?.label ?? formatLabel(dir.split('/').pop()!);
+}
+
+export function buildSidebarGroups(
+  allDocs: Array<{data: {slug: string; title: string; sidebar?: {order?: number; hidden?: boolean}; sidebar_position?: number}}>,
+  section: string,
+  activePage: string,
+): SidebarGroup[] {
+  const docs = allDocs.filter(doc => {
+    const dir = getDirForSlug(doc.data.slug);
+    if (!dir?.startsWith(section)) return false;
+    if (doc.data.sidebar?.hidden) return false;
+    return true;
+  });
+
+  const groupMap = new Map<string, { label: string; sortKey: number; docs: typeof docs }>();
+
+  for (const doc of docs) {
+    const fsDir = getDirForSlug(doc.data.slug) ?? '.';
+
+    if (!groupMap.has(fsDir)) {
+      const meta = getMetaForDir(fsDir);
+      groupMap.set(fsDir, {
+        label: meta?.label ?? formatLabel(fsDir.split('/').pop()!),
+        sortKey: meta?.order ?? 99,
+        docs: [],
+      });
+    }
+
+    groupMap.get(fsDir)!.docs.push(doc);
+  }
+
+  return [...groupMap.values()]
+    .sort((a, b) => a.sortKey - b.sortKey)
+    .map(({ label, docs: groupDocs }) => ({
+      title: label,
+      items: groupDocs
+        .sort((a, b) => {
+          const orderA = a.data.sidebar?.order ?? a.data.sidebar_position ?? 99;
+          const orderB = b.data.sidebar?.order ?? b.data.sidebar_position ?? 99;
+          return orderA - orderB;
+        })
+        .map(doc => ({
+          label: doc.data.title,
+          href: `/${doc.data.slug}.html`,
+          active: doc.data.slug === activePage,
+        })),
+    }));
 }

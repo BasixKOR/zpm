@@ -2,6 +2,8 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import '../styles/theme.css';
 import '../styles/quiz.css';
+import quiz from '../../config/quiz.json';
+const { questions, levels } = quiz;
 ---
 
 <BaseLayout title="Do you know Yarn? — A short quiz" variant="docs" activePage="quiz">
@@ -53,5 +55,9 @@ import '../styles/quiz.css';
   </main>
 
   <script is:inline src="/docs/docs.js"></script>
+  <script is:inline define:vars={{ questions, levels }}>
+    var QUESTIONS = questions;
+    var LEVELS = levels;
+  </script>
   <script is:inline src="/quiz.js"></script>
 </BaseLayout>

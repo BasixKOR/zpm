@@ -198,6 +198,17 @@ export default function remarkDocs() {
 
     processFieldHeadings(tree);
 
+    visit(tree, `inlineCode`, (node, index, parent) => {
+      if (!parent || parent.type === `link`) return;
+      const match = node.value.match(/^([a-z]+):$/);
+      if (!match) return;
+      parent.children[index] = {
+        type: `link`,
+        url: `/protocol/${match[1]}.html`,
+        children: [{type: `inlineCode`, value: node.value}],
+      };
+    });
+
     visit(tree, `textDirective`, (node, index, parent) => {
       if (!parent || !PILL_NAMES.includes(node.name)) return;
       const content = toString(node);
