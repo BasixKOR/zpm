@@ -413,17 +413,9 @@
 }
 .code-block code { font-family: 'JetBrains Mono', monospace; }
 
-/* Syntax highlighting tokens */
-.tok-comment { color: var(--syn-comment); font-style: italic; }
-.tok-keyword { color: var(--syn-keyword); font-weight: 500; }
-.tok-string { color: var(--syn-string); }
-.tok-number { color: var(--syn-number); }
-.tok-func { color: var(--syn-func); }
-.tok-prop { color: var(--syn-prop); }
-.tok-punct { color: var(--syn-punct); }
-.tok-tag { color: var(--syn-tag); }
-.tok-attr { color: var(--syn-attr); }
-.tok-op { color: var(--syn-keyword); }
+/* Shiki overrides for docs code blocks */
+.code-block .shiki { background: transparent !important; }
+.code-block .shiki code { font-family: inherit; }
 
 /* ─── Sidebar ─── */
 .docs-sidebar {

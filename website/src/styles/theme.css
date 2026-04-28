@@ -44,6 +44,21 @@
   --syn-tag: oklch(0.78 0.14 22);
   --syn-attr: oklch(0.82 0.12 70);
 
+  /* Shiki css-variables theme → docs tokens */
+  --shiki-token-keyword: var(--syn-keyword);
+  --shiki-token-string: var(--syn-string);
+  --shiki-token-string-expression: var(--syn-string);
+  --shiki-token-constant: var(--syn-number);
+  --shiki-token-function: var(--syn-func);
+  --shiki-token-parameter: var(--syn-prop);
+  --shiki-token-punctuation: var(--syn-punct);
+  --shiki-token-comment: var(--syn-comment);
+  --shiki-token-link: var(--syn-string);
+  --shiki-token-inserted: oklch(0.80 0.14 140);
+  --shiki-token-deleted: oklch(0.78 0.14 22);
+  --shiki-foreground: var(--syn-fg);
+  --shiki-background: transparent;
+
   /* Terminal */
   --term-bg: rgba(6, 8, 22, 0.75);
   --term-border: rgba(120, 130, 180, 0.22);
@@ -98,6 +113,20 @@ html[data-theme="light"] {
   --syn-punct: #505878;
   --syn-tag: oklch(0.50 0.17 20);
   --syn-attr: oklch(0.48 0.14 60);
+
+  --shiki-token-keyword: var(--syn-keyword);
+  --shiki-token-string: var(--syn-string);
+  --shiki-token-string-expression: var(--syn-string);
+  --shiki-token-constant: var(--syn-number);
+  --shiki-token-function: var(--syn-func);
+  --shiki-token-parameter: var(--syn-prop);
+  --shiki-token-punctuation: var(--syn-punct);
+  --shiki-token-comment: var(--syn-comment);
+  --shiki-token-link: var(--syn-string);
+  --shiki-token-inserted: oklch(0.45 0.16 150);
+  --shiki-token-deleted: oklch(0.50 0.17 20);
+  --shiki-foreground: var(--syn-fg);
+  --shiki-background: transparent;
 
   --term-bg: rgba(252, 252, 255, 0.75);
   --term-border: rgba(12, 16, 48, 0.12);

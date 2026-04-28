@@ -1,4 +1,12 @@
 import {visit} from 'unist-util-visit';
+import {createHighlighter, createCssVariablesTheme} from 'shiki';
+
+const cssVarsTheme = createCssVariablesTheme({
+  name: `css-variables`,
+  variablePrefix: `--shiki-`,
+  variableDefaults: {},
+  fontStyle: true,
+});
 
 function escapeHtml(str) {
   return str
@@ -20,6 +28,33 @@ function slugify(s) {
     .replace(/\s+/g, `-`)
     .replace(/-+/g, `-`)
     .replace(/^-|-$/g, ``);
+}
+
+const LANG_ALIASES = {js: `javascript`, ts: `typescript`, sh: `shell`};
+
+let _hlPromise;
+function getHighlighter() {
+  if (!_hlPromise) {
+    _hlPromise = createHighlighter({
+      themes: [cssVarsTheme],
+      langs: [`javascript`, `typescript`, `json`, `yaml`, `bash`, `html`, `css`, `jsx`, `tsx`, `diff`, `shell`],
+    });
+  }
+  return _hlPromise;
+}
+
+async function highlightCode(code, lang) {
+  if (!lang) return escapeHtml(code);
+  const resolved = LANG_ALIASES[lang] || lang;
+  try {
+    const hl = await getHighlighter();
+    if (!hl.getLoadedLanguages().includes(resolved)) return escapeHtml(code);
+    const html = hl.codeToHtml(code, {lang: resolved, theme: `css-variables`});
+    const match = html.match(/<code>(.+?)<\/code>/s);
+    return match ? match[1] : escapeHtml(code);
+  } catch {
+    return escapeHtml(code);
+  }
 }
 
 const PILL_NAMES = [`type`, `required`, `since`, `default`, `deprecated`];
@@ -67,10 +102,11 @@ function buildTerminalHtml(content) {
   return `<div class="terminal">\n${spans}\n</div>`;
 }
 
-function buildCodeBlockHtml(content, lang, title) {
+async function buildCodeBlockHtml(content, lang, title) {
+  const highlighted = await highlightCode(content, lang);
   let html = `<div class="code-block">`;
   if (title) html += `\n<span class="code-lang">${escapeHtml(title)}</span>`;
-  html += `\n<pre><code${lang ? ` data-lang="${escapeHtml(lang)}"` : ``}>${escapeHtml(content)}</code></pre>\n</div>`;
+  html += `\n<pre><code>${highlighted}</code></pre>\n</div>`;
   return html;
 }
 
@@ -134,7 +170,8 @@ function processFieldHeadings(tree) {
 }
 
 export default function remarkDocs() {
-  return tree => {
+  return async tree => {
+    const codeNodes = [];
     visit(tree, `code`, (node, index, parent) => {
       if (!parent) return;
 
@@ -146,13 +183,16 @@ export default function remarkDocs() {
         return index;
       }
 
+      codeNodes.push({node, index, parent});
+    });
+
+    await Promise.all(codeNodes.map(async ({node, index, parent}) => {
       const titleMatch = node.meta?.match(/title="([^"]+)"/);
       parent.children[index] = {
         type: `html`,
-        value: buildCodeBlockHtml(node.value, node.lang || ``, titleMatch?.[1] || ``),
+        value: await buildCodeBlockHtml(node.value, node.lang || ``, titleMatch?.[1] || ``),
       };
-      return index;
-    });
+    }));
 
     visit(tree, `containerDirective`, (node, index, parent) => {
       if (!parent) return;

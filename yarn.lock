@@ -5,7 +5,7 @@
   "workspaces": {
     "@yarnpkg/documentation": "105cf01165fcffc02e5a354f6734895d01fbb152899e635b1d1b152a04e48c904810d457a85b09d642ca9061bf01e02dc203eabdf0c3a29ddf20036b31e43cde",
     "@yarnpkg/monorepo": "69da8dfb279601957675174872ca291310b88ff5e33fcc0060b11a3503fdef48f629515bcf7d74fbe12b83b2a84b7f0249cf8154978d15bc6a3fa3c634624f94",
-    "@yarnpkg/website": "f4107759ba6978de11e1cde559ea1fed101ab3b6369bf51954a959f3a7d3f0c4b92100f9e590f4d975785be77907bd8d7b34ee7c0cec5d3535c3cf26444a2c5a",
+    "@yarnpkg/website": "0b7f12647d3e4e24fee55d876480c422284fe07e17488a879c117e36cb55a1d86af49d352026a6b2a9083375f2de5f3ce5ddfb49d0fa8f11da9682edb4ad2481",
     "@yarnpkg/zpm-constraints": "5c6a5440669d0a0244f06ebc980b86b246235da3b4da7fc5c2bbdc0bf61ef23e95d8bb9f2fdb7402d20cf0ac8461b086799a0e0e606054b85e9ac472be1dd9d2",
     "@yarnpkg/zpm-daemon-ui": "64b5d42d2f7f1113e164b3c3137385b0d72824abc41ca9e4d852261f61018f037cbe0b0d5c97d7b3529075ff8b6ceead5803590a5ff9ee3564a785732262564a",
     "acceptance-tests": "9e727eab8feee6a4383eb4abec8384decbaf30d2ee37dca7d2c8fc1e6afff399509282042cc605746ffaca0ed8f7e5b964b88327ecd50c5077d7a44b7ea4a5ae",
@@ -8177,6 +8177,20 @@
         }
       }
     },
+    "@shikijs/core@npm:4.0.2": {
+      "checksum": "78767dfe239b4fd75b43cb1e4330b57e0892f45cd10b54c38c3f671629b22fd58930d6c3158853d1110d0e10ba2d005a0ffee658d86f88ffbe25ad4c9a72ee45",
+      "resolution": {
+        "resolution": "@shikijs/core@npm:4.0.2",
+        "version": "4.0.2",
+        "dependencies": {
+          "@shikijs/primitive": "4.0.2",
+          "@shikijs/types": "4.0.2",
+          "@shikijs/vscode-textmate": "^10.0.2",
+          "@types/hast": "^3.0.4",
+          "hast-util-to-html": "^9.0.5"
+        }
+      }
+    },
     "@shikijs/engine-javascript@npm:3.13.0": {
       "checksum": "484d8ed73de3c159c4dba4405ff1e0618b06d4d21727a649052924f99fef5499aed64d01fbe539cb0183ba518c47b55f46d3c05b68f5dbd285397b0fef19ca89",
       "resolution": {
@@ -8196,6 +8210,18 @@
         "version": "3.23.0",
         "dependencies": {
           "@shikijs/types": "3.23.0",
+          "@shikijs/vscode-textmate": "^10.0.2",
+          "oniguruma-to-es": "^4.3.4"
+        }
+      }
+    },
+    "@shikijs/engine-javascript@npm:4.0.2": {
+      "checksum": "eb5178313e195ec4f33aa22be724fc56c89f75af50740942adbb34cd51898ff351d423c09461ab70e21ea0dbcf03576a98dfbf0f45cbf490e0135b6830c89bdc",
+      "resolution": {
+        "resolution": "@shikijs/engine-javascript@npm:4.0.2",
+        "version": "4.0.2",
+        "dependencies": {
+          "@shikijs/types": "4.0.2",
           "@shikijs/vscode-textmate": "^10.0.2",
           "oniguruma-to-es": "^4.3.4"
         }
@@ -8223,6 +8249,17 @@
         }
       }
     },
+    "@shikijs/engine-oniguruma@npm:4.0.2": {
+      "checksum": "d7e07ce13783d24825dec254d32c4bbe1c13a74712e57a00c2724bbc96562773fbb18e110a8e078c4392fdd0687bbfabb41ac2b3437eaaabc3dbe6cae4accf35",
+      "resolution": {
+        "resolution": "@shikijs/engine-oniguruma@npm:4.0.2",
+        "version": "4.0.2",
+        "dependencies": {
+          "@shikijs/types": "4.0.2",
+          "@shikijs/vscode-textmate": "^10.0.2"
+        }
+      }
+    },
     "@shikijs/langs@npm:3.13.0": {
       "checksum": "4ba42b3858723b2d23b9baf353a721ea9637395e743b82e2402ce88b22b8b5c8844ea4d4ab04a54393ed5c16e9c6a6c26d5d0a992c40cd4311ef1054d0a1ddbd",
       "resolution": {
@@ -8240,6 +8277,28 @@
         "version": "3.23.0",
         "dependencies": {
           "@shikijs/types": "3.23.0"
+        }
+      }
+    },
+    "@shikijs/langs@npm:4.0.2": {
+      "checksum": "addb2fcedce4a76859cbd4018cd08a2a8c48c8ca34b93a6be667d42bb98991c983547c4c13cb18b2198045649f3042d72511614faa879cf07a968d87488c272f",
+      "resolution": {
+        "resolution": "@shikijs/langs@npm:4.0.2",
+        "version": "4.0.2",
+        "dependencies": {
+          "@shikijs/types": "4.0.2"
+        }
+      }
+    },
+    "@shikijs/primitive@npm:4.0.2": {
+      "checksum": "b828d8878da4c8be5ebf751f1027cca0d66f9f339a93fcd0c1e7a8b0afc0c232c80535527101e888f6a725a3994b9bede64340be7becc788e845e4c4233ef656",
+      "resolution": {
+        "resolution": "@shikijs/primitive@npm:4.0.2",
+        "version": "4.0.2",
+        "dependencies": {
+          "@shikijs/types": "4.0.2",
+          "@shikijs/vscode-textmate": "^10.0.2",
+          "@types/hast": "^3.0.4"
         }
       }
     },
@@ -8263,6 +8322,16 @@
         }
       }
     },
+    "@shikijs/themes@npm:4.0.2": {
+      "checksum": "08cd186bd51b33ac12347e42921a3dc4d61d582e8be9432bdc6c04f1f6840bc69c5966b22ee8d4ac5e4a0b52881c53c32e0233706dfebeb0da7ec6faf16514ea",
+      "resolution": {
+        "resolution": "@shikijs/themes@npm:4.0.2",
+        "version": "4.0.2",
+        "dependencies": {
+          "@shikijs/types": "4.0.2"
+        }
+      }
+    },
     "@shikijs/types@npm:3.13.0": {
       "checksum": "3ce1e9c025c714d03737798f64880559487bdc2b3a863bc0bd41aff76f29fa854384c2189bfc2adf5f6413629101872b47e65e4e5103bc068f09779fbddd5858",
       "resolution": {
@@ -8279,6 +8348,17 @@
       "resolution": {
         "resolution": "@shikijs/types@npm:3.23.0",
         "version": "3.23.0",
+        "dependencies": {
+          "@shikijs/vscode-textmate": "^10.0.2",
+          "@types/hast": "^3.0.4"
+        }
+      }
+    },
+    "@shikijs/types@npm:4.0.2": {
+      "checksum": "14a4538f3ab64c579f1ece3f8d649b84d248f4137258dfee2c5793f57b3c5b843f64ace04227e7b9e805bde4263d59f5689b9fea82e0ece45413a76983e9d015",
+      "resolution": {
+        "resolution": "@shikijs/types@npm:4.0.2",
+        "version": "4.0.2",
         "dependencies": {
           "@shikijs/vscode-textmate": "^10.0.2",
           "@types/hast": "^3.0.4"
@@ -26939,6 +27019,23 @@
           "@shikijs/langs": "3.23.0",
           "@shikijs/themes": "3.23.0",
           "@shikijs/types": "3.23.0",
+          "@shikijs/vscode-textmate": "^10.0.2",
+          "@types/hast": "^3.0.4"
+        }
+      }
+    },
+    "shiki@npm:^4.0.2": {
+      "checksum": "2280a33b187fcd770c0fc88fd235909526c0825f41d3059f7458f5a702aa5d796d55119bf157786291b4d03af5aa159659102102ddee63a3068ad4ff12cb09f8",
+      "resolution": {
+        "resolution": "shiki@npm:4.0.2",
+        "version": "4.0.2",
+        "dependencies": {
+          "@shikijs/core": "4.0.2",
+          "@shikijs/engine-javascript": "4.0.2",
+          "@shikijs/engine-oniguruma": "4.0.2",
+          "@shikijs/langs": "4.0.2",
+          "@shikijs/themes": "4.0.2",
+          "@shikijs/types": "4.0.2",
           "@shikijs/vscode-textmate": "^10.0.2",
           "@types/hast": "^3.0.4"
         }
