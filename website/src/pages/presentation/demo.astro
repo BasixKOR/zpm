@@ -405,9 +405,15 @@ module.exports = {
     function animateTerminal(termEl) {
       var body = termEl.querySelector('.slide-terminal-body');
       if (!body) return;
-      var bodyId = body.id;
-      if (!bodyId) return;
-      var recipe = TERMINALS[bodyId];
+      var recipeEl = termEl.querySelector('script.terminal-recipe');
+      var recipe;
+      if (recipeEl) {
+        recipe = JSON.parse(recipeEl.textContent);
+      } else {
+        var bodyId = body.id;
+        if (!bodyId || !TERMINALS[bodyId]) return;
+        recipe = TERMINALS[bodyId];
+      }
       if (!recipe) return;
       if (termTimers.has(termEl)) {
         termTimers.get(termEl).forEach(function(t) { clearTimeout(t); });

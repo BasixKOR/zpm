@@ -218,7 +218,7 @@ html[data-theme="light"] img.cat { filter: brightness(0.15); }
   <!-- Features -->
   <section id="features" class="relative py-[120px] px-8 border-t border-[var(--line)] bg-[color-mix(in_oklch,var(--bg-0)_75%,transparent)] backdrop-blur-[2px]">
     <div class="max-w-[1240px] mx-auto">
-      <SectionHeader label="§ 01 — PRINCIPLES" description="Every decision in Yarn is measured against determinism, speed, ergonomics, and monorepo-scale ergonomics. No magic. No surprises in CI.">Built on four<br/>non-negotiables.</SectionHeader>
+      <SectionHeader label="§ 01 — PRINCIPLES" description="Every decision in Yarn is measured against determinism, speed, usability, and monorepo-scale ergonomics. No magic. No surprises in CI.">Built on four<br/>non-negotiables.</SectionHeader>
       <div class="grid grid-cols-1 md:grid-cols-3 border-t border-l border-[var(--line)]">
         <FeatureCard number="01" title="Deterministic by default">
           <svg slot="icon" width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="3" width="12" height="12" rx="1"/><path d="M3 7h12M7 3v12"/></svg>
@@ -226,15 +226,15 @@ html[data-theme="light"] img.cat { filter: brightness(0.15); }
         </FeatureCard>
         <FeatureCard number="02" title="Plug'n'Play resolution">
           <svg slot="icon" width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M9 2v14M2 9h14" opacity="0.5"/><path d="M4 4l10 10M14 4L4 14"/></svg>
-          Skip <span class="mono">node_modules</span> entirely. PnP maps imports directly to the content-addressable cache — a single install instead of thousands of file copies.
+          Skip <span class="mono">node_modules</span> entirely. PnP maps imports directly to the content-addressable cache — one install instead of thousands of file copies.
         </FeatureCard>
         <FeatureCard number="03" title="Offline-first cache">
           <svg slot="icon" width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="9" cy="9" r="6"/><path d="M9 5v4l3 2"/></svg>
-          Every package you've ever resolved lives in the global cache. Subsequent installs — even in fresh clones — hit the registry zero times.
+          Every package you've ever resolved lives in the global cache. Subsequent installs — even in fresh clones — never hit the registry.
         </FeatureCard>
         <FeatureCard number="04" title="Workspaces, first-class">
           <svg slot="icon" width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="3" width="5" height="5"/><rect x="10" y="3" width="5" height="5"/><rect x="3" y="10" width="5" height="5"/><rect x="10" y="10" width="5" height="5"/></svg>
-          Monorepo primitives are native, not bolted on. Topological builds, shared ranges, and constraint-based version policies across hundreds of packages.
+          Monorepo primitives are native, not bolted on: topological builds, shared ranges, and constraint-based version policies across hundreds of packages.
         </FeatureCard>
         <FeatureCard number="05" title="Parallel everything">
           <svg slot="icon" width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 14l5-8 3 5 2-3 4 6"/><path d="M2 14h14" opacity="0.5"/></svg>
@@ -251,7 +251,7 @@ html[data-theme="light"] img.cat { filter: brightness(0.15); }
   <!-- Performance -->
   <section id="performance" class="relative py-[120px] px-8 border-t border-[var(--line)] bg-[color-mix(in_oklch,var(--bg-0)_75%,transparent)] backdrop-blur-[2px]">
     <div class="max-w-[1240px] mx-auto">
-      <SectionHeader label="§ 02 — BENCHMARKS" description="Median of 50 runs on a 4-core CI runner with a warm network but empty cache. Lower is better. Your mileage will vary; ours doesn't, much.">Cold install,<br/>10k-dependency graph.</SectionHeader>
+      <SectionHeader label="§ 02 — BENCHMARKS" description="Median of 50 runs on a 4-core CI runner with a warm network but an empty cache. Lower is better. Your mileage will vary; ours doesn't vary much.">Cold install,<br/>10k-dependency graph.</SectionHeader>
 
       <div class="grid grid-cols-1 md:grid-cols-[1fr_1.3fr] gap-10 md:gap-20 items-center">
         <div class="text-sm text-[var(--fg-dim)] leading-[1.6]">
@@ -259,7 +259,7 @@ html[data-theme="light"] img.cat { filter: brightness(0.15); }
             <span class="inline-flex items-center gap-2 mr-5 mono text-xs text-[var(--fg)]"><span class="w-2.5 h-2.5 rounded-sm bg-[var(--accent)]"></span>yarn 4.8</span>
             <span class="inline-flex items-center gap-2 mr-5 mono text-xs text-[var(--fg)]"><span class="w-2.5 h-2.5 rounded-sm bg-[var(--fg-dim)]"></span>others</span>
           </div>
-          <p>Measurements captured with <span class="mono">hyperfine</span> against a fixture monorepo (<span class="mono">10,204</span> direct &amp; transitive deps, <span class="mono">1.2GB</span> resolved). PnP mode enabled for Yarn; strict peer deps enforced for all.</p>
+          <p>Measurements captured with <span class="mono">hyperfine</span> against a fixture monorepo (<span class="mono">10,204</span> direct and transitive dependencies, <span class="mono">1.2GB</span> resolved). PnP mode enabled for Yarn; strict peer dependencies enforced for all.</p>
           <p class="text-xs text-[var(--fg-mute)] mono mt-8 pt-5 border-t border-[var(--line)]">// methodology: github.com/yarnpkg/bench — commit a91f4c2</p>
         </div>
 

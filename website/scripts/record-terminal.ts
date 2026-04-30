@@ -1,4 +1,6 @@
 import {spawn} from 'node:child_process';
+import {writeFileSync, mkdirSync} from 'node:fs';
+import {resolve, dirname} from 'node:path';
 import {platform} from 'node:os';
 
 const SGR_MAP: Record<number, string | null> = {
@@ -63,9 +65,12 @@ function stripControl(s: string): string {
 
 const ddIdx = process.argv.indexOf(`--`);
 if (ddIdx < 0 || ddIdx + 1 >= process.argv.length) {
-  console.error(`Usage: node record-terminal.ts -- <command> [args...]`);
+  console.error(`Usage: node record-terminal.ts [<id>] -- <command> [args...]`);
   process.exit(1);
 }
+
+const preArgs = process.argv.slice(2, ddIdx);
+const terminalId = preArgs[0] ?? null;
 
 const args = process.argv.slice(ddIdx + 1);
 const cmd = args[0];
@@ -168,5 +173,14 @@ child.on(`close`, () => {
     entries.push(entry);
   }
 
-  console.log(JSON.stringify(entries, null, 2));
+  const json = JSON.stringify(entries, null, 2) + `\n`;
+
+  if (terminalId) {
+    const outPath = resolve(import.meta.dirname!, `../src/data/terminals/${terminalId}.json`);
+    mkdirSync(dirname(outPath), {recursive: true});
+    writeFileSync(outPath, json);
+    console.error(`Wrote ${entries.length} entries to ${outPath}`);
+  } else {
+    process.stdout.write(json);
+  }
 });
