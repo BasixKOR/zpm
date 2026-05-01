@@ -1,113 +1,113 @@
 {
   "questions": [
     {
-      "slug": "github-install",
-      "question": "Can Yarn install a package straight from a GitHub repo?",
+      "slug": "exec-protocol",
+      "question": "Can Yarn run a Node.js script at install time to dynamically generate a package on the fly?",
       "answer": true,
-      "wrongLine": "Actually — yes, and it's a one-liner.",
-      "rightLine": "Yes — and the protocol sugar is tiny.",
+      "wrongLine": "Actually — yes, via the <code>exec:</code> protocol.",
+      "rightLine": "Correct — it's called the <code>exec:</code> protocol.",
       "explain": [
-        "Yarn understands <code>user/repo</code> and <code>github:…</code> shorthands, plus raw Git URLs, branches, tags and commits.",
-        "Example: <code>yarn add foo@user/foo#master</code> adds the package directly from GitHub with the branch pinned in the lockfile."
+        "The <code>exec:</code> protocol lets you point a dependency at a generator script instead of a tarball. Yarn runs that script in a temporary directory at fetch time, and whatever files it produces become the package.",
+        "The script runs in a special context with an <code>execEnv</code> global that provides the target directory and other metadata. Useful for codegen, platform-specific builds, or any case where a static package isn't enough."
+      ]
+    },
+    {
+      "slug": "builtin-node",
+      "question": "Can Yarn lock and manage the exact Node.js version used by your project?",
+      "answer": true,
+      "wrongLine": "It can — Node.js is treated as a regular locked dependency.",
+      "rightLine": "Right — and it's locked in <code>yarn.lock</code> like any other package.",
+      "explain": [
+        "Yarn lets you declare Node.js as a project dependency via <code>@builtin/node</code>. The version is pinned in <code>yarn.lock</code>, and Yarn automatically downloads the correct binary for each developer's OS and architecture.",
+        "This means every contributor gets the exact same Node.js version without needing nvm, fnm, or any external version manager — it's part of the dependency graph."
+      ]
+    },
+    {
+      "slug": "pre-post-scripts",
+      "question": "Does Yarn run <code>prestart</code> automatically before <code>yarn start</code>?",
+      "answer": false,
+      "wrongLine": "Unlike npm, Yarn intentionally dropped arbitrary <code>pre</code>/<code>post</code> hooks.",
+      "rightLine": "Right — Yarn chose clarity over convention.",
+      "explain": [
+        "Yarn only supports a handful of well-defined lifecycle hooks (<code>prepack</code>, <code>postpack</code>, <code>postinstall</code>, etc.) and deliberately doesn't run arbitrary <code>pre*</code> and <code>post*</code> scripts.",
+        "The reasoning: implicit hooks made execution flow hard to follow and debug. If you need to run something before <code>start</code>, Yarn encourages you to make it explicit — for instance via task dependencies or a composite script."
+      ]
+    },
+    {
+      "slug": "ghost-deps",
+      "question": "Can Yarn throw an error if a package tries to <code>require()</code> a dependency it never declared?",
+      "answer": true,
+      "wrongLine": "It does — these are called ghost dependencies, and Yarn catches them.",
+      "rightLine": "Exactly — Plug'n'Play enforces the dependency contract.",
+      "explain": [
+        "With traditional <code>node_modules</code>, hoisting lets packages accidentally import dependencies they don't declare. It works until the hoisting layout changes, then it breaks unpredictably.",
+        "Under Plug'n'Play, Yarn resolves every <code>require()</code> against the package's declared dependencies. If a package tries to reach something it doesn't list, Yarn throws immediately — surfacing the bug before it hits production."
+      ]
+    },
+    {
+      "slug": "workspace-git",
+      "question": "Can Yarn install a single workspace from a remote Git repository — without cloning the entire monorepo yourself?",
+      "answer": true,
+      "wrongLine": "It can — using the <code>#workspace=</code> syntax on a Git URL.",
+      "rightLine": "Correct — and not all package managers support this.",
+      "explain": [
+        "Yarn's <code>git:</code> protocol supports a <code>#workspace=name</code> fragment. For example, <code>yarn add my-lib@org/monorepo#workspace=my-lib</code> clones the repo, builds the target workspace, and installs just that package.",
+        "Yarn even auto-detects the repo's package manager from its lock file (Yarn, npm, or pnpm) so it can pack the workspace correctly."
+      ]
+    },
+    {
+      "slug": "constraints-fix",
+      "question": "Can Yarn automatically fix inconsistent dependency versions across workspaces in a monorepo?",
+      "answer": true,
+      "wrongLine": "It can — via <code>yarn constraints --fix</code>.",
+      "rightLine": "Right — constraints are both a linter and an auto-fixer.",
+      "explain": [
+        "Yarn Constraints let you write declarative rules in JavaScript or TypeScript (via <code>yarn.config.cjs</code>) that describe the expected state of every <code>package.json</code> in the project.",
+        "Run <code>yarn constraints</code> to audit, or <code>yarn constraints --fix</code> to auto-correct. A typical rule: \"every workspace that depends on <code>react</code> must use the same version\" — and Yarn rewrites the manifests for you."
       ]
     },
     {
       "slug": "no-node-modules",
-      "question": "Does Yarn have to create a <code>node_modules</code> folder?",
+      "question": "Does Yarn support <code>node_modules</code> installs?",
+      "answer": true,
+      "wrongLine": "It does — even though Plug'n'Play is the default.",
+      "rightLine": "Right — even though Plug'n'Play is the default.",
+      "explain": [
+        "Since Yarn 2, the default install strategy is Plug'n'Play. Dependencies live as compressed archives in a cache, and a generated <code>.pnp.cjs</code> file tells Node.js where to find each package — no <code>node_modules</code> tree, no phantom dependencies, no hoisting ambiguity.",
+        "If you prefer a classic layout, you can still opt in with <code>nodeLinker: node-modules</code> in <code>.yarnrc.yml</code>. There's also a <code>pnpm</code> linker mode as a middle ground."
+      ]
+    },
+    {
+      "slug": "parallel-topo",
+      "question": "Can Yarn run a script in every workspace in parallel while still respecting the dependency graph?",
+      "answer": true,
+      "wrongLine": "It can — topological parallelism is built in.",
+      "rightLine": "Correct — one command, no extra tool needed.",
+      "explain": [
+        "<code>yarn workspaces foreach --all --parallel --topological run build</code> runs <code>build</code> in every workspace, starting with leaves and working up the dependency tree. Independent workspaces run in parallel; dependent ones wait.",
+        "Add <code>--jobs 4</code> to cap concurrency, or <code>--interlaced</code> to stream logs live instead of buffering per workspace."
+      ]
+    },
+    {
+      "slug": "catalog",
+      "question": "Can Yarn let all monorepo workspaces share a single, centralized set of dependency version ranges?",
+      "answer": true,
+      "wrongLine": "It can — that's what the <code>catalog:</code> protocol is for.",
+      "rightLine": "Right — and it's transparent at publish time.",
+      "explain": [
+        "Define shared version ranges in a <code>catalog</code> field, then reference them from any workspace with <code>\"react\": \"catalog:\"</code>. Every workspace gets the same range without duplicating it in each <code>package.json</code>.",
+        "When you publish, Yarn transparently replaces <code>catalog:</code> references with the actual version range — so consumers never see the protocol and your packages work on any registry."
+      ]
+    },
+    {
+      "slug": "npmrc",
+      "question": "Does Yarn read its configuration from <code>.npmrc</code>?",
       "answer": false,
-      "wrongLine": "Not quite — Yarn can skip it entirely.",
-      "rightLine": "Right — the folder is optional.",
+      "wrongLine": "It doesn't — Yarn uses its own <code>.yarnrc.yml</code> format.",
+      "rightLine": "Right — Yarn has its own configuration system.",
       "explain": [
-        "Since Yarn 2, the default install strategy is Plug'n'Play: Yarn keeps dependencies in zipped caches and generates a <code>.pnp.cjs</code> resolver that tells Node where to find each package. No <code>node_modules</code>, no phantom deps.",
-        "If you prefer a classic layout, you can still opt in with <code>nodeLinker: node-modules</code> in <code>.yarnrc.yml</code>."
-      ]
-    },
-    {
-      "slug": "global-install",
-      "question": "Do you need to globally install Yarn before using it?",
-      "answer": false,
-      "wrongLine": "Not anymore — Corepack ships it with Node.js.",
-      "rightLine": "Exactly — Node itself brings Yarn along.",
-      "explain": [
-        "Corepack is bundled with Node.js 16.10+. Run <code>corepack enable</code> once, commit the <code>packageManager</code> field to <code>package.json</code>, and every contributor gets the exact Yarn version your repo expects — no global <code>npm i -g yarn</code> dance.",
-        "This also means upgrading Yarn is per-project, via <code>yarn set version</code>."
-      ]
-    },
-    {
-      "slug": "workspaces",
-      "question": "Does Yarn support monorepos natively?",
-      "answer": true,
-      "wrongLine": "Yep — it's been built in since v1.",
-      "rightLine": "Right — and workspaces are a flagship feature.",
-      "explain": [
-        "Declare <code>workspaces: [\"packages/*\"]</code> in the root <code>package.json</code> and Yarn links them locally, hoists shared deps, and keeps one lockfile at the root.",
-        "No Lerna, no Nx required — although you can still layer them on top if you want task graphs."
-      ]
-    },
-    {
-      "slug": "parallel-scripts",
-      "question": "Can Yarn run scripts across every workspace in parallel?",
-      "answer": true,
-      "wrongLine": "Yes — <code>workspaces foreach</code> handles it.",
-      "rightLine": "Correct — one flag away.",
-      "explain": [
-        "<code>yarn workspaces foreach --all --parallel --topological run build</code> runs <code>build</code> in every workspace, respecting the dependency graph.",
-        "Add <code>--interlaced</code> to stream logs live, or <code>--jobs 4</code> to cap concurrency."
-      ]
-    },
-    {
-      "slug": "patch-deps",
-      "question": "Can Yarn patch a dependency without forking it?",
-      "answer": true,
-      "wrongLine": "Yes — <code>yarn patch</code> is built in.",
-      "rightLine": "Right — and the diff is committed, not the fork.",
-      "explain": [
-        "Run <code>yarn patch &lt;package&gt;</code> to get a scratch copy, edit the files, then <code>yarn patch-commit</code> saves a diff to <code>.yarn/patches/</code> and rewires your resolution automatically.",
-        "No <code>patch-package</code> dev dep, no <code>postinstall</code> hook — it's first-class."
-      ]
-    },
-    {
-      "slug": "constraints",
-      "question": "Can Yarn enforce consistent versions of a dep across all workspaces?",
-      "answer": true,
-      "wrongLine": "Yes — Constraints can enforce exactly that.",
-      "rightLine": "Correct — that's one of Constraints' core use cases.",
-      "explain": [
-        "Yarn Constraints let you write rules in Prolog or JavaScript that are checked on every install. A typical rule: \u201cevery workspace that depends on <code>react</code> must use the same version.\u201d",
-        "Run <code>yarn constraints</code> to audit, <code>yarn constraints --fix</code> to auto-correct."
-      ]
-    },
-    {
-      "slug": "conditional-deps",
-      "question": "Does the Yarn lockfile record platform-specific (OS/CPU) dependencies?",
-      "answer": true,
-      "wrongLine": "Yes — optional native deps are resolved per-platform.",
-      "rightLine": "Right — Linux and macOS installs stay reproducible.",
-      "explain": [
-        "Packages with <code>os</code> / <code>cpu</code> / <code>libc</code> fields (think <code>@rollup/rollup-linux-x64-gnu</code>) are tracked as conditional entries. Yarn only installs the variants that match the current platform but keeps all of them in the lockfile.",
-        "The result: CI on Linux and your MacBook produce the same lockfile, even though different binaries land on disk."
-      ]
-    },
-    {
-      "slug": "offline",
-      "question": "Once installed, can Yarn reinstall the whole project offline?",
-      "answer": true,
-      "wrongLine": "Yes — the zip cache is the source of truth.",
-      "rightLine": "Correct — it's offline-first by design.",
-      "explain": [
-        "Every package Yarn downloads is stored as a single zip in <code>.yarn/cache/</code>. If you commit that folder (or point <code>enableGlobalCache</code> at a shared location), <code>yarn install</code> needs no network.",
-        "This is also what makes zero-installs possible: clone the repo and you already have everything."
-      ]
-    },
-    {
-      "slug": "dlx",
-      "question": "Can Yarn run a CLI from npm without installing it first?",
-      "answer": true,
-      "wrongLine": "Yes — that's what <code>yarn dlx</code> is for.",
-      "rightLine": "Correct — same spirit as <code>npx</code>.",
-      "explain": [
-        "<code>yarn dlx create-react-app my-app</code> fetches the package into a temporary environment, runs it, and cleans up after itself. Handy for one-shot scaffolders and linters you don't want as permanent deps.",
-        "If the command is already installed in the project, use <code>yarn exec</code> instead to avoid re-downloading."
+        "Yarn 2+ uses <code>.yarnrc.yml</code> — a YAML-based configuration file with a completely different schema from npm's <code>.npmrc</code>. Settings like registry URLs, linker mode, and plugin configuration all live here.",
+        "This is a common migration pitfall: npm-specific settings in <code>.npmrc</code> (like <code>registry</code> or <code>always-auth</code>) won't be picked up by Yarn. You need to translate them into their <code>.yarnrc.yml</code> equivalents."
       ]
     }
   ],

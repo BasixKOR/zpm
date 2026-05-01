@@ -394,6 +394,10 @@ installBox.addEventListener('click', async () => {
 const tipBody = document.getElementById('tip-body');
 const tipCount = document.getElementById('tip-count');
 const tipDots = document.getElementById('tip-dots');
+for (let i = TIPS.length - 1; i > 0; i--) {
+  const j = Math.floor(Math.random() * (i + 1));
+  [TIPS[i], TIPS[j]] = [TIPS[j], TIPS[i]];
+}
 TIPS.forEach((_, i) => {
   const d = document.createElement('span');
   d.className = 'tip-dot w-[5px] h-[5px] rounded-full bg-[var(--line-strong)] transition-all cursor-pointer' + (i === 0 ? ' active' : '');

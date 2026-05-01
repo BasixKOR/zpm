@@ -8,15 +8,15 @@ const { questions, levels } = quiz;
 
 <BaseLayout title="Do you know Yarn? — A short quiz" variant="docs" activePage="quiz">
   <Fragment slot="head">
-    <meta name="description" content="Ten quick questions about what Yarn can actually do. Most developers are surprised by a few." />
+    <meta name="description" content="Ten quick questions about what Yarn can actually do. Most developers are surprised by a few!" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content="Do you know Yarn?" />
-    <meta property="og:description" content="A 10-question quiz about Yarn's features. Most developers are surprised by a few." />
+    <meta property="og:description" content="A 10-question quiz about Yarn's features. Most developers are surprised by a few!" />
     <meta property="og:url" content="https://yarnpkg.com/quiz" />
     <meta property="og:site_name" content="Yarn" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Do you know Yarn?" />
-    <meta name="twitter:description" content="A 10-question quiz about Yarn's features. Most developers are surprised by a few." />
+    <meta name="twitter:description" content="A 10-question quiz about Yarn's features. Most developers are surprised by a few!" />
   </Fragment>
 
   <main class="quiz-shell">
@@ -24,7 +24,7 @@ const { questions, levels } = quiz;
       <div class="quiz-eyebrow">A short pop quiz</div>
       <h1 class="quiz-title">Do you know Yarn?</h1>
       <p class="quiz-subtitle">
-        Ten yes-or-no questions about what Yarn can actually do. Most developers miss at least three — that's kind of the point. No signup, no streaks.
+        Ten yes-or-no questions about what Yarn can actually do. Most developers are surprised by a few!
       </p>
     </header>
 
@@ -46,7 +46,7 @@ const { questions, levels } = quiz;
 
     <footer class="quiz-footer mt-16 pt-8 border-t border-[var(--line)] text-[13px] text-[var(--fg-mute)] flex flex-wrap items-center justify-between gap-3">
       <div>
-        Made by the <a href="/" class="text-[var(--fg-dim)] hover:text-[var(--fg)] transition-colors no-underline border-b border-[var(--line-strong)] hover:border-[var(--fg-dim)]">Yarn team</a>. Deep-link any question — the rest shuffles.
+        Made by the <a href="/" class="text-[var(--fg-dim)] hover:text-[var(--fg)] transition-colors no-underline border-b border-[var(--line-strong)] hover:border-[var(--fg-dim)]">Yarn team</a>.
       </div>
       <div class="mono text-[11px] tracking-[0.08em] uppercase">
         <a href="/welcome.html" class="text-[var(--fg-dim)] hover:text-[var(--fg)] transition-colors no-underline">Docs &rarr;</a>
@@ -56,8 +56,8 @@ const { questions, levels } = quiz;
 
   <script is:inline src="/docs/docs.js"></script>
   <script is:inline define:vars={{ questions, levels }}>
-    var QUESTIONS = questions;
-    var LEVELS = levels;
+    window.QUESTIONS = questions;
+    window.LEVELS = levels;
   </script>
   <script is:inline src="/quiz.js"></script>
 </BaseLayout>

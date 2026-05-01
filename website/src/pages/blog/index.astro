@@ -37,10 +37,17 @@ for (const entry of entries) {
 
 <BlogLayout title="Blog — Yarn">
   <main class="blog-shell">
+    <div class="blog-eyebrow">
+      The Yarn Blog
+    </div>
 
-    <div class="blog-eyebrow">The Yarn Blog</div>
-    <h1 class="blog-title">Notes from the thread.</h1>
-    <p class="blog-lede">Releases, design notes, and the occasional thinking-out-loud from the Yarn team. Interleaved with posts from our <a class="text-[var(--accent)] underline decoration-[var(--accent-line)] underline-offset-[3px]" href="https://bsky.app/profile/yarnpkg.dev/">@yarnpkg.dev</a> social account.</p>
+    <h1 class="blog-title">
+      Let's keep in touch.
+    </h1>
+
+    <p class="blog-lede">
+      Releases posts, design notes, and the occasional thinking-out-loud skeets from the <a class="text-[var(--accent)] underline decoration-[var(--accent-line)] underline-offset-[3px]" href="https://bsky.app/profile/yarnpkg.dev/">@yarnpkg.dev</a> team.
+    </p>
 
     <div class="timeline">
       {Array.from(monthGroups.entries()).map(([month, groupEntries]) => (
