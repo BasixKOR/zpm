@@ -292,6 +292,7 @@ export function BenchmarkChart({scenario, project, data, seriesOrder, seriesMeta
   if (!chartData) {
     return (
       <div className="chart-cell">
+        <div className="cell-project">{project.name}</div>
         <div className="cell-meta">
           <span className="median">{size ? `No data` : ``}</span>
         </div>
@@ -304,6 +305,7 @@ export function BenchmarkChart({scenario, project, data, seriesOrder, seriesMeta
 
   return (
     <div className="chart-cell" onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}>
+      <div className="cell-project">{project.name}</div>
       <div className="cell-meta">
         <span className="median">zpm median <b>{zpmMedian.toFixed(2)}s</b></span>
         {pill && <span className={`cell-pill ${pill.cls}`}>{pill.text}</span>}

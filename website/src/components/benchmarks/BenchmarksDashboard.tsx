@@ -78,6 +78,7 @@ export function BenchmarksDashboard({data, seriesOrder, seriesMeta, projects, sc
   const [selectedProject, setSelectedProject] = useState(`all`);
   const [showVersions, setShowVersions] = useState(false);
   const [hoverInfo, setHoverInfo] = useState<HoverInfo | null>(null);
+  const [controlsOpen, setControlsOpen] = useState(false);
 
   const {versions, loading: versionsLoading} = useVersions(benchMinTs, benchMaxTs, showVersions);
 
@@ -109,51 +110,60 @@ export function BenchmarksDashboard({data, seriesOrder, seriesMeta, projects, sc
     <>
       {/* Sticky controls */}
       <div className="bench-sticky">
-        {/* Project filter */}
-        <div className="filter-bar">
-          <span className="label">Project</span>
-          {[{id: `all`, name: `All`}, ...projects].map(p => (
-            <button
-              key={p.id}
-              className={`filter-pill${selectedProject === p.id ? ` active` : ``}`}
-              onClick={() => setSelectedProject(p.id)}
-            >
-              {p.name}
-            </button>
-          ))}
-        </div>
-
-        {/* Legend */}
-        <div className="legend-row" id="legend">
-          <span className="label" style={{fontFamily: `'JetBrains Mono', monospace`, fontSize: `10.5px`, letterSpacing: `0.12em`, textTransform: `uppercase`, color: `var(--fg-mute)`}}>Series</span>
-          {seriesOrder.map((sid) => {
-            return (
-              <span key={sid} style={{display: `contents`}}>
-                {(sid === `npm` || sid === `classic`) && <span className="sep" />}
+        <div className={`bench-controls${controlsOpen ? ` open` : ``}`}>
+          <button className="controls-toggle" onClick={() => setControlsOpen(o => !o)}>
+            <span className="controls-summary">
+              Filters
+              <span className="controls-badge">{projects.find(p => p.id === selectedProject)?.name ?? `All`}</span>
+            </span>
+            <span className="controls-chevron" />
+          </button>
+          <div className="controls-body">
+            {/* Project filter */}
+            <div className="filter-bar">
+              <span className="label">Project</span>
+              {[{id: `all`, name: `All`}, ...projects].map(p => (
                 <button
-                  className={`lg${mutedSeries[sid] ? ` muted` : ``}`}
-                  style={{[`--c` as any]: SERIES_COLORS[sid]}}
-                  onClick={() => toggleMute(sid)}
+                  key={p.id}
+                  className={`filter-pill${selectedProject === p.id ? ` active` : ``}`}
+                  onClick={() => setSelectedProject(p.id)}
                 >
-                  <span className={`swatch${SWATCH_STYLES[sid]?.dashed ? ` dashed` : ``}`} />
-                  <span className="name">{seriesMeta[sid].name}</span>
+                  {p.name}
                 </button>
-              </span>
-            );
-          })}
-          <span className="sep" />
-          <span style={{fontFamily: `'JetBrains Mono', monospace`, fontSize: `10.5px`, color: `var(--fg-mute)`}}>Click to mute · y-axis = seconds</span>
-          <span className="sep" />
-          <label className={`toggle-label${versionsLoading ? ` loading` : ``}`}>
-            <input
-              type="checkbox"
-              checked={showVersions}
-              disabled={versionsLoading}
-              onChange={e => setShowVersions(e.target.checked)}
-            />
-            <span>Show versions</span>
-            <i className="version-spinner" />
-          </label>
+              ))}
+            </div>
+
+            {/* Series legend */}
+            <div className="legend-section">
+              <span className="label desktop-only">Series</span>
+              {seriesOrder.map((sid) => (
+                <span key={sid} style={{display: `contents`}}>
+                  {(sid === `npm` || sid === `classic`) && <span className="sep" />}
+                  <button
+                    className={`lg${mutedSeries[sid] ? ` muted` : ``}`}
+                    style={{[`--c` as any]: SERIES_COLORS[sid]}}
+                    onClick={() => toggleMute(sid)}
+                  >
+                    <span className={`swatch${SWATCH_STYLES[sid]?.dashed ? ` dashed` : ``}`} />
+                    <span className="name">{seriesMeta[sid].name}</span>
+                  </button>
+                </span>
+              ))}
+              <span className="sep" />
+              <span className="legend-hint">Click to mute · y-axis = seconds</span>
+              <span className="sep" />
+              <label className={`toggle-label${versionsLoading ? ` loading` : ``}`}>
+                <input
+                  type="checkbox"
+                  checked={showVersions}
+                  disabled={versionsLoading}
+                  onChange={e => setShowVersions(e.target.checked)}
+                />
+                <span>Show versions</span>
+                <i className="version-spinner" />
+              </label>
+            </div>
+          </div>
         </div>
       </div>
 
