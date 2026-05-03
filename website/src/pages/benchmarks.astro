@@ -512,7 +512,7 @@ const INCIDENTS = [
     -webkit-backdrop-filter: blur(12px);
     margin-left: calc(-50vw + 50%);
     margin-right: calc(-50vw + 50%);
-    padding: 12px calc(50vw - 50%);
+    padding: 12px max(calc(50vw - 50%), 1rem);
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -560,18 +560,14 @@ const INCIDENTS = [
   }
 
   @media (max-width: 980px) {
+    .bench-sticky {
+      margin-left: -1.5rem;
+      margin-right: -1.5rem;
+      padding-left: 1.5rem;
+      padding-right: 1.5rem;
+    }
     .bench-header { grid-template-columns: 1fr; gap: 20px; }
-    .bench-meta {
-      flex-direction: row;
-      flex-wrap: wrap;
-    }
-    .bench-meta > div {
-      border-bottom: 0;
-      border-right: 1px solid var(--line);
-      flex: 1;
-      min-width: 0;
-    }
-    .bench-meta > div:last-child { border-right: 0; }
+    .bench-meta > div:last-child { border-bottom: 0; }
 
     .controls-toggle {
       display: flex;

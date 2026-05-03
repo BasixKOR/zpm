@@ -24,10 +24,20 @@ export function BenchmarkTooltip({info}: {info: HoverInfo | null}): JSX.Element 
     const el = ref.current;
     const tw = el.offsetWidth;
     const th = el.offsetHeight;
-    let tx = info.mouseX + 14;
-    let ty = info.mouseY + 14;
-    if (tx + tw > window.innerWidth - 12) tx = info.mouseX - tw - 14;
-    if (ty + th > window.innerHeight - 12) ty = info.mouseY - th - 14;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const margin = 12;
+    const offset = 14;
+
+    let tx = info.mouseX + offset;
+    let ty = info.mouseY + offset;
+
+    if (tx + tw > vw - margin) tx = info.mouseX - tw - offset;
+    if (tx < margin) tx = margin;
+
+    if (ty + th > vh - margin) ty = info.mouseY - th - offset;
+    if (ty < margin) ty = margin;
+
     el.style.left = `${tx}px`;
     el.style.top = `${ty}px`;
   });

@@ -284,6 +284,82 @@ export function BenchmarkChart({scenario, project, data, seriesOrder, seriesMeta
     });
   }, [chartData, data, seriesOrder, seriesMeta, mutedSeries, scenario, project, versions, showVersions, onHover]);
 
+  const handleTouch = useCallback((e: React.TouchEvent) => {
+    if (!chartData || !svgRef.current) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    if (!touch) { prevIdxRef.current = null; onHover(null); return; }
+    const rect = svgRef.current.getBoundingClientRect();
+    const sx = touch.clientX - rect.left;
+
+    if (sx < ML || sx > chartData.w - MR) {
+      prevIdxRef.current = null;
+      onHover(null);
+      return;
+    }
+
+    const tFrac = (sx - ML) / chartData.pw;
+    const idx = Math.max(0, Math.min(chartData.N - 1, Math.round(tFrac * (chartData.N - 1))));
+
+    if (idx === prevIdxRef.current) {
+      onHover(prev => prev ? {...prev, mouseX: touch.clientX, mouseY: touch.clientY, index: idx} : prev);
+      return;
+    }
+    prevIdxRef.current = idx;
+
+    const ts = chartData.points[idx].timestamp;
+    const d = new Date(ts * 1000);
+    const dateStr = d.toISOString().slice(0, 10);
+    const inIncident = !!chartData.incidentSet[idx];
+
+    if (inIncident) {
+      let incLabel = ``;
+      for (const ir of chartData.incidentRanges) {
+        if (idx >= ir.start && idx <= ir.end) {incLabel = ir.label; break;}
+      }
+      onHover({
+        mouseX: touch.clientX, mouseY: touch.clientY, index: idx,
+        dateStr, scenarioTitle: scenario.title, projectName: project.name,
+        isIncident: true, incidentLabel: incLabel,
+        rows: [], versionMap: null, showVersions, seriesMeta,
+      });
+      return;
+    }
+
+    const rows: Array<{id: string; value: number}> = [];
+    for (const sid of seriesOrder) {
+      if (mutedSeries[sid]) continue;
+      const sp = data[sid];
+      if (!sp?.[idx] || sp[idx].value === null) continue;
+      rows.push({id: sid, value: sp[idx].value!});
+    }
+    rows.sort((a, b) => a.value - b.value);
+
+    let versionMap: Record<string, string> | null = null;
+    if (showVersions && versions) {
+      versionMap = {};
+      for (const sid of seriesOrder) {
+        const vers = versions[sid];
+        if (!vers?.length) continue;
+        for (let i = vers.length - 1; i >= 0; i--) {
+          if (vers[i].t <= ts) {versionMap[sid] = vers[i].v; break;}
+        }
+      }
+    }
+
+    onHover({
+      mouseX: touch.clientX, mouseY: touch.clientY, index: idx,
+      dateStr, scenarioTitle: scenario.title, projectName: project.name,
+      isIncident: false,
+      rows, versionMap, showVersions, seriesMeta,
+    });
+  }, [chartData, data, seriesOrder, seriesMeta, mutedSeries, scenario, project, versions, showVersions, onHover]);
+
+  const handleTouchEnd = useCallback(() => {
+    prevIdxRef.current = null;
+    onHover(null);
+  }, [onHover]);
+
   const handleMouseLeave = useCallback(() => {
     prevIdxRef.current = null;
     onHover(null);
@@ -304,7 +380,7 @@ export function BenchmarkChart({scenario, project, data, seriesOrder, seriesMeta
   const gridY = [0.25, 0.5, 0.75];
 
   return (
-    <div className="chart-cell" onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}>
+    <div className="chart-cell" onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave} onTouchStart={handleTouch} onTouchMove={handleTouch} onTouchEnd={handleTouchEnd}>
       <div className="cell-project">{project.name}</div>
       <div className="cell-meta">
         <span className="median">zpm median <b>{zpmMedian.toFixed(2)}s</b></span>
