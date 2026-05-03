@@ -201,17 +201,20 @@ export function BenchmarkChart({scenario, project, data, seriesOrder, seriesMeta
     }
 
     const others = medians.filter(x => x.id !== `zpm`);
-    const bestOther = others.length
-      ? others.reduce((min, x) => x.m < min.m ? x : min, others[0])
-      : null;
+    if (!others.length) return {cls: `fastest`, text: `only runner`};
 
-    if (!bestOther) return {cls: `fastest`, text: `Only runner`};
+    const fastest = others.reduce((min, x) => x.m < min.m ? x : min, others[0]);
+    const name = seriesMeta[fastest.id]?.name ?? fastest.id;
 
-    const pctDiff = Math.round((bestOther.m / zpmMedian - 1) * 100);
-    if (pctDiff > 0) return {cls: `fastest`, text: `Yarn is ${pctDiff}% faster`};
-    if (pctDiff === 0) return {cls: `contested`, text: `Tied`};
-    const cls = -pctDiff <= 10 ? `contested` : `slower`;
-    return {cls, text: `Yarn is ${-pctDiff}% slower`};
+    if (zpmMedian <= fastest.m) {
+      const diff = +(fastest.m - zpmMedian).toFixed(1);
+      if (diff === 0) return {cls: `contested`, text: `tied with ${name}`};
+      return {cls: `fastest`, text: `${diff}s faster than ${name}`};
+    }
+
+    const diff = +(zpmMedian - fastest.m).toFixed(1);
+    const cls = diff / zpmMedian <= 0.1 ? `contested` : `slower`;
+    return {cls, text: `${diff}s slower than ${name}`};
   }, [data, seriesOrder, seriesMeta, mutedSeries, zpmMedian]);
 
   const prevIdxRef = useRef<number | null>(null);
@@ -284,86 +287,95 @@ export function BenchmarkChart({scenario, project, data, seriesOrder, seriesMeta
     });
   }, [chartData, data, seriesOrder, seriesMeta, mutedSeries, scenario, project, versions, showVersions, onHover]);
 
-  const handleTouch = useCallback((e: React.TouchEvent) => {
-    if (!chartData || !svgRef.current) return;
-    e.preventDefault();
-    const touch = e.touches[0];
-    if (!touch) { prevIdxRef.current = null; onHover(null); return; }
-    const rect = svgRef.current.getBoundingClientRect();
-    const sx = touch.clientX - rect.left;
-
-    if (sx < ML || sx > chartData.w - MR) {
-      prevIdxRef.current = null;
-      onHover(null);
-      return;
-    }
-
-    const tFrac = (sx - ML) / chartData.pw;
-    const idx = Math.max(0, Math.min(chartData.N - 1, Math.round(tFrac * (chartData.N - 1))));
-
-    if (idx === prevIdxRef.current) {
-      onHover(prev => prev ? {...prev, mouseX: touch.clientX, mouseY: touch.clientY, index: idx} : prev);
-      return;
-    }
-    prevIdxRef.current = idx;
-
-    const ts = chartData.points[idx].timestamp;
-    const d = new Date(ts * 1000);
-    const dateStr = d.toISOString().slice(0, 10);
-    const inIncident = !!chartData.incidentSet[idx];
-
-    if (inIncident) {
-      let incLabel = ``;
-      for (const ir of chartData.incidentRanges) {
-        if (idx >= ir.start && idx <= ir.end) {incLabel = ir.label; break;}
-      }
-      onHover({
-        mouseX: touch.clientX, mouseY: touch.clientY, index: idx,
-        dateStr, scenarioTitle: scenario.title, projectName: project.name,
-        isIncident: true, incidentLabel: incLabel,
-        rows: [], versionMap: null, showVersions, seriesMeta,
-      });
-      return;
-    }
-
-    const rows: Array<{id: string; value: number}> = [];
-    for (const sid of seriesOrder) {
-      if (mutedSeries[sid]) continue;
-      const sp = data[sid];
-      if (!sp?.[idx] || sp[idx].value === null) continue;
-      rows.push({id: sid, value: sp[idx].value!});
-    }
-    rows.sort((a, b) => a.value - b.value);
-
-    let versionMap: Record<string, string> | null = null;
-    if (showVersions && versions) {
-      versionMap = {};
-      for (const sid of seriesOrder) {
-        const vers = versions[sid];
-        if (!vers?.length) continue;
-        for (let i = vers.length - 1; i >= 0; i--) {
-          if (vers[i].t <= ts) {versionMap[sid] = vers[i].v; break;}
-        }
-      }
-    }
-
-    onHover({
-      mouseX: touch.clientX, mouseY: touch.clientY, index: idx,
-      dateStr, scenarioTitle: scenario.title, projectName: project.name,
-      isIncident: false,
-      rows, versionMap, showVersions, seriesMeta,
-    });
-  }, [chartData, data, seriesOrder, seriesMeta, mutedSeries, scenario, project, versions, showVersions, onHover]);
-
-  const handleTouchEnd = useCallback(() => {
-    prevIdxRef.current = null;
-    onHover(null);
-  }, [onHover]);
-
   const handleMouseLeave = useCallback(() => {
     prevIdxRef.current = null;
     onHover(null);
   }, [onHover]);
+
+  const cellRef = useRef<HTMLDivElement>(null);
+  const touchDepsRef = useRef({chartData, data, seriesOrder, seriesMeta, mutedSeries, scenario, project, versions, showVersions, onHover});
+  touchDepsRef.current = {chartData, data, seriesOrder, seriesMeta, mutedSeries, scenario, project, versions, showVersions, onHover};
+
+  useEffect(() => {
+    const el = cellRef.current;
+    if (!el) return;
+
+    const onTouch = (e: TouchEvent) => {
+      const {chartData: cd, data: d, seriesOrder: so, seriesMeta: sm, mutedSeries: ms, scenario: sc, project: pr, versions: ver, showVersions: sv, onHover: oh} = touchDepsRef.current;
+      if (!cd || !svgRef.current) return;
+      e.preventDefault();
+      const touch = e.touches[0];
+      if (!touch) { prevIdxRef.current = null; oh(null); return; }
+      const rect = svgRef.current.getBoundingClientRect();
+      const sx = touch.clientX - rect.left;
+
+      if (sx < ML || sx > cd.w - MR) {
+        prevIdxRef.current = null;
+        oh(null);
+        return;
+      }
+
+      const tFrac = (sx - ML) / cd.pw;
+      const idx = Math.max(0, Math.min(cd.N - 1, Math.round(tFrac * (cd.N - 1))));
+
+      if (idx === prevIdxRef.current) {
+        oh((prev: any) => prev ? {...prev, mouseX: touch.clientX, mouseY: touch.clientY, index: idx} : prev);
+        return;
+      }
+      prevIdxRef.current = idx;
+
+      const ts = cd.points[idx].timestamp;
+      const dt = new Date(ts * 1000);
+      const dateStr = dt.toISOString().slice(0, 10);
+      const inIncident = !!cd.incidentSet[idx];
+
+      if (inIncident) {
+        let incLabel = ``;
+        for (const ir of cd.incidentRanges) {
+          if (idx >= ir.start && idx <= ir.end) {incLabel = ir.label; break;}
+        }
+        oh({mouseX: touch.clientX, mouseY: touch.clientY, index: idx, dateStr, scenarioTitle: sc.title, projectName: pr.name, isIncident: true, incidentLabel: incLabel, rows: [], versionMap: null, showVersions: sv, seriesMeta: sm});
+        return;
+      }
+
+      const rows: Array<{id: string; value: number}> = [];
+      for (const sid of so) {
+        if (ms[sid]) continue;
+        const sp = d[sid];
+        if (!sp?.[idx] || sp[idx].value === null) continue;
+        rows.push({id: sid, value: sp[idx].value!});
+      }
+      rows.sort((a, b) => a.value - b.value);
+
+      let versionMap: Record<string, string> | null = null;
+      if (sv && ver) {
+        versionMap = {};
+        for (const sid of so) {
+          const vs = ver[sid];
+          if (!vs?.length) continue;
+          for (let i = vs.length - 1; i >= 0; i--) {
+            if (vs[i].t <= ts) {versionMap[sid] = vs[i].v; break;}
+          }
+        }
+      }
+
+      oh({mouseX: touch.clientX, mouseY: touch.clientY, index: idx, dateStr, scenarioTitle: sc.title, projectName: pr.name, isIncident: false, rows, versionMap, showVersions: sv, seriesMeta: sm});
+    };
+
+    const onEnd = () => {
+      prevIdxRef.current = null;
+      touchDepsRef.current.onHover(null);
+    };
+
+    el.addEventListener(`touchstart`, onTouch, {passive: false});
+    el.addEventListener(`touchmove`, onTouch, {passive: false});
+    el.addEventListener(`touchend`, onEnd);
+    return () => {
+      el.removeEventListener(`touchstart`, onTouch);
+      el.removeEventListener(`touchmove`, onTouch);
+      el.removeEventListener(`touchend`, onEnd);
+    };
+  }, []);
 
   if (!chartData) {
     return (
@@ -380,10 +392,10 @@ export function BenchmarkChart({scenario, project, data, seriesOrder, seriesMeta
   const gridY = [0.25, 0.5, 0.75];
 
   return (
-    <div className="chart-cell" onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave} onTouchStart={handleTouch} onTouchMove={handleTouch} onTouchEnd={handleTouchEnd}>
+    <div ref={cellRef} className="chart-cell" onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}>
       <div className="cell-project">{project.name}</div>
       <div className="cell-meta">
-        <span className="median">zpm median <b>{zpmMedian.toFixed(2)}s</b></span>
+        <span className="median">yarn 6.x median <b>{zpmMedian.toFixed(2)}s</b></span>
         {pill && <span className={`cell-pill ${pill.cls}`}>{pill.text}</span>}
       </div>
       <div ref={containerRef} style={{position: `relative`, flex: 1, overflow: `visible`}}>

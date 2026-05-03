@@ -11,8 +11,8 @@ interface BenchEntry { subtest: string; test: string; pm: string; points: BenchP
 
 const SERIES_ORDER = ['zpm', 'yarn', 'npm', 'pnpm', 'classic'] as const;
 const SERIES_META: Record<string, { name: string; dashed: boolean; accent: boolean }> = {
-  zpm:     { name: 'yarn zpm',     dashed: false, accent: true  },
-  yarn:    { name: 'yarn berry',   dashed: false, accent: false },
+  zpm:     { name: 'yarn 6.x',     dashed: false, accent: true  },
+  yarn:    { name: 'yarn 4.x',    dashed: false, accent: false },
   npm:     { name: 'npm',          dashed: false, accent: false },
   pnpm:    { name: 'pnpm',        dashed: false, accent: false },
   classic: { name: 'yarn classic', dashed: true,  accent: false },
@@ -25,10 +25,10 @@ const PROJECTS = [
 ];
 
 const SCENARIOS = [
-  { id: 'install-full-cold',      num: '01', title: 'Full cold install',  desc: 'No lockfile, no global cache, no node_modules. Everything resolves from the registry; tarballs are unpacked and linked from scratch.', tag: 'rm -rf ~/.cache && rm yarn.lock' },
-  { id: 'install-cache-only',     num: '02', title: 'Cache only',         desc: 'Global cache is warm but the project lockfile is gone. Resolution is re-computed; tarballs are reused. Closest to a fresh clone with shared CI cache.', tag: 'rm yarn.lock' },
-  { id: 'install-cache-and-lock', num: '03', title: 'Cache + lockfile',   desc: 'Lockfile exists, cache is warm. The common CI path: dependencies pre-resolved, just need to materialize them on disk.', tag: 'preserve all caches' },
-  { id: 'install-ready',          num: '04', title: 'Recurrent call',     desc: 'Everything is in place — lockfile, cache, node_modules. Should be a near-instant no-op that verifies and exits.', tag: 'second invocation' },
+  { id: 'install-full-cold',      num: '01', title: 'Full cold install',  desc: 'Simulates the very first install on a machine that has never seen the project — no cache, no lockfile, no artifacts. Everything is fetched from the registry and written from scratch.', tag: 'fresh machine' },
+  { id: 'install-cache-only',     num: '02', title: 'Cache only',         desc: 'Like checking out a repo for the first time on a CI runner that has already built other projects. The lockfile is missing so resolution runs from scratch, but tarballs are reused from the global cache.', tag: 'fresh clone, shared cache' },
+  { id: 'install-cache-and-lock', num: '03', title: 'Cache + lockfile',   desc: 'The most common CI and day-to-day path. The lockfile and cache are both present — the manager just needs to materialize dependencies on disk.', tag: 'routine CI run' },
+  { id: 'install-ready',          num: '04', title: 'Recurrent call',     desc: 'Everything is already in place. Measures how quickly the manager can verify the tree and exit — matters every time you run install as part of a script or editor hook.', tag: 'already installed' },
 ];
 
 const DATA: Record<string, Record<string, Record<string, { timestamp: number; value: number | null }[]>>> = {};
@@ -254,6 +254,8 @@ const INCIDENTS = [
     padding: 14px 10px 10px;
     position: relative;
     min-height: 130px;
+    user-select: none;
+    -webkit-user-select: none;
     display: flex;
     flex-direction: column;
   }
@@ -278,7 +280,6 @@ const INCIDENTS = [
     font-family: 'JetBrains Mono', monospace;
     font-size: 10px;
     letter-spacing: 0.06em;
-    text-transform: uppercase;
     padding: 2px 6px;
     border-radius: 4px;
     white-space: nowrap;
@@ -507,6 +508,8 @@ const INCIDENTS = [
     position: sticky;
     top: var(--nav-h, 61px);
     z-index: 15;
+    user-select: none;
+    -webkit-user-select: none;
     background: color-mix(in oklch, var(--bg-0) 85%, transparent);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -666,11 +669,12 @@ const INCIDENTS = [
     <div>
       <h1 class="text-[clamp(36px,4.4vw,52px)] font-medium tracking-[-0.025em] leading-[1.05] text-balance m-0">Package manager comparison.</h1>
       <p class="m-0 mt-5 text-[18px] leading-[1.55] text-[var(--fg-dim)] max-w-[640px] text-pretty">
-        Continuous benchmarks of <span class="mono text-[var(--fg)]">yarn&nbsp;zpm</span>,
-        <span class="mono text-[var(--fg)]">yarn&nbsp;berry</span>,
-        <span class="mono text-[var(--fg)]">npm</span>,
-        <span class="mono text-[var(--fg)]">pnpm</span>, and
-        <span class="mono text-[var(--fg)]">yarn&nbsp;classic</span> across four install scenarios on three reference projects. Lower is better. Series are wall-clock seconds.
+        Continuous benchmarks of{' '}
+        <span class="text-[var(--fg)]">Yarn 6.x</span>,
+        <span class="text-[var(--fg)]">Yarn 4.x</span>,
+        <span class="text-[var(--fg)]">npm</span>,
+        <span class="text-[var(--fg)]">pnpm</span>, and
+        <span class="text-[var(--fg)]">Yarn Classic</span> across four install scenarios on three reference projects. Lower is better.
       </p>
     </div>
     <div class="bench-meta">
@@ -705,27 +709,11 @@ const INCIDENTS = [
   <!-- Methodology -->
   <div class="mt-16 prose">
     <h2 id="methodology">Methodology</h2>
-    <p>Each scenario &times; project &times; package-manager pair is executed multiple times in a clean container. We record wall-clock duration. Results are collected daily and published here automatically.</p>
+    <p>Every four hours &mdash; and on every push to <code>main</code> &mdash; a GitHub Actions workflow runs the full benchmark matrix. Each combination of scenario, project, and package manager is timed with <a href="https://github.com/sharkdp/hyperfine">Hyperfine</a>, measuring wall-clock duration. The results are published here automatically.</p>
 
-    <h3 id="scenarios-explained">Install scenarios</h3>
-    <ol class="steps">
-      <li>
-        <p>Full cold install</p>
-        <p>Global cache is wiped before each invocation. The lockfile and <code>node_modules</code> are removed. Everything resolves from the registry; tarballs are fetched, unpacked, and linked from scratch.</p>
-      </li>
-      <li>
-        <p>Cache only</p>
-        <p>The global cache survives but the project lockfile is removed. Resolution is re-computed; tarballs are reused from cache. Closest to a fresh clone with shared CI cache.</p>
-      </li>
-      <li>
-        <p>Cache + lockfile</p>
-        <p>Lockfile exists, cache is warm. The common CI path: dependencies pre-resolved, just need to materialize them on disk.</p>
-      </li>
-      <li>
-        <p>Recurrent call</p>
-        <p>Everything is in place &mdash; lockfile, cache, node_modules. Should be a near-instant no-op that verifies and exits.</p>
-      </li>
-    </ol>
+    <h3 id="how-benchmarks-run">How benchmarks run</h3>
+    <p>Hyperfine executes each install command a minimum of 10 times after 1 warmup run. Before every timed run, a <em>prepare</em> step resets the environment to match the scenario &mdash; for example, deleting <code>node_modules</code>, the lockfile, or the global cache &mdash; so each measurement starts from the same state. The final result is the median of all timed runs.</p>
+    <p>The runner is <code>ubuntu-latest</code> on GitHub Actions. zpm is compiled from source with the <code>release-lto</code> profile; all other managers use their latest stable release at the time of each run.</p>
 
     <div class="admonition note">
       <div class="adm-header">
@@ -738,11 +726,11 @@ const INCIDENTS = [
     </div>
 
     <h3 id="reference-projects">Reference projects</h3>
-    <p>We chose real-world TypeScript projects with different dependency profiles. Each is pinned to a specific commit; we do not pull <code>main</code> at run time.</p>
+    <p>We chose real-world TypeScript projects with different dependency profiles to test a wide variety of use cases.</p>
 
     <div class="table-wrap">
       <table>
-        <caption>Reference projects &mdash; pinned at run time</caption>
+        <caption>Reference projects</caption>
         <thead>
           <tr>
             <th scope="col">Project</th>
@@ -752,15 +740,15 @@ const INCIDENTS = [
         <tbody>
           <tr>
             <td>next</td>
-            <td>Next.js 15 starter &mdash; App Router, Tailwind, MDX, ESLint flat config</td>
+            <td>Next.js vendors most of its dependencies except native ones. Small dependency graphs with very heavy packages.</td>
           </tr>
           <tr>
             <td>gatsby</td>
-            <td>Gatsby 5 blog &mdash; heavy plugin ecosystem, sharp, MDX, GraphQL</td>
+            <td>Gatsby lists its dependencies raw, without vendoring. Very large dependency graph made up of small packages.</td>
           </tr>
           <tr>
             <td>monorepo</td>
-            <td>Multi-workspace monorepo &mdash; shared packages, cross-workspace dependencies</td>
+            <td>Synthetic monorepo of around ~1.5k workspaces, each with their own arbitrary set of dependencies.</td>
           </tr>
         </tbody>
       </table>
@@ -768,9 +756,8 @@ const INCIDENTS = [
 
     <h3 id="caveats">Caveats</h3>
     <ul>
-      <li>Network latency to the registry is held constant via a pull-through proxy on the same VPC. Real-world installs over a transcontinental link will be slower across the board.</li>
-      <li>Linker choice matters: numbers below are <strong>Plug&rsquo;n&rsquo;Play for Yarn</strong>, the default linker for each other manager. Switching Yarn to <code>node-modules</code> removes most of its lead in <em>Full cold</em>.</li>
-      <li>None of these numbers measure correctness. Determinism, peer-resolution strictness, and lockfile portability are evaluated separately.</li>
+      <li>Linker choice matters: numbers below are <strong>Plug&rsquo;n&rsquo;Play for Yarn</strong>, the default linker for each other manager. Switching Yarn to <code>node-modules</code> removes some of its lead in <em>Full cold</em>.</li>
+      <li>These numbers don't measure correctness. Determinism and soundness are evaluated separately. We use an extensive testsuite to ensure Yarn is not only fast but also stable.</li>
     </ul>
   </div>
 
