@@ -18,8 +18,9 @@ const SERIES_META: Record<string, { name: string; dashed: boolean; accent: boole
 };
 
 const PROJECTS = [
-  { id: 'next',   name: 'Next.js' },
-  { id: 'gatsby', name: 'Gatsby' },
+  { id: 'next',     name: 'Next.js' },
+  { id: 'gatsby',   name: 'Gatsby' },
+  { id: 'monorepo', name: 'Monorepo' },
 ];
 
 const SCENARIOS = [
@@ -40,6 +41,18 @@ for (const entry of benchmarkData as BenchEntry[]) {
 
 const lastPoint = (benchmarkData as BenchEntry[]).find(e => e.pm === 'zpm')?.points.filter(p => p.value !== null).pop();
 const lastRunDate = lastPoint ? new Date(lastPoint.timestamp * 1000).toISOString().slice(0, 10) : 'N/A';
+
+const allTimestamps = (benchmarkData as BenchEntry[]).flatMap(e => e.points.map(p => p.timestamp));
+const benchMinTs = Math.min(...allTimestamps);
+const benchMaxTs = Math.max(...allTimestamps);
+
+const INCIDENTS = [
+  {
+    start: Date.UTC(2026, 1, 24, 18, 20, 0) / 1000,
+    end:   Date.UTC(2026, 2, 11, 18, 18, 0) / 1000,
+    label: 'Accidental regression in Node.js 25.7 broke our benchmarks',
+  },
+];
 ---
 
 <BaseLayout title="Benchmarks — Yarn" variant="docs" activePage="benchmarks">
@@ -132,7 +145,7 @@ const lastRunDate = lastPoint ? new Date(lastPoint.timestamp * 1000).toISOString
 
   .bench-grid {
     display: grid;
-    grid-template-columns: 220px repeat(var(--bench-cols, 2), minmax(0, 1fr));
+    grid-template-columns: 190px repeat(var(--bench-cols, 3), minmax(0, 1fr));
     background: color-mix(in oklch, var(--card) 55%, transparent);
     border: 1px solid var(--line);
     border-radius: 14px;
@@ -146,7 +159,7 @@ const lastRunDate = lastPoint ? new Date(lastPoint.timestamp * 1000).toISOString
     border-bottom: 1px solid var(--line-strong);
     background: color-mix(in oklch, var(--fg) 2%, transparent);
     display: flex;
-    align-items: center;
+    align-items: end;
     justify-content: space-between;
     gap: 10px;
   }
@@ -170,11 +183,11 @@ const lastRunDate = lastPoint ? new Date(lastPoint.timestamp * 1000).toISOString
   }
 
   .bench-grid .row-head {
-    padding: 22px 18px;
+    padding: 16px 14px;
     border-top: 1px solid var(--line);
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
   }
   .bench-grid .row-head .row-num {
     font-family: 'JetBrains Mono', monospace;
@@ -183,7 +196,7 @@ const lastRunDate = lastPoint ? new Date(lastPoint.timestamp * 1000).toISOString
     color: var(--fg-mute);
   }
   .bench-grid .row-head h3 {
-    font-size: 17px;
+    font-size: 15px;
     font-weight: 500;
     color: var(--fg);
     letter-spacing: -0.01em;
@@ -191,8 +204,8 @@ const lastRunDate = lastPoint ? new Date(lastPoint.timestamp * 1000).toISOString
     line-height: 1.2;
   }
   .bench-grid .row-head p {
-    font-size: 12.5px;
-    line-height: 1.5;
+    font-size: 11.5px;
+    line-height: 1.45;
     color: var(--fg-dim);
     margin: 0;
     text-wrap: pretty;
@@ -213,9 +226,9 @@ const lastRunDate = lastPoint ? new Date(lastPoint.timestamp * 1000).toISOString
   .chart-cell {
     border-top: 1px solid var(--line);
     border-left: 1px solid var(--line);
-    padding: 18px 14px 14px;
+    padding: 14px 10px 10px;
     position: relative;
-    min-height: 200px;
+    min-height: 130px;
     display: flex;
     flex-direction: column;
   }
@@ -223,7 +236,7 @@ const lastRunDate = lastPoint ? new Date(lastPoint.timestamp * 1000).toISOString
     display: flex;
     justify-content: space-between;
     align-items: baseline;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     gap: 8px;
     min-height: 16px;
   }
@@ -236,22 +249,101 @@ const lastRunDate = lastPoint ? new Date(lastPoint.timestamp * 1000).toISOString
     color: var(--fg);
     font-weight: 500;
   }
-  .chart-cell .cell-meta .winner {
+  .chart-cell .cell-meta .cell-pill {
     font-family: 'JetBrains Mono', monospace;
     font-size: 10px;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: var(--accent);
     padding: 2px 6px;
-    border: 1px solid var(--accent-line);
     border-radius: 4px;
+    white-space: nowrap;
+  }
+  .cell-pill.fastest {
+    color: var(--accent);
+    border: 1px solid var(--accent-line);
     background: var(--accent-soft);
+  }
+  .cell-pill.contested {
+    color: oklch(0.82 0.13 85);
+    border: 1px solid oklch(0.65 0.13 85 / 0.45);
+    background: oklch(0.45 0.12 85 / 0.15);
+  }
+  .cell-pill.slower {
+    color: oklch(0.78 0.15 25);
+    border: 1px solid oklch(0.60 0.15 25 / 0.45);
+    background: oklch(0.45 0.14 25 / 0.15);
+  }
+  html[data-theme="light"] .cell-pill.contested {
+    color: oklch(0.42 0.14 75);
+    border-color: oklch(0.60 0.14 75 / 0.5);
+    background: oklch(0.90 0.08 75 / 0.5);
+  }
+  html[data-theme="light"] .cell-pill.slower {
+    color: oklch(0.45 0.18 25);
+    border-color: oklch(0.55 0.18 25 / 0.5);
+    background: oklch(0.92 0.06 25 / 0.5);
   }
   .chart-cell svg {
     width: 100%;
     flex: 1;
     overflow: visible;
     display: block;
+  }
+
+  .incident-area { fill: oklch(0.55 0.18 25 / 0.10); }
+  .incident-border { stroke: oklch(0.60 0.18 25 / 0.35); stroke-width: 1; stroke-dasharray: 3 2; fill: none; }
+  .incident-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7.5px;
+    fill: oklch(0.70 0.15 25);
+    letter-spacing: 0.03em;
+  }
+  html[data-theme="light"] .incident-area { fill: oklch(0.55 0.18 25 / 0.08); }
+  html[data-theme="light"] .incident-border { stroke: oklch(0.55 0.18 25 / 0.3); }
+  html[data-theme="light"] .incident-label { fill: oklch(0.50 0.18 25); }
+
+  .version-dot {
+    pointer-events: none;
+    stroke: var(--bg-0);
+    stroke-width: 1.5;
+  }
+
+  .legend-row .toggle-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    user-select: none;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--fg-dim);
+  }
+  .legend-row .toggle-label input {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border: 1px solid var(--line-strong);
+    border-radius: 3px;
+    background: color-mix(in oklch, var(--fg) 4%, transparent);
+    cursor: pointer;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .legend-row .toggle-label input:checked {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .legend-row .toggle-label input:checked::after {
+    content: '';
+    position: absolute;
+    left: 3.5px;
+    top: 1px;
+    width: 4px;
+    height: 7px;
+    border: solid var(--bg-0);
+    border-width: 0 1.5px 1.5px 0;
+    transform: rotate(45deg);
   }
 
   .ax-line { stroke: var(--line); stroke-width: 1; }
@@ -325,6 +417,21 @@ const lastRunDate = lastPoint ? new Date(lastPoint.timestamp * 1000).toISOString
   }
   .bench-tip .tip-row .nm { color: var(--fg-dim); flex: 1; }
   .bench-tip .tip-row .vl { color: var(--fg); font-weight: 500; }
+  .bench-tip .tip-ver { color: var(--fg-mute); font-weight: 400; font-size: 9px; }
+
+  @keyframes bench-spin { to { transform: rotate(360deg); } }
+  .version-spinner {
+    display: none;
+    width: 12px;
+    height: 12px;
+    border: 1.5px solid var(--fg-mute);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: bench-spin 0.6s linear infinite;
+    flex-shrink: 0;
+  }
+  .toggle-label.loading .version-spinner { display: inline-block; }
+  .toggle-label.loading span { color: var(--fg-mute); }
 
   .summary {
     display: grid;
@@ -451,7 +558,7 @@ const lastRunDate = lastPoint ? new Date(lastPoint.timestamp * 1000).toISOString
         <span class="mono text-[var(--fg)]">yarn&nbsp;berry</span>,
         <span class="mono text-[var(--fg)]">npm</span>,
         <span class="mono text-[var(--fg)]">pnpm</span>, and
-        <span class="mono text-[var(--fg)]">yarn&nbsp;classic</span> across four install scenarios on two reference projects. Lower is better. Series are wall-clock seconds.
+        <span class="mono text-[var(--fg)]">yarn&nbsp;classic</span> across four install scenarios on three reference projects. Lower is better. Series are wall-clock seconds.
       </p>
     </div>
     <div class="filter-bar md:justify-end">
@@ -459,6 +566,7 @@ const lastRunDate = lastPoint ? new Date(lastPoint.timestamp * 1000).toISOString
       <button class="filter-pill active" data-project="all">All</button>
       <button class="filter-pill" data-project="next">Next.js</button>
       <button class="filter-pill" data-project="gatsby">Gatsby</button>
+      <button class="filter-pill" data-project="monorepo">Monorepo</button>
     </div>
   </div>
 
@@ -505,6 +613,12 @@ const lastRunDate = lastPoint ? new Date(lastPoint.timestamp * 1000).toISOString
     </button>
     <span class="sep"></span>
     <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--fg-mute);">Click to mute · y-axis = seconds</span>
+    <span class="sep"></span>
+    <label class="toggle-label" id="version-toggle-label">
+      <input type="checkbox" id="show-versions" />
+      <span>Show versions</span>
+      <i class="version-spinner"></i>
+    </label>
   </div>
 
   <!-- Benchmark grid -->
@@ -585,6 +699,10 @@ const lastRunDate = lastPoint ? new Date(lastPoint.timestamp * 1000).toISOString
             <td>gatsby</td>
             <td>Gatsby 5 blog &mdash; heavy plugin ecosystem, sharp, MDX, GraphQL</td>
           </tr>
+          <tr>
+            <td>monorepo</td>
+            <td>Multi-workspace monorepo &mdash; shared packages, cross-workspace dependencies</td>
+          </tr>
         </tbody>
       </table>
     </div>
@@ -601,7 +719,7 @@ const lastRunDate = lastPoint ? new Date(lastPoint.timestamp * 1000).toISOString
 
 <div class="bench-tip" id="bench-tip"></div>
 
-<script is:inline define:vars={{ DATA, SERIES_ORDER, SERIES_META, PROJECTS, SCENARIOS }}>
+<script is:inline define:vars={{ DATA, SERIES_ORDER, SERIES_META, PROJECTS, SCENARIOS, INCIDENTS, benchMinTs, benchMaxTs }}>
 (function() {
   var SERIES_COLORS = {
     zpm:     'oklch(0.78 0.16 var(--accent-h))',
@@ -614,7 +732,54 @@ const lastRunDate = lastPoint ? new Date(lastPoint.timestamp * 1000).toISOString
   var state = {
     mutedSeries: {},
     project: 'all',
+    showVersions: false,
   };
+
+  var VERSIONS = {};
+  var versionsFetched = false;
+
+  var VERSION_PACKAGES = [
+    ['npm',     'npm',           null],
+    ['pnpm',    'pnpm',          null],
+    ['classic', 'yarn',          '1.'],
+    ['yarn',    '@yarnpkg/cli',  null],
+  ];
+
+  function fetchVersions(callback) {
+    if (versionsFetched) { callback(); return; }
+    var pending = VERSION_PACKAGES.length;
+    for (var i = 0; i < VERSION_PACKAGES.length; i++) {
+      (function(pm, pkg, prefix) {
+        fetch('https://registry.npmjs.org/' + pkg)
+          .then(function(r) { return r.ok ? r.json() : null; })
+          .then(function(data) {
+            if (!data || !data.time) return;
+            var entries = [];
+            var latestBefore = null;
+            var time = data.time;
+            for (var v in time) {
+              if (v === 'created' || v === 'modified') continue;
+              if (v.indexOf('-') !== -1) continue;
+              if (prefix && v.indexOf(prefix) !== 0) continue;
+              var t = Math.floor(new Date(time[v]).getTime() / 1000);
+              if (t >= benchMinTs && t <= benchMaxTs) {
+                entries.push({ v: v, t: t });
+              } else if (t < benchMinTs) {
+                if (!latestBefore || t > latestBefore.t) latestBefore = { v: v, t: t };
+              }
+            }
+            if (latestBefore) entries.push(latestBefore);
+            entries.sort(function(a, b) { return a.t - b.t; });
+            VERSIONS[pm] = entries;
+          })
+          .catch(function() {})
+          .finally(function() {
+            pending--;
+            if (pending === 0) { versionsFetched = true; callback(); }
+          });
+      })(VERSION_PACKAGES[i][0], VERSION_PACKAGES[i][1], VERSION_PACKAGES[i][2]);
+    }
+  }
 
   function median(arr) {
     var nums = arr.filter(function(v) { return v !== null && v !== undefined; });
@@ -673,16 +838,34 @@ const lastRunDate = lastPoint ? new Date(lastPoint.timestamp * 1000).toISOString
       var sid = SERIES_ORDER[i];
       if (state.mutedSeries[sid]) continue;
       var vals = getSeriesValues(scenario.id, project.id, sid);
-      if (vals.length) medians.push({ id: sid, m: median(vals) });
+      var m = median(vals);
+      if (m > 0) medians.push({ id: sid, m: m });
     }
 
-    var winner = medians.length ? medians.reduce(function(min, x) { return x.m > 0 && x.m < min.m ? x : min; }, medians[0]) : null;
-    var isZpmWinner = winner && winner.id === 'zpm';
+    var pillHtml = '';
+    if (zpmMedian > 0) {
+      var others = medians.filter(function(x) { return x.id !== 'zpm'; });
+      var bestOther = others.length ? others.reduce(function(min, x) { return x.m < min.m ? x : min; }, others[0]) : null;
 
-    cell.innerHTML = '<div class="cell-meta"><span class="median">zpm median <b>' + zpmMedian.toFixed(2) + 's</b></span>' + (isZpmWinner ? '<span class="winner">fastest</span>' : '') + '</div>';
+      if (!bestOther) {
+        pillHtml = '<span class="cell-pill fastest">Only runner</span>';
+      } else {
+        var pctDiff = Math.round((bestOther.m / zpmMedian - 1) * 100);
+        if (pctDiff > 0) {
+          pillHtml = '<span class="cell-pill fastest">Yarn is ' + pctDiff + '% faster</span>';
+        } else if (pctDiff === 0) {
+          pillHtml = '<span class="cell-pill contested">Tied</span>';
+        } else {
+          var cls = -pctDiff <= 10 ? 'contested' : 'slower';
+          pillHtml = '<span class="cell-pill ' + cls + '">Yarn is ' + (-pctDiff) + '% slower</span>';
+        }
+      }
+    }
+
+    cell.innerHTML = '<div class="cell-meta"><span class="median">zpm median <b>' + zpmMedian.toFixed(2) + 's</b></span>' + pillHtml + '</div>';
 
     var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('viewBox', '0 0 280 160');
+    svg.setAttribute('viewBox', '0 0 280 120');
     svg.setAttribute('preserveAspectRatio', 'none');
     cell.appendChild(svg);
     drawChart(svg, scenario, project);
@@ -692,7 +875,7 @@ const lastRunDate = lastPoint ? new Date(lastPoint.timestamp * 1000).toISOString
   }
 
   function drawChart(svg, scenario, project) {
-    var W = 280, H = 160;
+    var W = 280, H = 120;
     var ML = 30, MR = 6, MT = 8, MB = 18;
     var PW = W - ML - MR, PH = H - MT - MB;
 
@@ -774,6 +957,39 @@ const lastRunDate = lastPoint ? new Date(lastPoint.timestamp * 1000).toISOString
       svg.appendChild(xt);
     }
 
+    // Compute incident index ranges
+    var incidentSet = {};
+    var incidentRanges = [];
+    for (var ii = 0; ii < INCIDENTS.length; ii++) {
+      var inc = INCIDENTS[ii];
+      var iStart = -1, iEnd = -1;
+      for (var ip = 0; ip < N; ip++) {
+        var ts = points[ip].timestamp;
+        if (ts >= inc.start && iStart === -1) iStart = ip;
+        if (ts <= inc.end) iEnd = ip;
+      }
+      if (iStart === -1 || iEnd === -1 || iEnd < iStart) continue;
+      incidentRanges.push({ start: iStart, end: iEnd, label: inc.label });
+      for (var ik = iStart; ik <= iEnd; ik++) incidentSet[ik] = true;
+      var ix1 = xScale(iStart), ix2 = xScale(iEnd);
+      var iw = ix2 - ix1;
+      if (iw < 2) iw = 2;
+      var iRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      iRect.setAttribute('x', ix1);
+      iRect.setAttribute('y', MT);
+      iRect.setAttribute('width', iw);
+      iRect.setAttribute('height', PH);
+      iRect.setAttribute('class', 'incident-area');
+      svg.appendChild(iRect);
+      var iBorder = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      iBorder.setAttribute('x', ix1);
+      iBorder.setAttribute('y', MT);
+      iBorder.setAttribute('width', iw);
+      iBorder.setAttribute('height', PH);
+      iBorder.setAttribute('class', 'incident-border');
+      svg.appendChild(iBorder);
+    }
+
     // IQR band for zpm
     if (!state.mutedSeries['zpm']) {
       var zpmVals = getSeriesValues(scenario.id, project.id, 'zpm');
@@ -791,32 +1007,70 @@ const lastRunDate = lastPoint ? new Date(lastPoint.timestamp * 1000).toISOString
       }
     }
 
-    // Series lines (zpm last so it's on top)
-    for (var si = 0; si < SERIES_ORDER.length; si++) {
-      var sid = SERIES_ORDER[si];
+    // Series lines — draw zpm last so it renders on top
+    var drawOrder = SERIES_ORDER.filter(function(s) { return s !== 'zpm'; });
+    drawOrder.push('zpm');
+
+    for (var si = 0; si < drawOrder.length; si++) {
+      var sid = drawOrder[si];
       if (state.mutedSeries[sid]) continue;
       var seriesPoints = DATA[scenario.id] && DATA[scenario.id][project.id] && DATA[scenario.id][project.id][sid];
       if (!seriesPoints) continue;
 
       var pathD = '';
-      var started = false;
+      var prevWasNull = true;
       for (var pi = 0; pi < seriesPoints.length; pi++) {
         var sv = seriesPoints[pi].value;
-        if (sv === null) continue;
+        if (sv === null || incidentSet[pi]) { prevWasNull = true; continue; }
         var px = xScale(pi), py = yScale(sv);
-        pathD += (started ? 'L' : 'M') + px.toFixed(2) + ',' + py.toFixed(2);
-        started = true;
+        pathD += (prevWasNull ? 'M' : 'L') + px.toFixed(2) + ',' + py.toFixed(2);
+        prevWasNull = false;
       }
 
       if (!pathD) continue;
-      var meta = SERIES_META[sid];
+      var sMeta = SERIES_META[sid];
       var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
       path.setAttribute('d', pathD);
-      var cls = 'series-line' + (meta.dashed ? ' dashed' : '') + (meta.accent ? ' highlight' : '');
+      var cls = 'series-line' + (sMeta.dashed ? ' dashed' : '') + (sMeta.accent ? ' highlight' : '');
       path.setAttribute('class', cls);
       path.setAttribute('stroke', SERIES_COLORS[sid]);
       path.style.setProperty('--c', SERIES_COLORS[sid]);
       svg.appendChild(path);
+    }
+
+    // Version dots (no vertical lines)
+    var versionAtIndex = {};
+    if (state.showVersions) {
+      for (var si = 0; si < drawOrder.length; si++) {
+        var sid = drawOrder[si];
+        if (state.mutedSeries[sid]) continue;
+        var versions = VERSIONS[sid] || [];
+        var seriesP = DATA[scenario.id] && DATA[scenario.id][project.id] && DATA[scenario.id][project.id][sid];
+        if (!seriesP || !versions.length) continue;
+
+        for (var vi = 0; vi < versions.length; vi++) {
+          var vt = versions[vi].t;
+          var bestIdx = 0, bestDist = Infinity;
+          for (var vp = 0; vp < N; vp++) {
+            var dist = Math.abs(points[vp].timestamp - vt);
+            if (dist < bestDist) { bestDist = dist; bestIdx = vp; }
+          }
+          if (incidentSet[bestIdx]) continue;
+          var sv = seriesP[bestIdx] ? seriesP[bestIdx].value : null;
+          if (sv === null) continue;
+
+          if (!versionAtIndex[bestIdx]) versionAtIndex[bestIdx] = [];
+          versionAtIndex[bestIdx].push({ pm: sid, v: versions[vi].v });
+
+          var dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          dot.setAttribute('cx', xScale(bestIdx));
+          dot.setAttribute('cy', yScale(sv));
+          dot.setAttribute('r', SERIES_META[sid].accent ? 4 : 3);
+          dot.setAttribute('fill', SERIES_COLORS[sid]);
+          dot.setAttribute('class', 'version-dot');
+          svg.appendChild(dot);
+        }
+      }
     }
 
     // Crosshair
@@ -840,7 +1094,7 @@ const lastRunDate = lastPoint ? new Date(lastPoint.timestamp * 1000).toISOString
       svg.appendChild(c);
     }
 
-    svg.__meta = { ML: ML, MR: MR, MT: MT, MB: MB, PW: PW, PH: PH, N: N, xScale: xScale, yScale: yScale, scenario: scenario, project: project };
+    svg.__meta = { ML: ML, MR: MR, MT: MT, MB: MB, PW: PW, PH: PH, N: N, xScale: xScale, yScale: yScale, scenario: scenario, project: project, incidentSet: incidentSet, incidentRanges: incidentRanges, versionAtIndex: versionAtIndex };
   }
 
   function attachHover(svg, cell, scenario, project) {
@@ -858,35 +1112,71 @@ const lastRunDate = lastPoint ? new Date(lastPoint.timestamp * 1000).toISOString
       var xPx = meta.xScale(idx);
 
       var cross = svg.querySelector('.crosshair');
-      if (cross) {
-        cross.setAttribute('x1', xPx);
-        cross.setAttribute('x2', xPx);
-        cross.classList.add('show');
-      }
-
-      var rows = [];
-      svg.querySelectorAll('.hover-pt').forEach(function(pt) {
-        var sid = pt.dataset.series;
-        if (state.mutedSeries[sid]) { pt.classList.remove('show'); return; }
-        var sp = DATA[scenario.id] && DATA[scenario.id][project.id] && DATA[scenario.id][project.id][sid];
-        if (!sp || !sp[idx] || sp[idx].value === null) { pt.classList.remove('show'); return; }
-        pt.setAttribute('cx', xPx);
-        pt.setAttribute('cy', meta.yScale(sp[idx].value));
-        pt.classList.add('show');
-        rows.push({ id: sid, value: sp[idx].value });
-      });
-
-      rows.sort(function(a, b) { return a.value - b.value; });
-
       var points = DATA[scenario.id][project.id][SERIES_ORDER[0]];
       var ts = points[idx].timestamp;
       var d = new Date(ts * 1000);
       var dateStr = d.toISOString().slice(0, 10);
 
-      var html = '<div class="tip-x">' + dateStr + ' &middot; ' + scenario.title + ' &middot; ' + project.name + '</div>';
-      for (var ri = 0; ri < rows.length; ri++) {
-        var r = rows[ri];
-        html += '<div class="tip-row" style="--c: ' + SERIES_COLORS[r.id] + '"><span class="sw"></span><span class="nm">' + SERIES_META[r.id].name + '</span><span class="vl">' + r.value.toFixed(2) + 's</span></div>';
+      var inIncident = meta.incidentSet && meta.incidentSet[idx];
+      var html;
+
+      if (inIncident) {
+        if (cross) cross.classList.remove('show');
+        svg.querySelectorAll('.hover-pt').forEach(function(pt) { pt.classList.remove('show'); });
+
+        var incLabel = '';
+        for (var ii = 0; ii < meta.incidentRanges.length; ii++) {
+          var ir = meta.incidentRanges[ii];
+          if (idx >= ir.start && idx <= ir.end) { incLabel = ir.label; break; }
+        }
+        html = '<div class="tip-x">' + dateStr + ' &middot; ' + project.name + '</div>'
+          + '<div style="color:oklch(0.78 0.15 25);font-size:10px;margin-top:2px;">' + incLabel + '</div>';
+      } else {
+        if (cross) {
+          cross.setAttribute('x1', xPx);
+          cross.setAttribute('x2', xPx);
+          cross.classList.add('show');
+        }
+
+        var rows = [];
+        svg.querySelectorAll('.hover-pt').forEach(function(pt) {
+          var sid = pt.dataset.series;
+          if (state.mutedSeries[sid]) { pt.classList.remove('show'); return; }
+          var sp = DATA[scenario.id] && DATA[scenario.id][project.id] && DATA[scenario.id][project.id][sid];
+          if (!sp || !sp[idx] || sp[idx].value === null) { pt.classList.remove('show'); return; }
+          pt.setAttribute('cx', xPx);
+          pt.setAttribute('cy', meta.yScale(sp[idx].value));
+          pt.classList.add('show');
+          rows.push({ id: sid, value: sp[idx].value });
+        });
+
+        rows.sort(function(a, b) { return a.value - b.value; });
+
+        var vMap = null;
+        if (state.showVersions && versionsFetched) {
+          vMap = {};
+          for (var vk = 0; vk < SERIES_ORDER.length; vk++) {
+            var vkId = SERIES_ORDER[vk];
+            var vkVersions = VERSIONS[vkId];
+            if (!vkVersions || !vkVersions.length) continue;
+            var best = null;
+            for (var vki = vkVersions.length - 1; vki >= 0; vki--) {
+              if (vkVersions[vki].t <= ts) { best = vkVersions[vki].v; break; }
+            }
+            if (best) vMap[vkId] = best;
+          }
+        }
+
+        html = '<div class="tip-x">' + dateStr + ' &middot; ' + scenario.title + ' &middot; ' + project.name + '</div>';
+        for (var ri = 0; ri < rows.length; ri++) {
+          var r = rows[ri];
+          var nameStr = SERIES_META[r.id].name;
+          if (state.showVersions) {
+            if (r.id === 'zpm') nameStr += ' <span class="tip-ver">main</span>';
+            else if (vMap && vMap[r.id]) nameStr += ' <span class="tip-ver">v' + vMap[r.id] + '</span>';
+          }
+          html += '<div class="tip-row" style="--c: ' + SERIES_COLORS[r.id] + '"><span class="sw"></span><span class="nm">' + nameStr + '</span><span class="vl">' + r.value.toFixed(2) + 's</span></div>';
+        }
       }
 
       tip.innerHTML = html;
@@ -992,9 +1282,31 @@ const lastRunDate = lastPoint ? new Date(lastPoint.timestamp * 1000).toISOString
     });
   });
 
+  // Show versions toggle — fetch lazily on first enable
+  var versionCheckbox = document.getElementById('show-versions');
+  var versionLabel = document.getElementById('version-toggle-label');
+  if (versionCheckbox) {
+    versionCheckbox.addEventListener('change', function() {
+      if (versionCheckbox.checked && !versionsFetched) {
+        versionCheckbox.disabled = true;
+        if (versionLabel) versionLabel.classList.add('loading');
+        fetchVersions(function() {
+          versionCheckbox.disabled = false;
+          if (versionLabel) versionLabel.classList.remove('loading');
+          state.showVersions = true;
+          buildGrid();
+        });
+      } else {
+        state.showVersions = versionCheckbox.checked;
+        buildGrid();
+      }
+    });
+  }
+
   // Init
   buildGrid();
   buildSummary();
 })();
 </script>
+<script is:inline src="/docs/docs.js"></script>
 </BaseLayout>
