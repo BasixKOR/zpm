@@ -6,8 +6,8 @@ sidebarActivePage: manifest
 sidebar: reference
 breadcrumb: ["Docs", "Reference", "Manifest"]
 mainMaxWidth: "820px"
-prev: { href: "concepts.html", label: "Concepts" }
-next: { href: "yarnrc.html", label: "Settings (.yarnrc.yml)" }
+prev: { href: "concepts/", label: "Concepts" }
+next: { href: "yarnrc/", label: "Settings (.yarnrc.yml)" }
 ---
 
 # package.json
@@ -92,7 +92,7 @@ Where the source lives. Shorthand `"github:owner/name"` or a full object with `t
 
 ## Dependencies
 
-Five related fields control what ends up in your dependency graph. Each maps package names to [version ranges or protocols](concepts.html#dependency-protocols).
+Five related fields control what ends up in your dependency graph. Each maps package names to [version ranges or protocols](concepts/#dependency-protocols).
 
 ### `dependencies` :type[{ \[name\]: range }]
 

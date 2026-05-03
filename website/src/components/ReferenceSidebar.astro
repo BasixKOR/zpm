@@ -76,7 +76,7 @@ if (cliEntries) {
       const slug = entry.id.replace(new RegExp(`^${cliPrefix}/`), ``);
       return {
         label: `${entry.data.binaryName} ${entry.data.commandSpec.primaryPath.join(` `)}`,
-        href: `/${cliPrefix}/${slug}.html`,
+        href: `/${cliPrefix}/${slug}/`,
         active: entry.id === activePage,
         mono: true,
       };

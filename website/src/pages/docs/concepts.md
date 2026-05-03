@@ -4,7 +4,7 @@ title: "Concepts — Yarn docs"
 activePage: concepts
 sidebar: concepts
 breadcrumb: Concepts
-prev: { href: "get-started.html", label: "Get Started" }
+prev: { href: "get-started/", label: "Get Started" }
 next: { href: "#", label: "Reference" }
 ---
 

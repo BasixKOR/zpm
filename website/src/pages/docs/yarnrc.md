@@ -6,8 +6,8 @@ sidebarActivePage: yarnrc
 sidebar: reference
 breadcrumb: ["Docs", "Reference", "Settings"]
 mainMaxWidth: "820px"
-prev: { href: "manifest.html", label: "Manifest (package.json)" }
-next: { href: "cli-add.html", label: "CLI: yarn add" }
+prev: { href: "manifest/", label: "Manifest (package.json)" }
+next: { href: "cli-add/", label: "CLI: yarn add" }
 ---
 
 # .yarnrc.yml
@@ -30,7 +30,7 @@ yarnPath: .yarn/releases/yarn-4.8.1.cjs
 
 ### `nodeLinker` :type['pnp' | 'pnpm' | 'node-modules'] :default[pnp]
 
-How packages materialize on disk. See [Node.js linkers](concepts.html#nodejs-linkers) for the trade-offs.
+How packages materialize on disk. See [Node.js linkers](concepts/#nodejs-linkers) for the trade-offs.
 
 ### `packageExtensions` :type[{ \[selector\]: object }]
 
@@ -51,7 +51,7 @@ packageExtensions:
 
 ### `enableGlobalCache` :type[boolean] :default[true]
 
-When `true`, package tarballs are stored in a single global cache (`~/.yarn/berry/cache`) shared across all projects. Set to `false` to use `.yarn/cache` per-project — required for [Zero Installs](concepts.html#zero-installs).
+When `true`, package tarballs are stored in a single global cache (`~/.yarn/berry/cache`) shared across all projects. Set to `false` to use `.yarn/cache` per-project — required for [Zero Installs](concepts/#zero-installs).
 
 ### `enableImmutableInstalls` :type[boolean] :default[auto]
 

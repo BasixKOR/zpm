@@ -62,7 +62,7 @@ for (const entry of entries) {
 
               return (
                 <div class="tl-item is-post">
-                  <a href={`/blog/${post.data.slug}.html`} class="tl-post">
+                  <a href={`/blog/${post.data.slug}/`} class="tl-post">
                     {post.data.category && <div class="post-kind">{post.data.category}</div>}
                     <h2 class="post-title">{post.data.title}</h2>
                     <p class="post-excerpt">{excerpt.slice(0, 200)}{excerpt.length > 200 ? '\u2026' : ''}</p>

@@ -99,7 +99,7 @@ export function buildSidebarGroups(
         })
         .map(doc => ({
           label: doc.data.title,
-          href: `/${doc.data.slug}.html`,
+          href: `/${doc.data.slug}/`,
           active: doc.data.slug === activePage,
         })),
     }));

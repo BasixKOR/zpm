@@ -70,7 +70,7 @@ const bskyShareUrl = `https://bsky.app/intent/compose?text=${encodeURIComponent(
     </div>
 
     <PrevNextNav
-      prev={older ? { href: `/blog/${older.data.slug}.html`, label: older.data.title } : undefined}
+      prev={older ? { href: `/blog/${older.data.slug}/`, label: older.data.title } : undefined}
       next={{ href: '/blog', label: 'Back to the thread' }}
       prevEyebrow="← Older"
       nextEyebrow="All posts →"

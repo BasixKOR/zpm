@@ -5,12 +5,12 @@ activePage: get-started
 sidebar: getting-started
 breadcrumb: Get Started
 prev: { href: "/", label: "Home" }
-next: { href: "concepts.html", label: "Concepts" }
+next: { href: "concepts/", label: "Concepts" }
 ---
 
 # Get started with Yarn
 
-Install Yarn, set up your first project, and learn the commands you'll reach for ten times a day. This page is short on purpose — once you're comfortable, read [Concepts](concepts.html) next.
+Install Yarn, set up your first project, and learn the commands you'll reach for ten times a day. This page is short on purpose — once you're comfortable, read [Concepts](concepts/) next.
 
 :::note[PREREQUISITES]
 You'll need **Node.js 18.12 or newer**. Verify with `node --version`. If you don't have Node, install it via [nodejs.org](#), `nvm`, or `fnm` — Yarn doesn't care which.
@@ -193,7 +193,7 @@ Supported targets: `vscode`, `vim`, `neovim`, `emacs`, `base` (any LSP-aware edi
 
 You're ready. A few paths from here, depending on what you're building:
 
-- Building a library or app? Read [Dependency protocols](concepts.html#dependency-protocols) to understand what goes in `package.json`.
-- Working in a monorepo? Jump to [Workspaces](concepts.html#workspaces) and [Task dependencies](concepts.html#task-dependencies).
-- Want the fastest possible installs? See [Plug'n'Play](concepts.html#plug-n-play) and [Zero Installs](concepts.html#zero-installs).
-- Need to override an upstream bug? [Dependency patches](concepts.html#dependency-patches).
+- Building a library or app? Read [Dependency protocols](concepts/#dependency-protocols) to understand what goes in `package.json`.
+- Working in a monorepo? Jump to [Workspaces](concepts/#workspaces) and [Task dependencies](concepts/#task-dependencies).
+- Want the fastest possible installs? See [Plug'n'Play](concepts/#plug-n-play) and [Zero Installs](concepts/#zero-installs).
+- Need to override an upstream bug? [Dependency patches](concepts/#dependency-patches).
