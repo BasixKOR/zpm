@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import {BenchmarksDashboard} from '../components/benchmarks/BenchmarksDashboard';
 import '../styles/theme.css';
 import '../styles/docs.css';
 
@@ -57,9 +58,16 @@ const INCIDENTS = [
 
 <BaseLayout title="Benchmarks — Yarn" variant="docs" activePage="benchmarks">
 <style is:global slot="head">
-  .bench-meta {
+  .bench-header {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: 1fr auto;
+    gap: 32px;
+    align-items: end;
+  }
+
+  .bench-meta {
+    display: flex;
+    flex-direction: column;
     gap: 0;
     border: 1px solid var(--line);
     border-radius: 12px;
@@ -69,20 +77,20 @@ const INCIDENTS = [
     overflow: hidden;
   }
   .bench-meta > div {
-    padding: 14px 18px;
-    border-right: 1px solid var(--line);
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--line);
   }
-  .bench-meta > div:last-child { border-right: 0; }
+  .bench-meta > div:last-child { border-bottom: 0; }
   .bench-meta .k {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10.5px;
+    font-size: 10px;
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--fg-mute);
-    margin-bottom: 6px;
+    margin-bottom: 2px;
   }
   .bench-meta .v {
-    font-size: 14.5px;
+    font-size: 13px;
     color: var(--fg);
     font-weight: 500;
     line-height: 1.3;
@@ -90,7 +98,7 @@ const INCIDENTS = [
   .bench-meta .v .unit {
     color: var(--fg-mute);
     font-weight: 400;
-    font-size: 12.5px;
+    font-size: 11.5px;
     margin-left: 3px;
     font-family: 'JetBrains Mono', monospace;
   }
@@ -283,29 +291,24 @@ const INCIDENTS = [
     border-color: oklch(0.55 0.18 25 / 0.5);
     background: oklch(0.92 0.06 25 / 0.5);
   }
-  .chart-cell svg {
-    width: 100%;
-    flex: 1;
-    overflow: visible;
-    display: block;
-  }
 
   .incident-area { fill: oklch(0.55 0.18 25 / 0.10); }
   .incident-border { stroke: oklch(0.60 0.18 25 / 0.35); stroke-width: 1; stroke-dasharray: 3 2; fill: none; }
-  .incident-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 7.5px;
-    fill: oklch(0.70 0.15 25);
-    letter-spacing: 0.03em;
-  }
   html[data-theme="light"] .incident-area { fill: oklch(0.55 0.18 25 / 0.08); }
   html[data-theme="light"] .incident-border { stroke: oklch(0.55 0.18 25 / 0.3); }
-  html[data-theme="light"] .incident-label { fill: oklch(0.50 0.18 25); }
 
   .version-dot {
-    pointer-events: none;
     stroke: var(--bg-0);
     stroke-width: 1.5;
+    pointer-events: none;
+  }
+  .version-dot-link {
+    pointer-events: auto;
+    cursor: pointer;
+  }
+  .version-dot-link:hover .version-dot {
+    stroke-width: 2.5;
+    filter: brightness(1.2);
   }
 
   .legend-row .toggle-label {
@@ -348,13 +351,13 @@ const INCIDENTS = [
 
   .ax-line { stroke: var(--line); stroke-width: 1; }
   .ax-line-strong { stroke: var(--line-strong); stroke-width: 1; }
-  .ax-text {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
-    fill: var(--fg-mute);
-    letter-spacing: 0.04em;
-  }
   .ax-band { fill: var(--accent-soft); opacity: 0.6; }
+  .crosshair {
+    stroke: var(--fg-mute);
+    stroke-width: 1;
+    stroke-dasharray: 3 3;
+    pointer-events: none;
+  }
   .series-line {
     fill: none;
     stroke-width: 1.5;
@@ -362,27 +365,26 @@ const INCIDENTS = [
     stroke-linejoin: round;
   }
   .series-line.dashed { stroke-dasharray: 4 3; }
-  .series-line.muted { opacity: 0.18; }
   .series-line.highlight {
     stroke-width: 2;
     filter: drop-shadow(0 0 6px var(--c));
   }
 
-  .crosshair {
-    stroke: var(--line-strong);
-    stroke-width: 1;
-    stroke-dasharray: 2 2;
+  .ax-label {
+    position: absolute;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--fg-mute);
+    letter-spacing: 0.04em;
     pointer-events: none;
-    opacity: 0;
+    white-space: nowrap;
   }
-  .crosshair.show { opacity: 1; }
-  .hover-pt {
-    stroke: var(--bg-0);
-    stroke-width: 1.5;
-    pointer-events: none;
-    opacity: 0;
+  .ax-label-y {
+    transform: translate(-100%, -50%);
   }
-  .hover-pt.show { opacity: 1; }
+  .ax-label-x {
+    transform: translateX(-50%);
+  }
 
   .bench-tip {
     position: fixed;
@@ -484,6 +486,23 @@ const INCIDENTS = [
   .summary-bar .val.self { color: var(--accent); }
   @keyframes bench-grow { to { transform: scaleX(var(--w, 1)); } }
 
+  .bench-sticky {
+    position: sticky;
+    top: var(--nav-h, 61px);
+    z-index: 15;
+    background: color-mix(in oklch, var(--bg-0) 85%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    margin-left: calc(-50vw + 50%);
+    margin-right: calc(-50vw + 50%);
+    padding: 12px calc(50vw - 50%);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 16px;
+  }
+
   .filter-bar {
     display: flex;
     flex-wrap: wrap;
@@ -535,7 +554,10 @@ const INCIDENTS = [
     .chart-cell {
       border-left: 0;
     }
-    .bench-meta { grid-template-columns: 1fr; }
+    .bench-header { grid-template-columns: 1fr; }
+    .bench-meta { flex-direction: row; }
+    .bench-meta > div { border-bottom: 0; border-right: 1px solid var(--line); }
+    .bench-meta > div:last-child { border-right: 0; }
     .summary { grid-template-columns: 1fr; }
   }
 </style>
@@ -549,8 +571,8 @@ const INCIDENTS = [
     <span class="text-[var(--fg-dim)]">Benchmarks</span>
   </div>
 
-  <!-- Heading + filter -->
-  <div class="grid grid-cols-1 md:grid-cols-[1.1fr_0.9fr] gap-10 md:gap-16 items-end mb-10">
+  <!-- Heading + Run metadata -->
+  <div class="bench-header mb-10">
     <div>
       <h1 class="text-[clamp(36px,4.4vw,52px)] font-medium tracking-[-0.025em] leading-[1.05] text-balance m-0">Package manager comparison.</h1>
       <p class="m-0 mt-5 text-[18px] leading-[1.55] text-[var(--fg-dim)] max-w-[640px] text-pretty">
@@ -561,87 +583,34 @@ const INCIDENTS = [
         <span class="mono text-[var(--fg)]">yarn&nbsp;classic</span> across four install scenarios on three reference projects. Lower is better. Series are wall-clock seconds.
       </p>
     </div>
-    <div class="filter-bar md:justify-end">
-      <span class="label">Project</span>
-      <button class="filter-pill active" data-project="all">All</button>
-      <button class="filter-pill" data-project="next">Next.js</button>
-      <button class="filter-pill" data-project="gatsby">Gatsby</button>
-      <button class="filter-pill" data-project="monorepo">Monorepo</button>
+    <div class="bench-meta">
+      <div>
+        <div class="k">Last run</div>
+        <div class="v">{lastRunDate}</div>
+      </div>
+      <div>
+        <div class="k">Runner</div>
+        <div class="v">ubuntu-22.04 <span class="unit">4 vCPU · 16 GB</span></div>
+      </div>
+      <div>
+        <div class="k">Data points</div>
+        <div class="v">90 <span class="unit">days of history</span></div>
+      </div>
     </div>
   </div>
 
-  <!-- Run metadata -->
-  <div class="bench-meta mb-7">
-    <div>
-      <div class="k">Last run</div>
-      <div class="v">{lastRunDate}</div>
-    </div>
-    <div>
-      <div class="k">Runner</div>
-      <div class="v">ubuntu-22.04 <span class="unit">4 vCPU · 16 GB</span></div>
-    </div>
-    <div>
-      <div class="k">Data points</div>
-      <div class="v">90 <span class="unit">days of history</span></div>
-    </div>
-  </div>
-
-  <!-- Legend -->
-  <div class="legend-row mb-7" id="legend">
-    <span class="label" style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:0.12em;text-transform:uppercase;color:var(--fg-mute);">Series</span>
-    <button class="lg" data-pm="zpm" style="--c: oklch(0.78 0.16 var(--accent-h))">
-      <span class="swatch"></span>
-      <span class="name">yarn zpm</span>
-    </button>
-    <button class="lg" data-pm="yarn" style="--c: oklch(0.65 0.10 var(--accent-h))">
-      <span class="swatch"></span>
-      <span class="name">yarn berry</span>
-    </button>
-    <span class="sep"></span>
-    <button class="lg" data-pm="npm" style="--c: oklch(0.70 0.15 25)">
-      <span class="swatch"></span>
-      <span class="name">npm</span>
-    </button>
-    <button class="lg" data-pm="pnpm" style="--c: oklch(0.75 0.13 220)">
-      <span class="swatch"></span>
-      <span class="name">pnpm</span>
-    </button>
-    <span class="sep"></span>
-    <button class="lg" data-pm="classic" style="--c: oklch(0.55 0.08 var(--accent-h))">
-      <span class="swatch dashed"></span>
-      <span class="name">yarn classic</span>
-    </button>
-    <span class="sep"></span>
-    <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--fg-mute);">Click to mute · y-axis = seconds</span>
-    <span class="sep"></span>
-    <label class="toggle-label" id="version-toggle-label">
-      <input type="checkbox" id="show-versions" />
-      <span>Show versions</span>
-      <i class="version-spinner"></i>
-    </label>
-  </div>
-
-  <!-- Benchmark grid -->
-  <div class="bench-grid" id="bench-grid"></div>
-
-  <!-- Aggregate summary -->
-  <div class="mt-12 mb-6">
-    <div class="mono text-[11px] text-[var(--fg-mute)] tracking-[0.12em] uppercase mb-2">&sect; Aggregate</div>
-    <h2 class="text-[26px] font-medium tracking-[-0.015em] m-0">Median across all scenarios.</h2>
-    <p class="text-[14.5px] text-[var(--fg-dim)] leading-[1.6] mt-2 max-w-[680px] text-pretty">
-      Geometric mean of cell medians, normalized to the slowest in each row so the chart compares relative performance across scenarios of different absolute scale. Lower is faster.
-    </p>
-  </div>
-  <div class="summary">
-    <div class="summary-card">
-      <h4>Cold install &middot; normalized</h4>
-      <div id="agg-cold"></div>
-    </div>
-    <div class="summary-card">
-      <h4>Cache + lockfile &middot; normalized</h4>
-      <div id="agg-warm"></div>
-    </div>
-  </div>
+  <!-- Interactive dashboard (React) -->
+  <BenchmarksDashboard
+    client:load
+    data={DATA}
+    seriesOrder={SERIES_ORDER}
+    seriesMeta={SERIES_META}
+    projects={PROJECTS}
+    scenarios={SCENARIOS}
+    incidents={INCIDENTS}
+    benchMinTs={benchMinTs}
+    benchMaxTs={benchMaxTs}
+  />
 
   <!-- Methodology -->
   <div class="mt-16 prose">
@@ -717,596 +686,9 @@ const INCIDENTS = [
 
 </div>
 
-<div class="bench-tip" id="bench-tip"></div>
-
-<script is:inline define:vars={{ DATA, SERIES_ORDER, SERIES_META, PROJECTS, SCENARIOS, INCIDENTS, benchMinTs, benchMaxTs }}>
-(function() {
-  var SERIES_COLORS = {
-    zpm:     'oklch(0.78 0.16 var(--accent-h))',
-    yarn:    'oklch(0.65 0.10 var(--accent-h))',
-    npm:     'oklch(0.70 0.15 25)',
-    pnpm:    'oklch(0.75 0.13 220)',
-    classic: 'oklch(0.55 0.08 var(--accent-h))',
-  };
-
-  var state = {
-    mutedSeries: {},
-    project: 'all',
-    showVersions: false,
-  };
-
-  var VERSIONS = {};
-  var versionsFetched = false;
-
-  var VERSION_PACKAGES = [
-    ['npm',     'npm',           null],
-    ['pnpm',    'pnpm',          null],
-    ['classic', 'yarn',          '1.'],
-    ['yarn',    '@yarnpkg/cli',  null],
-  ];
-
-  function fetchVersions(callback) {
-    if (versionsFetched) { callback(); return; }
-    var pending = VERSION_PACKAGES.length;
-    for (var i = 0; i < VERSION_PACKAGES.length; i++) {
-      (function(pm, pkg, prefix) {
-        fetch('https://registry.npmjs.org/' + pkg)
-          .then(function(r) { return r.ok ? r.json() : null; })
-          .then(function(data) {
-            if (!data || !data.time) return;
-            var entries = [];
-            var latestBefore = null;
-            var time = data.time;
-            for (var v in time) {
-              if (v === 'created' || v === 'modified') continue;
-              if (v.indexOf('-') !== -1) continue;
-              if (prefix && v.indexOf(prefix) !== 0) continue;
-              var t = Math.floor(new Date(time[v]).getTime() / 1000);
-              if (t >= benchMinTs && t <= benchMaxTs) {
-                entries.push({ v: v, t: t });
-              } else if (t < benchMinTs) {
-                if (!latestBefore || t > latestBefore.t) latestBefore = { v: v, t: t };
-              }
-            }
-            if (latestBefore) entries.push(latestBefore);
-            entries.sort(function(a, b) { return a.t - b.t; });
-            VERSIONS[pm] = entries;
-          })
-          .catch(function() {})
-          .finally(function() {
-            pending--;
-            if (pending === 0) { versionsFetched = true; callback(); }
-          });
-      })(VERSION_PACKAGES[i][0], VERSION_PACKAGES[i][1], VERSION_PACKAGES[i][2]);
-    }
-  }
-
-  function median(arr) {
-    var nums = arr.filter(function(v) { return v !== null && v !== undefined; });
-    if (!nums.length) return 0;
-    nums.sort(function(a, b) { return a - b; });
-    return nums[Math.floor(nums.length / 2)];
-  }
-
-  function getSeriesValues(scenarioId, projectId, pm) {
-    if (!DATA[scenarioId] || !DATA[scenarioId][projectId] || !DATA[scenarioId][projectId][pm]) return [];
-    return DATA[scenarioId][projectId][pm].map(function(p) { return p.value; });
-  }
-
-  function buildGrid() {
-    var grid = document.getElementById('bench-grid');
-    var visibleProjects = state.project === 'all' ? PROJECTS : PROJECTS.filter(function(p) { return p.id === state.project; });
-    grid.style.setProperty('--bench-cols', visibleProjects.length);
-
-    grid.innerHTML = '';
-
-    var corner = document.createElement('div');
-    corner.className = 'corner';
-    corner.textContent = 'scenario \\ project';
-    grid.appendChild(corner);
-
-    for (var pi = 0; pi < visibleProjects.length; pi++) {
-      var p = visibleProjects[pi];
-      var h = document.createElement('div');
-      h.className = 'col-head';
-      h.innerHTML = '<span class="name">' + p.name + '</span>';
-      grid.appendChild(h);
-    }
-
-    for (var si = 0; si < SCENARIOS.length; si++) {
-      var sc = SCENARIOS[si];
-      var rh = document.createElement('div');
-      rh.className = 'row-head';
-      rh.innerHTML = '<div class="row-num">&sect; ' + sc.num + ' &middot; scenario</div><h3>' + sc.title + '</h3><p>' + sc.desc + '</p><span class="row-tag mono">' + sc.tag + '</span>';
-      grid.appendChild(rh);
-
-      for (var pj = 0; pj < visibleProjects.length; pj++) {
-        grid.appendChild(makeCell(sc, visibleProjects[pj]));
-      }
-    }
-  }
-
-  function makeCell(scenario, project) {
-    var cell = document.createElement('div');
-    cell.className = 'chart-cell';
-
-    var zpmValues = getSeriesValues(scenario.id, project.id, 'zpm');
-    var zpmMedian = median(zpmValues);
-
-    var medians = [];
-    for (var i = 0; i < SERIES_ORDER.length; i++) {
-      var sid = SERIES_ORDER[i];
-      if (state.mutedSeries[sid]) continue;
-      var vals = getSeriesValues(scenario.id, project.id, sid);
-      var m = median(vals);
-      if (m > 0) medians.push({ id: sid, m: m });
-    }
-
-    var pillHtml = '';
-    if (zpmMedian > 0) {
-      var others = medians.filter(function(x) { return x.id !== 'zpm'; });
-      var bestOther = others.length ? others.reduce(function(min, x) { return x.m < min.m ? x : min; }, others[0]) : null;
-
-      if (!bestOther) {
-        pillHtml = '<span class="cell-pill fastest">Only runner</span>';
-      } else {
-        var pctDiff = Math.round((bestOther.m / zpmMedian - 1) * 100);
-        if (pctDiff > 0) {
-          pillHtml = '<span class="cell-pill fastest">Yarn is ' + pctDiff + '% faster</span>';
-        } else if (pctDiff === 0) {
-          pillHtml = '<span class="cell-pill contested">Tied</span>';
-        } else {
-          var cls = -pctDiff <= 10 ? 'contested' : 'slower';
-          pillHtml = '<span class="cell-pill ' + cls + '">Yarn is ' + (-pctDiff) + '% slower</span>';
-        }
-      }
-    }
-
-    cell.innerHTML = '<div class="cell-meta"><span class="median">zpm median <b>' + zpmMedian.toFixed(2) + 's</b></span>' + pillHtml + '</div>';
-
-    var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('viewBox', '0 0 280 120');
-    svg.setAttribute('preserveAspectRatio', 'none');
-    cell.appendChild(svg);
-    drawChart(svg, scenario, project);
-    attachHover(svg, cell, scenario, project);
-
-    return cell;
-  }
-
-  function drawChart(svg, scenario, project) {
-    var W = 280, H = 120;
-    var ML = 30, MR = 6, MT = 8, MB = 18;
-    var PW = W - ML - MR, PH = H - MT - MB;
-
-    var visible = SERIES_ORDER.filter(function(s) { return !state.mutedSeries[s]; });
-    var allVals = [];
-    for (var vi = 0; vi < visible.length; vi++) {
-      var vals = getSeriesValues(scenario.id, project.id, visible[vi]);
-      for (var j = 0; j < vals.length; j++) {
-        if (vals[j] !== null) allVals.push(vals[j]);
-      }
-    }
-
-    if (!allVals.length) return;
-
-    var yMin = Math.min.apply(null, allVals);
-    var yMax = Math.max.apply(null, allVals);
-    var pad = (yMax - yMin) * 0.12 || 0.1;
-    yMin = Math.max(0, yMin - pad);
-    yMax = yMax + pad;
-
-    var points = DATA[scenario.id] && DATA[scenario.id][project.id] && DATA[scenario.id][project.id][SERIES_ORDER[0]];
-    var N = points ? points.length : 0;
-    if (!N) return;
-
-    function xScale(i) { return ML + (i / (N - 1)) * PW; }
-    function yScale(v) { return MT + PH - ((v - yMin) / (yMax - yMin)) * PH; }
-
-    // Grid lines
-    var gridY = [0.25, 0.5, 0.75];
-    for (var gi = 0; gi < gridY.length; gi++) {
-      var gy = MT + gridY[gi] * PH;
-      var ln = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-      ln.setAttribute('x1', ML); ln.setAttribute('x2', W - MR);
-      ln.setAttribute('y1', gy); ln.setAttribute('y2', gy);
-      ln.setAttribute('class', 'ax-line');
-      svg.appendChild(ln);
-    }
-
-    // Axis lines
-    var yAxis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    yAxis.setAttribute('x1', ML); yAxis.setAttribute('x2', ML);
-    yAxis.setAttribute('y1', MT); yAxis.setAttribute('y2', MT + PH);
-    yAxis.setAttribute('class', 'ax-line-strong');
-    svg.appendChild(yAxis);
-
-    var xAxis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    xAxis.setAttribute('x1', ML); xAxis.setAttribute('x2', W - MR);
-    xAxis.setAttribute('y1', MT + PH); xAxis.setAttribute('y2', MT + PH);
-    xAxis.setAttribute('class', 'ax-line-strong');
-    svg.appendChild(xAxis);
-
-    // Y-axis labels
-    var yTicks = [yMin, (yMin + yMax) / 2, yMax];
-    for (var yi = 0; yi < yTicks.length; yi++) {
-      var v = yTicks[yi];
-      var y = yScale(v);
-      var t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      t.setAttribute('x', ML - 5);
-      t.setAttribute('y', y + 3);
-      t.setAttribute('text-anchor', 'end');
-      t.setAttribute('class', 'ax-text');
-      t.textContent = (v < 1 ? v.toFixed(2) : v < 10 ? v.toFixed(1) : Math.round(v).toString()) + 's';
-      svg.appendChild(t);
-    }
-
-    // X-axis date labels
-    var dateIndices = [0, Math.floor(N / 4), Math.floor(N / 2), Math.floor(3 * N / 4), N - 1];
-    for (var di = 0; di < dateIndices.length; di++) {
-      var idx = dateIndices[di];
-      var ts = points[idx].timestamp;
-      var d = new Date(ts * 1000);
-      var label = (d.getMonth() + 1) + '/' + d.getDate();
-      var xt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      xt.setAttribute('x', xScale(idx));
-      xt.setAttribute('y', MT + PH + 12);
-      xt.setAttribute('text-anchor', 'middle');
-      xt.setAttribute('class', 'ax-text');
-      xt.textContent = label;
-      svg.appendChild(xt);
-    }
-
-    // Compute incident index ranges
-    var incidentSet = {};
-    var incidentRanges = [];
-    for (var ii = 0; ii < INCIDENTS.length; ii++) {
-      var inc = INCIDENTS[ii];
-      var iStart = -1, iEnd = -1;
-      for (var ip = 0; ip < N; ip++) {
-        var ts = points[ip].timestamp;
-        if (ts >= inc.start && iStart === -1) iStart = ip;
-        if (ts <= inc.end) iEnd = ip;
-      }
-      if (iStart === -1 || iEnd === -1 || iEnd < iStart) continue;
-      incidentRanges.push({ start: iStart, end: iEnd, label: inc.label });
-      for (var ik = iStart; ik <= iEnd; ik++) incidentSet[ik] = true;
-      var ix1 = xScale(iStart), ix2 = xScale(iEnd);
-      var iw = ix2 - ix1;
-      if (iw < 2) iw = 2;
-      var iRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      iRect.setAttribute('x', ix1);
-      iRect.setAttribute('y', MT);
-      iRect.setAttribute('width', iw);
-      iRect.setAttribute('height', PH);
-      iRect.setAttribute('class', 'incident-area');
-      svg.appendChild(iRect);
-      var iBorder = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      iBorder.setAttribute('x', ix1);
-      iBorder.setAttribute('y', MT);
-      iBorder.setAttribute('width', iw);
-      iBorder.setAttribute('height', PH);
-      iBorder.setAttribute('class', 'incident-border');
-      svg.appendChild(iBorder);
-    }
-
-    // IQR band for zpm
-    if (!state.mutedSeries['zpm']) {
-      var zpmVals = getSeriesValues(scenario.id, project.id, 'zpm');
-      var zpmMed = median(zpmVals);
-      var top = yScale(zpmMed * 1.08);
-      var bot = yScale(zpmMed * 0.92);
-      if (bot > top) {
-        var band = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        band.setAttribute('x', ML);
-        band.setAttribute('y', top);
-        band.setAttribute('width', PW);
-        band.setAttribute('height', bot - top);
-        band.setAttribute('class', 'ax-band');
-        svg.appendChild(band);
-      }
-    }
-
-    // Series lines — draw zpm last so it renders on top
-    var drawOrder = SERIES_ORDER.filter(function(s) { return s !== 'zpm'; });
-    drawOrder.push('zpm');
-
-    for (var si = 0; si < drawOrder.length; si++) {
-      var sid = drawOrder[si];
-      if (state.mutedSeries[sid]) continue;
-      var seriesPoints = DATA[scenario.id] && DATA[scenario.id][project.id] && DATA[scenario.id][project.id][sid];
-      if (!seriesPoints) continue;
-
-      var pathD = '';
-      var prevWasNull = true;
-      for (var pi = 0; pi < seriesPoints.length; pi++) {
-        var sv = seriesPoints[pi].value;
-        if (sv === null || incidentSet[pi]) { prevWasNull = true; continue; }
-        var px = xScale(pi), py = yScale(sv);
-        pathD += (prevWasNull ? 'M' : 'L') + px.toFixed(2) + ',' + py.toFixed(2);
-        prevWasNull = false;
-      }
-
-      if (!pathD) continue;
-      var sMeta = SERIES_META[sid];
-      var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      path.setAttribute('d', pathD);
-      var cls = 'series-line' + (sMeta.dashed ? ' dashed' : '') + (sMeta.accent ? ' highlight' : '');
-      path.setAttribute('class', cls);
-      path.setAttribute('stroke', SERIES_COLORS[sid]);
-      path.style.setProperty('--c', SERIES_COLORS[sid]);
-      svg.appendChild(path);
-    }
-
-    // Version dots (no vertical lines)
-    var versionAtIndex = {};
-    if (state.showVersions) {
-      for (var si = 0; si < drawOrder.length; si++) {
-        var sid = drawOrder[si];
-        if (state.mutedSeries[sid]) continue;
-        var versions = VERSIONS[sid] || [];
-        var seriesP = DATA[scenario.id] && DATA[scenario.id][project.id] && DATA[scenario.id][project.id][sid];
-        if (!seriesP || !versions.length) continue;
-
-        for (var vi = 0; vi < versions.length; vi++) {
-          var vt = versions[vi].t;
-          var bestIdx = 0, bestDist = Infinity;
-          for (var vp = 0; vp < N; vp++) {
-            var dist = Math.abs(points[vp].timestamp - vt);
-            if (dist < bestDist) { bestDist = dist; bestIdx = vp; }
-          }
-          if (incidentSet[bestIdx]) continue;
-          var sv = seriesP[bestIdx] ? seriesP[bestIdx].value : null;
-          if (sv === null) continue;
-
-          if (!versionAtIndex[bestIdx]) versionAtIndex[bestIdx] = [];
-          versionAtIndex[bestIdx].push({ pm: sid, v: versions[vi].v });
-
-          var dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-          dot.setAttribute('cx', xScale(bestIdx));
-          dot.setAttribute('cy', yScale(sv));
-          dot.setAttribute('r', SERIES_META[sid].accent ? 4 : 3);
-          dot.setAttribute('fill', SERIES_COLORS[sid]);
-          dot.setAttribute('class', 'version-dot');
-          svg.appendChild(dot);
-        }
-      }
-    }
-
-    // Crosshair
-    var cross = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    cross.setAttribute('class', 'crosshair');
-    cross.setAttribute('y1', MT);
-    cross.setAttribute('y2', MT + PH);
-    cross.dataset.role = 'cross';
-    svg.appendChild(cross);
-
-    // Hover points
-    for (var hi = 0; hi < SERIES_ORDER.length; hi++) {
-      var hid = SERIES_ORDER[hi];
-      if (state.mutedSeries[hid]) continue;
-      var hMeta = SERIES_META[hid];
-      var c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      c.setAttribute('class', 'hover-pt');
-      c.setAttribute('r', hMeta.accent ? 3.5 : 2.5);
-      c.setAttribute('fill', SERIES_COLORS[hid]);
-      c.dataset.series = hid;
-      svg.appendChild(c);
-    }
-
-    svg.__meta = { ML: ML, MR: MR, MT: MT, MB: MB, PW: PW, PH: PH, N: N, xScale: xScale, yScale: yScale, scenario: scenario, project: project, incidentSet: incidentSet, incidentRanges: incidentRanges, versionAtIndex: versionAtIndex };
-  }
-
-  function attachHover(svg, cell, scenario, project) {
-    var tip = document.getElementById('bench-tip');
-
-    function move(e) {
-      var meta = svg.__meta;
-      if (!meta) return;
-      var rect = svg.getBoundingClientRect();
-      var sx = (e.clientX - rect.left) / rect.width * 280;
-
-      if (sx < meta.ML || sx > 280 - meta.MR) { hide(); return; }
-      var tFrac = (sx - meta.ML) / meta.PW;
-      var idx = Math.max(0, Math.min(meta.N - 1, Math.round(tFrac * (meta.N - 1))));
-      var xPx = meta.xScale(idx);
-
-      var cross = svg.querySelector('.crosshair');
-      var points = DATA[scenario.id][project.id][SERIES_ORDER[0]];
-      var ts = points[idx].timestamp;
-      var d = new Date(ts * 1000);
-      var dateStr = d.toISOString().slice(0, 10);
-
-      var inIncident = meta.incidentSet && meta.incidentSet[idx];
-      var html;
-
-      if (inIncident) {
-        if (cross) cross.classList.remove('show');
-        svg.querySelectorAll('.hover-pt').forEach(function(pt) { pt.classList.remove('show'); });
-
-        var incLabel = '';
-        for (var ii = 0; ii < meta.incidentRanges.length; ii++) {
-          var ir = meta.incidentRanges[ii];
-          if (idx >= ir.start && idx <= ir.end) { incLabel = ir.label; break; }
-        }
-        html = '<div class="tip-x">' + dateStr + ' &middot; ' + project.name + '</div>'
-          + '<div style="color:oklch(0.78 0.15 25);font-size:10px;margin-top:2px;">' + incLabel + '</div>';
-      } else {
-        if (cross) {
-          cross.setAttribute('x1', xPx);
-          cross.setAttribute('x2', xPx);
-          cross.classList.add('show');
-        }
-
-        var rows = [];
-        svg.querySelectorAll('.hover-pt').forEach(function(pt) {
-          var sid = pt.dataset.series;
-          if (state.mutedSeries[sid]) { pt.classList.remove('show'); return; }
-          var sp = DATA[scenario.id] && DATA[scenario.id][project.id] && DATA[scenario.id][project.id][sid];
-          if (!sp || !sp[idx] || sp[idx].value === null) { pt.classList.remove('show'); return; }
-          pt.setAttribute('cx', xPx);
-          pt.setAttribute('cy', meta.yScale(sp[idx].value));
-          pt.classList.add('show');
-          rows.push({ id: sid, value: sp[idx].value });
-        });
-
-        rows.sort(function(a, b) { return a.value - b.value; });
-
-        var vMap = null;
-        if (state.showVersions && versionsFetched) {
-          vMap = {};
-          for (var vk = 0; vk < SERIES_ORDER.length; vk++) {
-            var vkId = SERIES_ORDER[vk];
-            var vkVersions = VERSIONS[vkId];
-            if (!vkVersions || !vkVersions.length) continue;
-            var best = null;
-            for (var vki = vkVersions.length - 1; vki >= 0; vki--) {
-              if (vkVersions[vki].t <= ts) { best = vkVersions[vki].v; break; }
-            }
-            if (best) vMap[vkId] = best;
-          }
-        }
-
-        html = '<div class="tip-x">' + dateStr + ' &middot; ' + scenario.title + ' &middot; ' + project.name + '</div>';
-        for (var ri = 0; ri < rows.length; ri++) {
-          var r = rows[ri];
-          var nameStr = SERIES_META[r.id].name;
-          if (state.showVersions) {
-            if (r.id === 'zpm') nameStr += ' <span class="tip-ver">main</span>';
-            else if (vMap && vMap[r.id]) nameStr += ' <span class="tip-ver">v' + vMap[r.id] + '</span>';
-          }
-          html += '<div class="tip-row" style="--c: ' + SERIES_COLORS[r.id] + '"><span class="sw"></span><span class="nm">' + nameStr + '</span><span class="vl">' + r.value.toFixed(2) + 's</span></div>';
-        }
-      }
-
-      tip.innerHTML = html;
-      tip.classList.add('show');
-      var tw = tip.offsetWidth, th = tip.offsetHeight;
-      var tx = e.clientX + 14, ty = e.clientY + 14;
-      if (tx + tw > window.innerWidth - 12) tx = e.clientX - tw - 14;
-      if (ty + th > window.innerHeight - 12) ty = e.clientY - th - 14;
-      tip.style.left = tx + 'px';
-      tip.style.top = ty + 'px';
-    }
-
-    function hide() {
-      tip.classList.remove('show');
-      var cross = svg.querySelector('.crosshair');
-      if (cross) cross.classList.remove('show');
-      svg.querySelectorAll('.hover-pt').forEach(function(pt) { pt.classList.remove('show'); });
-    }
-
-    cell.addEventListener('mousemove', move);
-    cell.addEventListener('mouseleave', hide);
-  }
-
-  function buildSummary() {
-    function aggregate(scenarioId) {
-      var projectMaxes = {};
-      for (var pi = 0; pi < PROJECTS.length; pi++) {
-        var mx = 0;
-        for (var si = 0; si < SERIES_ORDER.length; si++) {
-          var vals = getSeriesValues(scenarioId, PROJECTS[pi].id, SERIES_ORDER[si]);
-          var m = median(vals);
-          if (m > mx) mx = m;
-        }
-        projectMaxes[PROJECTS[pi].id] = mx;
-      }
-
-      var out = [];
-      for (var si = 0; si < SERIES_ORDER.length; si++) {
-        var sid = SERIES_ORDER[si];
-        var prod = 1;
-        var count = 0;
-        for (var pi = 0; pi < PROJECTS.length; pi++) {
-          var vals = getSeriesValues(scenarioId, PROJECTS[pi].id, sid);
-          var m = median(vals);
-          if (m > 0 && projectMaxes[PROJECTS[pi].id] > 0) {
-            prod *= (m / projectMaxes[PROJECTS[pi].id]);
-            count++;
-          }
-        }
-        if (count > 0) {
-          out.push({ id: sid, name: SERIES_META[sid].name, normalized: Math.pow(prod, 1 / count), color: SERIES_COLORS[sid], accent: SERIES_META[sid].accent });
-        }
-      }
-      out.sort(function(a, b) { return a.normalized - b.normalized; });
-      return out;
-    }
-
-    function renderTo(elId, agg) {
-      var el = document.getElementById(elId);
-      el.innerHTML = '';
-      var max = 0;
-      for (var i = 0; i < agg.length; i++) {
-        if (agg[i].normalized > max) max = agg[i].normalized;
-      }
-      for (var i = 0; i < agg.length; i++) {
-        var a = agg[i];
-        var row = document.createElement('div');
-        row.className = 'summary-bar';
-        row.innerHTML = '<div class="lbl ' + (a.accent ? 'self' : '') + '">' + a.name + '</div><div class="track"><div class="fill ' + (a.accent ? 'self' : '') + '" style="--w: ' + (a.normalized / max).toFixed(3) + (a.accent ? '' : '; background: ' + a.color) + '"></div></div><div class="val ' + (a.accent ? 'self' : '') + '">' + a.normalized.toFixed(2) + '&times;</div>';
-        el.appendChild(row);
-      }
-    }
-
-    renderTo('agg-cold', aggregate('install-full-cold'));
-    renderTo('agg-warm', aggregate('install-cache-and-lock'));
-  }
-
-  // Legend interaction
-  document.querySelectorAll('#legend .lg').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      var pm = btn.dataset.pm;
-      if (state.mutedSeries[pm]) {
-        delete state.mutedSeries[pm];
-        btn.classList.remove('muted');
-      } else {
-        var count = Object.keys(state.mutedSeries).length;
-        if (count >= SERIES_ORDER.length - 1) return;
-        state.mutedSeries[pm] = true;
-        btn.classList.add('muted');
-      }
-      buildGrid();
-      buildSummary();
-    });
-  });
-
-  // Project filter
-  document.querySelectorAll('.filter-pill[data-project]').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      document.querySelectorAll('.filter-pill[data-project]').forEach(function(b) { b.classList.remove('active'); });
-      btn.classList.add('active');
-      state.project = btn.dataset.project;
-      buildGrid();
-    });
-  });
-
-  // Show versions toggle — fetch lazily on first enable
-  var versionCheckbox = document.getElementById('show-versions');
-  var versionLabel = document.getElementById('version-toggle-label');
-  if (versionCheckbox) {
-    versionCheckbox.addEventListener('change', function() {
-      if (versionCheckbox.checked && !versionsFetched) {
-        versionCheckbox.disabled = true;
-        if (versionLabel) versionLabel.classList.add('loading');
-        fetchVersions(function() {
-          versionCheckbox.disabled = false;
-          if (versionLabel) versionLabel.classList.remove('loading');
-          state.showVersions = true;
-          buildGrid();
-        });
-      } else {
-        state.showVersions = versionCheckbox.checked;
-        buildGrid();
-      }
-    });
-  }
-
-  // Init
-  buildGrid();
-  buildSummary();
-})();
+<script is:inline>
+  var nav = document.querySelector('nav');
+  if (nav) document.documentElement.style.setProperty('--nav-h', nav.offsetHeight + 'px');
 </script>
 <script is:inline src="/docs/docs.js"></script>
 </BaseLayout>
