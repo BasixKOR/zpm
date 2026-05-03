@@ -77,16 +77,19 @@
 }
 
 html[data-theme="light"] {
+  --accent: oklch(0.45 0.18 var(--accent-h));
+  --accent-soft: oklch(0.45 0.18 var(--accent-h) / 0.10);
+  --accent-line: oklch(0.45 0.18 var(--accent-h) / 0.30);
   --bg-0: #eef3ff;
   --bg-1: #dce7fb;
   --bg-2: #c5d5f2;
   --fg: #0c1030;
-  --fg-dim: #3a4370;
-  --fg-mute: #7a84a8;
-  --line: rgba(12, 16, 48, 0.10);
-  --line-strong: rgba(12, 16, 48, 0.22);
-  --card: rgba(255, 255, 255, 0.55);
-  --card-border: rgba(12, 16, 48, 0.08);
+  --fg-dim: #252d50;
+  --fg-mute: #515a7a;
+  --line: rgba(12, 16, 48, 0.12);
+  --line-strong: rgba(12, 16, 48, 0.28);
+  --card: rgba(255, 255, 255, 0.72);
+  --card-border: rgba(12, 16, 48, 0.14);
 
   --adm-note-bg: oklch(0.96 0.04 240 / 0.7);
   --adm-note-border: oklch(0.60 0.14 240 / 0.6);
