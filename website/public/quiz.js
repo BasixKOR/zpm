@@ -208,7 +208,9 @@ function handleAnswer(q, picked) {
 function advance() {
   state.cursor += 1;
   renderQuestion();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  requestAnimationFrame(function() {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
 }
 
 /* ────────── End screen ────────── */
@@ -280,7 +282,9 @@ function renderEnd() {
       if (pos >= 0) {
         state.cursor = pos;
         renderQuestion();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        requestAnimationFrame(function() {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
       }
     });
   });
@@ -292,7 +296,9 @@ function restart() {
   state.order = shuffle(QUESTIONS.map(function(_, i) { return i; }));
   history.replaceState(null, '', location.pathname);
   renderQuestion();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  requestAnimationFrame(function() {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
 }
 
 /* ────────── Init ────────── */

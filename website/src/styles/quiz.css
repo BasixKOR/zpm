@@ -5,9 +5,11 @@
   max-width: 1040px;
   margin: 0 auto;
   padding: 40px 24px 64px;
-  min-height: calc(100vh - 67px);
   display: flex;
   flex-direction: column;
+}
+@media (min-width: 880px) {
+  .quiz-shell { min-height: calc(100vh - 67px); }
 }
 
 .quiz-header {
@@ -94,11 +96,10 @@
 /* ── Card / question body ── */
 .quiz-card {
   position: relative;
-  flex: 1;
   max-width: 720px;
 }
 @media (min-width: 880px) {
-  .quiz-card { max-width: none; }
+  .quiz-card { flex: 1; max-width: none; }
 }
 
 .quiz-stage {

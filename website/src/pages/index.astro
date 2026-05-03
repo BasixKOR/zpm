@@ -4,10 +4,12 @@ import SectionHeader from '../components/index/SectionHeader.astro';
 import FeatureCard from '../components/index/FeatureCard.astro';
 import FooterColumn from '../components/index/FooterColumn.astro';
 import VersionPill from '../components/index/VersionPill.astro';
-import stable from '../../config/stable.json';
-import rc from '../../config/rc.json';
 
-const benchmarkSummary = await fetch('https://repo.yarnpkg.com/benchmarks/gatsby/summary').then(r => r.json());
+const [stableVersion, canaryVersion, benchmarkSummary] = await Promise.all([
+  fetch('https://repo.yarnpkg.com/channels/berry/stable').then(r => r.text()).then(v => v.trim()),
+  fetch('https://repo.yarnpkg.com/channels/zpm/canary').then(r => r.text()).then(v => v.trim()),
+  fetch('https://repo.yarnpkg.com/benchmarks/gatsby/summary').then(r => r.json()),
+]);
 const installFullCold = benchmarkSummary
   .filter((d: {subtest: string}) => d.subtest === 'install-full-cold')
   .sort((a: {median: number}, b: {median: number}) => a.median - b.median);
@@ -150,10 +152,6 @@ html[data-theme="light"] img.cat { filter: brightness(0.15); }
 .bar-label.self { color: var(--fg) !important; font-weight: 500; }
 .bar-value.self { color: var(--accent) !important; font-weight: 500; }
 
-/* Scoped media query for nav-links hide on small (easier than inline tailwind for JS-managed elements) */
-@media (max-width: 960px) {
-  .hide-on-md-narrow { display: none !important; }
-}
 </style>
 
   <!-- Hero -->
@@ -162,8 +160,10 @@ html[data-theme="light"] img.cat { filter: brightness(0.15); }
       <div class="grid grid-cols-1 md:grid-cols-[1.1fr_0.9fr] gap-10 md:gap-20 items-center">
         <div>
           <div class="flex gap-2 flex-wrap mb-7">
-            <VersionPill label="stable" title="Stable" version={stable.version} accent />
-            <VersionPill label="rc" title="Release candidate" version={rc.version} />
+            <VersionPill label="stable" title="Stable" version={`v${stableVersion}`} accent />
+            {stableVersion !== canaryVersion && (
+              <VersionPill label="canary" title="Canary" version={`v${canaryVersion}`} />
+            )}
           </div>
           <h1 class="text-[clamp(48px,6.4vw,92px)] leading-[0.96] tracking-[-0.035em] font-medium m-0 mb-7 text-balance">
             Ship with<br/>
@@ -336,8 +336,7 @@ html[data-theme="light"] img.cat { filter: brightness(0.15); }
       ]} />
     </div>
     <div class="max-w-[1240px] mx-auto mt-12 pt-6 border-t border-[var(--line)] flex justify-between text-xs text-[var(--fg-mute)] mono">
-      <span>// yarn @ 2026 — BSD-2-Clause</span>
-      <span>lat 47.6062° N · lon 122.3321° W</span>
+      <span>// Yarn @ 2026 — GPL 3.0</span>
     </div>
   </footer>
 </div>
