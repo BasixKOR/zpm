@@ -1,0 +1,1000 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import '../styles/theme.css';
+import '../styles/docs.css';
+
+const benchmarkData = await fetch('https://repo.yarnpkg.com/benchmarks').then(r => r.json());
+
+interface BenchPoint { timestamp: number; value: number | null; }
+interface BenchEntry { subtest: string; test: string; pm: string; points: BenchPoint[]; }
+
+const SERIES_ORDER = ['zpm', 'yarn', 'npm', 'pnpm', 'classic'] as const;
+const SERIES_META: Record<string, { name: string; dashed: boolean; accent: boolean }> = {
+  zpm:     { name: 'yarn zpm',     dashed: false, accent: true  },
+  yarn:    { name: 'yarn berry',   dashed: false, accent: false },
+  npm:     { name: 'npm',          dashed: false, accent: false },
+  pnpm:    { name: 'pnpm',        dashed: false, accent: false },
+  classic: { name: 'yarn classic', dashed: true,  accent: false },
+};
+
+const PROJECTS = [
+  { id: 'next',   name: 'Next.js' },
+  { id: 'gatsby', name: 'Gatsby' },
+];
+
+const SCENARIOS = [
+  { id: 'install-full-cold',      num: '01', title: 'Full cold install',  desc: 'No lockfile, no global cache, no node_modules. Everything resolves from the registry; tarballs are unpacked and linked from scratch.', tag: 'rm -rf ~/.cache && rm yarn.lock' },
+  { id: 'install-cache-only',     num: '02', title: 'Cache only',         desc: 'Global cache is warm but the project lockfile is gone. Resolution is re-computed; tarballs are reused. Closest to a fresh clone with shared CI cache.', tag: 'rm yarn.lock' },
+  { id: 'install-cache-and-lock', num: '03', title: 'Cache + lockfile',   desc: 'Lockfile exists, cache is warm. The common CI path: dependencies pre-resolved, just need to materialize them on disk.', tag: 'preserve all caches' },
+  { id: 'install-ready',          num: '04', title: 'Recurrent call',     desc: 'Everything is in place — lockfile, cache, node_modules. Should be a near-instant no-op that verifies and exits.', tag: 'second invocation' },
+];
+
+const DATA: Record<string, Record<string, Record<string, { timestamp: number; value: number | null }[]>>> = {};
+for (const entry of benchmarkData as BenchEntry[]) {
+  if (!SERIES_ORDER.includes(entry.pm as any)) continue;
+  if (!PROJECTS.some(p => p.id === entry.test)) continue;
+  if (!DATA[entry.subtest]) DATA[entry.subtest] = {};
+  if (!DATA[entry.subtest][entry.test]) DATA[entry.subtest][entry.test] = {};
+  DATA[entry.subtest][entry.test][entry.pm] = entry.points;
+}
+
+const lastPoint = (benchmarkData as BenchEntry[]).find(e => e.pm === 'zpm')?.points.filter(p => p.value !== null).pop();
+const lastRunDate = lastPoint ? new Date(lastPoint.timestamp * 1000).toISOString().slice(0, 10) : 'N/A';
+---
+
+<BaseLayout title="Benchmarks — Yarn" variant="docs" activePage="benchmarks">
+<style is:global slot="head">
+  .bench-meta {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: color-mix(in oklch, var(--card) 55%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    overflow: hidden;
+  }
+  .bench-meta > div {
+    padding: 14px 18px;
+    border-right: 1px solid var(--line);
+  }
+  .bench-meta > div:last-child { border-right: 0; }
+  .bench-meta .k {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--fg-mute);
+    margin-bottom: 6px;
+  }
+  .bench-meta .v {
+    font-size: 14.5px;
+    color: var(--fg);
+    font-weight: 500;
+    line-height: 1.3;
+  }
+  .bench-meta .v .unit {
+    color: var(--fg-mute);
+    font-weight: 400;
+    font-size: 12.5px;
+    margin-left: 3px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .legend-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 18px;
+    padding: 14px 18px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: color-mix(in oklch, var(--card) 55%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+  }
+  .legend-row .lg {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--fg-dim);
+    cursor: pointer;
+    user-select: none;
+    transition: opacity 0.15s;
+    background: none;
+    border: 0;
+    font-family: inherit;
+    font-size: inherit;
+    padding: 0;
+  }
+  .legend-row .lg.muted { opacity: 0.35; }
+  .legend-row .lg .swatch {
+    width: 18px;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--c, var(--fg));
+    flex-shrink: 0;
+  }
+  .legend-row .lg .swatch.dashed {
+    height: 0;
+    border-top: 2px dashed var(--c, var(--fg));
+    border-radius: 0;
+  }
+  .legend-row .lg .name { color: var(--fg); font-weight: 500; }
+  .legend-row .sep {
+    width: 1px;
+    height: 14px;
+    background: var(--line-strong);
+  }
+
+  .bench-grid {
+    display: grid;
+    grid-template-columns: 220px repeat(var(--bench-cols, 2), minmax(0, 1fr));
+    background: color-mix(in oklch, var(--card) 55%, transparent);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .bench-grid .col-head {
+    padding: 18px 18px 14px;
+    border-left: 1px solid var(--line);
+    border-bottom: 1px solid var(--line-strong);
+    background: color-mix(in oklch, var(--fg) 2%, transparent);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .bench-grid .col-head:first-of-type { border-left: 0; }
+  .bench-grid .col-head .name {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--fg);
+    letter-spacing: -0.005em;
+  }
+  .bench-grid .corner {
+    border-bottom: 1px solid var(--line-strong);
+    padding: 18px 18px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--fg-mute);
+    display: flex;
+    align-items: end;
+  }
+
+  .bench-grid .row-head {
+    padding: 22px 18px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .bench-grid .row-head .row-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--fg-mute);
+  }
+  .bench-grid .row-head h3 {
+    font-size: 17px;
+    font-weight: 500;
+    color: var(--fg);
+    letter-spacing: -0.01em;
+    margin: 0;
+    line-height: 1.2;
+  }
+  .bench-grid .row-head p {
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--fg-dim);
+    margin: 0;
+    text-wrap: pretty;
+  }
+  .bench-grid .row-head .row-tag {
+    margin-top: auto;
+    align-self: flex-start;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--fg-mute);
+    padding: 3px 7px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: color-mix(in oklch, var(--fg) 3%, transparent);
+    letter-spacing: 0.04em;
+  }
+
+  .chart-cell {
+    border-top: 1px solid var(--line);
+    border-left: 1px solid var(--line);
+    padding: 18px 14px 14px;
+    position: relative;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+  }
+  .chart-cell .cell-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 8px;
+    gap: 8px;
+    min-height: 16px;
+  }
+  .chart-cell .cell-meta .median {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--fg-mute);
+  }
+  .chart-cell .cell-meta .median b {
+    color: var(--fg);
+    font-weight: 500;
+  }
+  .chart-cell .cell-meta .winner {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent);
+    padding: 2px 6px;
+    border: 1px solid var(--accent-line);
+    border-radius: 4px;
+    background: var(--accent-soft);
+  }
+  .chart-cell svg {
+    width: 100%;
+    flex: 1;
+    overflow: visible;
+    display: block;
+  }
+
+  .ax-line { stroke: var(--line); stroke-width: 1; }
+  .ax-line-strong { stroke: var(--line-strong); stroke-width: 1; }
+  .ax-text {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    fill: var(--fg-mute);
+    letter-spacing: 0.04em;
+  }
+  .ax-band { fill: var(--accent-soft); opacity: 0.6; }
+  .series-line {
+    fill: none;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .series-line.dashed { stroke-dasharray: 4 3; }
+  .series-line.muted { opacity: 0.18; }
+  .series-line.highlight {
+    stroke-width: 2;
+    filter: drop-shadow(0 0 6px var(--c));
+  }
+
+  .crosshair {
+    stroke: var(--line-strong);
+    stroke-width: 1;
+    stroke-dasharray: 2 2;
+    pointer-events: none;
+    opacity: 0;
+  }
+  .crosshair.show { opacity: 1; }
+  .hover-pt {
+    stroke: var(--bg-0);
+    stroke-width: 1.5;
+    pointer-events: none;
+    opacity: 0;
+  }
+  .hover-pt.show { opacity: 1; }
+
+  .bench-tip {
+    position: fixed;
+    pointer-events: none;
+    z-index: 50;
+    background: var(--card);
+    border: 1px solid var(--line-strong);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--fg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+    opacity: 0;
+    transition: opacity 0.12s;
+    min-width: 160px;
+  }
+  .bench-tip.show { opacity: 1; }
+  .bench-tip .tip-x { color: var(--fg-mute); margin-bottom: 5px; font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; }
+  .bench-tip .tip-row {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 2px 0;
+  }
+  .bench-tip .tip-row .sw {
+    width: 8px; height: 8px; border-radius: 2px;
+    background: var(--c);
+    flex-shrink: 0;
+  }
+  .bench-tip .tip-row .nm { color: var(--fg-dim); flex: 1; }
+  .bench-tip .tip-row .vl { color: var(--fg); font-weight: 500; }
+
+  .summary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .summary-card {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: color-mix(in oklch, var(--card) 55%, transparent);
+    padding: 18px 20px;
+    backdrop-filter: blur(12px);
+  }
+  .summary-card h4 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--fg-mute);
+    margin: 0 0 14px;
+    font-weight: 500;
+  }
+  .summary-bar {
+    display: grid;
+    grid-template-columns: 100px 1fr 70px;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+  }
+  .summary-bar .lbl { color: var(--fg-dim); }
+  .summary-bar .lbl.self { color: var(--fg); font-weight: 500; }
+  .summary-bar .track {
+    height: 8px;
+    background: color-mix(in oklch, var(--fg) 5%, transparent);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .summary-bar .fill {
+    height: 100%;
+    background: var(--fg-mute);
+    border-radius: 4px;
+    transform-origin: left;
+    transform: scaleX(0);
+    animation: bench-grow 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+  .summary-bar .fill.self { background: var(--accent); }
+  .summary-bar .val { color: var(--fg); text-align: right; font-variant-numeric: tabular-nums; }
+  .summary-bar .val.self { color: var(--accent); }
+  @keyframes bench-grow { to { transform: scaleX(var(--w, 1)); } }
+
+  .filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+  .filter-bar .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--fg-mute);
+    margin-right: 6px;
+  }
+  .filter-pill {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+    color: var(--fg-dim);
+    padding: 5px 10px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .filter-pill:hover {
+    color: var(--fg);
+    border-color: var(--line-strong);
+  }
+  .filter-pill.active {
+    color: var(--accent);
+    border-color: var(--accent-line);
+    background: var(--accent-soft);
+  }
+
+  @media (max-width: 980px) {
+    .bench-grid {
+      grid-template-columns: 1fr !important;
+    }
+    .bench-grid .corner { display: none; }
+    .bench-grid .col-head {
+      border-left: 0;
+      border-top: 1px solid var(--line);
+    }
+    .bench-grid .row-head {
+      border-top: 1px solid var(--line-strong);
+      background: color-mix(in oklch, var(--fg) 2%, transparent);
+    }
+    .chart-cell {
+      border-left: 0;
+    }
+    .bench-meta { grid-template-columns: 1fr; }
+    .summary { grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="max-w-[1320px] mx-auto px-6 pt-10 pb-32">
+
+  <!-- Breadcrumb -->
+  <div class="flex items-center gap-2 mono text-[11px] text-[var(--fg-mute)] tracking-[0.1em] uppercase mb-5">
+    <span>Docs</span>
+    <span class="opacity-40">/</span>
+    <span class="text-[var(--fg-dim)]">Benchmarks</span>
+  </div>
+
+  <!-- Heading + filter -->
+  <div class="grid grid-cols-1 md:grid-cols-[1.1fr_0.9fr] gap-10 md:gap-16 items-end mb-10">
+    <div>
+      <h1 class="text-[clamp(36px,4.4vw,52px)] font-medium tracking-[-0.025em] leading-[1.05] text-balance m-0">Package manager comparison.</h1>
+      <p class="m-0 mt-5 text-[18px] leading-[1.55] text-[var(--fg-dim)] max-w-[640px] text-pretty">
+        Continuous benchmarks of <span class="mono text-[var(--fg)]">yarn&nbsp;zpm</span>,
+        <span class="mono text-[var(--fg)]">yarn&nbsp;berry</span>,
+        <span class="mono text-[var(--fg)]">npm</span>,
+        <span class="mono text-[var(--fg)]">pnpm</span>, and
+        <span class="mono text-[var(--fg)]">yarn&nbsp;classic</span> across four install scenarios on two reference projects. Lower is better. Series are wall-clock seconds.
+      </p>
+    </div>
+    <div class="filter-bar md:justify-end">
+      <span class="label">Project</span>
+      <button class="filter-pill active" data-project="all">All</button>
+      <button class="filter-pill" data-project="next">Next.js</button>
+      <button class="filter-pill" data-project="gatsby">Gatsby</button>
+    </div>
+  </div>
+
+  <!-- Run metadata -->
+  <div class="bench-meta mb-7">
+    <div>
+      <div class="k">Last run</div>
+      <div class="v">{lastRunDate}</div>
+    </div>
+    <div>
+      <div class="k">Runner</div>
+      <div class="v">ubuntu-22.04 <span class="unit">4 vCPU · 16 GB</span></div>
+    </div>
+    <div>
+      <div class="k">Data points</div>
+      <div class="v">90 <span class="unit">days of history</span></div>
+    </div>
+  </div>
+
+  <!-- Legend -->
+  <div class="legend-row mb-7" id="legend">
+    <span class="label" style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:0.12em;text-transform:uppercase;color:var(--fg-mute);">Series</span>
+    <button class="lg" data-pm="zpm" style="--c: oklch(0.78 0.16 var(--accent-h))">
+      <span class="swatch"></span>
+      <span class="name">yarn zpm</span>
+    </button>
+    <button class="lg" data-pm="yarn" style="--c: oklch(0.65 0.10 var(--accent-h))">
+      <span class="swatch"></span>
+      <span class="name">yarn berry</span>
+    </button>
+    <span class="sep"></span>
+    <button class="lg" data-pm="npm" style="--c: oklch(0.70 0.15 25)">
+      <span class="swatch"></span>
+      <span class="name">npm</span>
+    </button>
+    <button class="lg" data-pm="pnpm" style="--c: oklch(0.75 0.13 220)">
+      <span class="swatch"></span>
+      <span class="name">pnpm</span>
+    </button>
+    <span class="sep"></span>
+    <button class="lg" data-pm="classic" style="--c: oklch(0.55 0.08 var(--accent-h))">
+      <span class="swatch dashed"></span>
+      <span class="name">yarn classic</span>
+    </button>
+    <span class="sep"></span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--fg-mute);">Click to mute · y-axis = seconds</span>
+  </div>
+
+  <!-- Benchmark grid -->
+  <div class="bench-grid" id="bench-grid"></div>
+
+  <!-- Aggregate summary -->
+  <div class="mt-12 mb-6">
+    <div class="mono text-[11px] text-[var(--fg-mute)] tracking-[0.12em] uppercase mb-2">&sect; Aggregate</div>
+    <h2 class="text-[26px] font-medium tracking-[-0.015em] m-0">Median across all scenarios.</h2>
+    <p class="text-[14.5px] text-[var(--fg-dim)] leading-[1.6] mt-2 max-w-[680px] text-pretty">
+      Geometric mean of cell medians, normalized to the slowest in each row so the chart compares relative performance across scenarios of different absolute scale. Lower is faster.
+    </p>
+  </div>
+  <div class="summary">
+    <div class="summary-card">
+      <h4>Cold install &middot; normalized</h4>
+      <div id="agg-cold"></div>
+    </div>
+    <div class="summary-card">
+      <h4>Cache + lockfile &middot; normalized</h4>
+      <div id="agg-warm"></div>
+    </div>
+  </div>
+
+  <!-- Methodology -->
+  <div class="mt-16 prose">
+    <h2 id="methodology">Methodology</h2>
+    <p>Each scenario &times; project &times; package-manager pair is executed multiple times in a clean container. We record wall-clock duration. Results are collected daily and published here automatically.</p>
+
+    <h3 id="scenarios-explained">Install scenarios</h3>
+    <ol class="steps">
+      <li>
+        <p>Full cold install</p>
+        <p>Global cache is wiped before each invocation. The lockfile and <code>node_modules</code> are removed. Everything resolves from the registry; tarballs are fetched, unpacked, and linked from scratch.</p>
+      </li>
+      <li>
+        <p>Cache only</p>
+        <p>The global cache survives but the project lockfile is removed. Resolution is re-computed; tarballs are reused from cache. Closest to a fresh clone with shared CI cache.</p>
+      </li>
+      <li>
+        <p>Cache + lockfile</p>
+        <p>Lockfile exists, cache is warm. The common CI path: dependencies pre-resolved, just need to materialize them on disk.</p>
+      </li>
+      <li>
+        <p>Recurrent call</p>
+        <p>Everything is in place &mdash; lockfile, cache, node_modules. Should be a near-instant no-op that verifies and exits.</p>
+      </li>
+    </ol>
+
+    <div class="admonition note">
+      <div class="adm-header">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="5.5"/><path d="M7 6.5v3.5M7 4v0.5"/></svg>
+        <span>NOTE</span>
+      </div>
+      <div class="adm-body">
+        Series rendered with a dashed stroke (<span class="mono">yarn classic</span>) are kept for historical reference. Yarn classic is in maintenance and we do not recommend it for new projects &mdash; the modern release line is what you want for production work.
+      </div>
+    </div>
+
+    <h3 id="reference-projects">Reference projects</h3>
+    <p>We chose real-world TypeScript projects with different dependency profiles. Each is pinned to a specific commit; we do not pull <code>main</code> at run time.</p>
+
+    <div class="table-wrap">
+      <table>
+        <caption>Reference projects &mdash; pinned at run time</caption>
+        <thead>
+          <tr>
+            <th scope="col">Project</th>
+            <th scope="col">Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>next</td>
+            <td>Next.js 15 starter &mdash; App Router, Tailwind, MDX, ESLint flat config</td>
+          </tr>
+          <tr>
+            <td>gatsby</td>
+            <td>Gatsby 5 blog &mdash; heavy plugin ecosystem, sharp, MDX, GraphQL</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 id="caveats">Caveats</h3>
+    <ul>
+      <li>Network latency to the registry is held constant via a pull-through proxy on the same VPC. Real-world installs over a transcontinental link will be slower across the board.</li>
+      <li>Linker choice matters: numbers below are <strong>Plug&rsquo;n&rsquo;Play for Yarn</strong>, the default linker for each other manager. Switching Yarn to <code>node-modules</code> removes most of its lead in <em>Full cold</em>.</li>
+      <li>None of these numbers measure correctness. Determinism, peer-resolution strictness, and lockfile portability are evaluated separately.</li>
+    </ul>
+  </div>
+
+</div>
+
+<div class="bench-tip" id="bench-tip"></div>
+
+<script is:inline define:vars={{ DATA, SERIES_ORDER, SERIES_META, PROJECTS, SCENARIOS }}>
+(function() {
+  var SERIES_COLORS = {
+    zpm:     'oklch(0.78 0.16 var(--accent-h))',
+    yarn:    'oklch(0.65 0.10 var(--accent-h))',
+    npm:     'oklch(0.70 0.15 25)',
+    pnpm:    'oklch(0.75 0.13 220)',
+    classic: 'oklch(0.55 0.08 var(--accent-h))',
+  };
+
+  var state = {
+    mutedSeries: {},
+    project: 'all',
+  };
+
+  function median(arr) {
+    var nums = arr.filter(function(v) { return v !== null && v !== undefined; });
+    if (!nums.length) return 0;
+    nums.sort(function(a, b) { return a - b; });
+    return nums[Math.floor(nums.length / 2)];
+  }
+
+  function getSeriesValues(scenarioId, projectId, pm) {
+    if (!DATA[scenarioId] || !DATA[scenarioId][projectId] || !DATA[scenarioId][projectId][pm]) return [];
+    return DATA[scenarioId][projectId][pm].map(function(p) { return p.value; });
+  }
+
+  function buildGrid() {
+    var grid = document.getElementById('bench-grid');
+    var visibleProjects = state.project === 'all' ? PROJECTS : PROJECTS.filter(function(p) { return p.id === state.project; });
+    grid.style.setProperty('--bench-cols', visibleProjects.length);
+
+    grid.innerHTML = '';
+
+    var corner = document.createElement('div');
+    corner.className = 'corner';
+    corner.textContent = 'scenario \\ project';
+    grid.appendChild(corner);
+
+    for (var pi = 0; pi < visibleProjects.length; pi++) {
+      var p = visibleProjects[pi];
+      var h = document.createElement('div');
+      h.className = 'col-head';
+      h.innerHTML = '<span class="name">' + p.name + '</span>';
+      grid.appendChild(h);
+    }
+
+    for (var si = 0; si < SCENARIOS.length; si++) {
+      var sc = SCENARIOS[si];
+      var rh = document.createElement('div');
+      rh.className = 'row-head';
+      rh.innerHTML = '<div class="row-num">&sect; ' + sc.num + ' &middot; scenario</div><h3>' + sc.title + '</h3><p>' + sc.desc + '</p><span class="row-tag mono">' + sc.tag + '</span>';
+      grid.appendChild(rh);
+
+      for (var pj = 0; pj < visibleProjects.length; pj++) {
+        grid.appendChild(makeCell(sc, visibleProjects[pj]));
+      }
+    }
+  }
+
+  function makeCell(scenario, project) {
+    var cell = document.createElement('div');
+    cell.className = 'chart-cell';
+
+    var zpmValues = getSeriesValues(scenario.id, project.id, 'zpm');
+    var zpmMedian = median(zpmValues);
+
+    var medians = [];
+    for (var i = 0; i < SERIES_ORDER.length; i++) {
+      var sid = SERIES_ORDER[i];
+      if (state.mutedSeries[sid]) continue;
+      var vals = getSeriesValues(scenario.id, project.id, sid);
+      if (vals.length) medians.push({ id: sid, m: median(vals) });
+    }
+
+    var winner = medians.length ? medians.reduce(function(min, x) { return x.m > 0 && x.m < min.m ? x : min; }, medians[0]) : null;
+    var isZpmWinner = winner && winner.id === 'zpm';
+
+    cell.innerHTML = '<div class="cell-meta"><span class="median">zpm median <b>' + zpmMedian.toFixed(2) + 's</b></span>' + (isZpmWinner ? '<span class="winner">fastest</span>' : '') + '</div>';
+
+    var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 280 160');
+    svg.setAttribute('preserveAspectRatio', 'none');
+    cell.appendChild(svg);
+    drawChart(svg, scenario, project);
+    attachHover(svg, cell, scenario, project);
+
+    return cell;
+  }
+
+  function drawChart(svg, scenario, project) {
+    var W = 280, H = 160;
+    var ML = 30, MR = 6, MT = 8, MB = 18;
+    var PW = W - ML - MR, PH = H - MT - MB;
+
+    var visible = SERIES_ORDER.filter(function(s) { return !state.mutedSeries[s]; });
+    var allVals = [];
+    for (var vi = 0; vi < visible.length; vi++) {
+      var vals = getSeriesValues(scenario.id, project.id, visible[vi]);
+      for (var j = 0; j < vals.length; j++) {
+        if (vals[j] !== null) allVals.push(vals[j]);
+      }
+    }
+
+    if (!allVals.length) return;
+
+    var yMin = Math.min.apply(null, allVals);
+    var yMax = Math.max.apply(null, allVals);
+    var pad = (yMax - yMin) * 0.12 || 0.1;
+    yMin = Math.max(0, yMin - pad);
+    yMax = yMax + pad;
+
+    var points = DATA[scenario.id] && DATA[scenario.id][project.id] && DATA[scenario.id][project.id][SERIES_ORDER[0]];
+    var N = points ? points.length : 0;
+    if (!N) return;
+
+    function xScale(i) { return ML + (i / (N - 1)) * PW; }
+    function yScale(v) { return MT + PH - ((v - yMin) / (yMax - yMin)) * PH; }
+
+    // Grid lines
+    var gridY = [0.25, 0.5, 0.75];
+    for (var gi = 0; gi < gridY.length; gi++) {
+      var gy = MT + gridY[gi] * PH;
+      var ln = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      ln.setAttribute('x1', ML); ln.setAttribute('x2', W - MR);
+      ln.setAttribute('y1', gy); ln.setAttribute('y2', gy);
+      ln.setAttribute('class', 'ax-line');
+      svg.appendChild(ln);
+    }
+
+    // Axis lines
+    var yAxis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    yAxis.setAttribute('x1', ML); yAxis.setAttribute('x2', ML);
+    yAxis.setAttribute('y1', MT); yAxis.setAttribute('y2', MT + PH);
+    yAxis.setAttribute('class', 'ax-line-strong');
+    svg.appendChild(yAxis);
+
+    var xAxis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    xAxis.setAttribute('x1', ML); xAxis.setAttribute('x2', W - MR);
+    xAxis.setAttribute('y1', MT + PH); xAxis.setAttribute('y2', MT + PH);
+    xAxis.setAttribute('class', 'ax-line-strong');
+    svg.appendChild(xAxis);
+
+    // Y-axis labels
+    var yTicks = [yMin, (yMin + yMax) / 2, yMax];
+    for (var yi = 0; yi < yTicks.length; yi++) {
+      var v = yTicks[yi];
+      var y = yScale(v);
+      var t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      t.setAttribute('x', ML - 5);
+      t.setAttribute('y', y + 3);
+      t.setAttribute('text-anchor', 'end');
+      t.setAttribute('class', 'ax-text');
+      t.textContent = (v < 1 ? v.toFixed(2) : v < 10 ? v.toFixed(1) : Math.round(v).toString()) + 's';
+      svg.appendChild(t);
+    }
+
+    // X-axis date labels
+    var dateIndices = [0, Math.floor(N / 4), Math.floor(N / 2), Math.floor(3 * N / 4), N - 1];
+    for (var di = 0; di < dateIndices.length; di++) {
+      var idx = dateIndices[di];
+      var ts = points[idx].timestamp;
+      var d = new Date(ts * 1000);
+      var label = (d.getMonth() + 1) + '/' + d.getDate();
+      var xt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      xt.setAttribute('x', xScale(idx));
+      xt.setAttribute('y', MT + PH + 12);
+      xt.setAttribute('text-anchor', 'middle');
+      xt.setAttribute('class', 'ax-text');
+      xt.textContent = label;
+      svg.appendChild(xt);
+    }
+
+    // IQR band for zpm
+    if (!state.mutedSeries['zpm']) {
+      var zpmVals = getSeriesValues(scenario.id, project.id, 'zpm');
+      var zpmMed = median(zpmVals);
+      var top = yScale(zpmMed * 1.08);
+      var bot = yScale(zpmMed * 0.92);
+      if (bot > top) {
+        var band = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        band.setAttribute('x', ML);
+        band.setAttribute('y', top);
+        band.setAttribute('width', PW);
+        band.setAttribute('height', bot - top);
+        band.setAttribute('class', 'ax-band');
+        svg.appendChild(band);
+      }
+    }
+
+    // Series lines (zpm last so it's on top)
+    for (var si = 0; si < SERIES_ORDER.length; si++) {
+      var sid = SERIES_ORDER[si];
+      if (state.mutedSeries[sid]) continue;
+      var seriesPoints = DATA[scenario.id] && DATA[scenario.id][project.id] && DATA[scenario.id][project.id][sid];
+      if (!seriesPoints) continue;
+
+      var pathD = '';
+      var started = false;
+      for (var pi = 0; pi < seriesPoints.length; pi++) {
+        var sv = seriesPoints[pi].value;
+        if (sv === null) continue;
+        var px = xScale(pi), py = yScale(sv);
+        pathD += (started ? 'L' : 'M') + px.toFixed(2) + ',' + py.toFixed(2);
+        started = true;
+      }
+
+      if (!pathD) continue;
+      var meta = SERIES_META[sid];
+      var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', pathD);
+      var cls = 'series-line' + (meta.dashed ? ' dashed' : '') + (meta.accent ? ' highlight' : '');
+      path.setAttribute('class', cls);
+      path.setAttribute('stroke', SERIES_COLORS[sid]);
+      path.style.setProperty('--c', SERIES_COLORS[sid]);
+      svg.appendChild(path);
+    }
+
+    // Crosshair
+    var cross = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    cross.setAttribute('class', 'crosshair');
+    cross.setAttribute('y1', MT);
+    cross.setAttribute('y2', MT + PH);
+    cross.dataset.role = 'cross';
+    svg.appendChild(cross);
+
+    // Hover points
+    for (var hi = 0; hi < SERIES_ORDER.length; hi++) {
+      var hid = SERIES_ORDER[hi];
+      if (state.mutedSeries[hid]) continue;
+      var hMeta = SERIES_META[hid];
+      var c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      c.setAttribute('class', 'hover-pt');
+      c.setAttribute('r', hMeta.accent ? 3.5 : 2.5);
+      c.setAttribute('fill', SERIES_COLORS[hid]);
+      c.dataset.series = hid;
+      svg.appendChild(c);
+    }
+
+    svg.__meta = { ML: ML, MR: MR, MT: MT, MB: MB, PW: PW, PH: PH, N: N, xScale: xScale, yScale: yScale, scenario: scenario, project: project };
+  }
+
+  function attachHover(svg, cell, scenario, project) {
+    var tip = document.getElementById('bench-tip');
+
+    function move(e) {
+      var meta = svg.__meta;
+      if (!meta) return;
+      var rect = svg.getBoundingClientRect();
+      var sx = (e.clientX - rect.left) / rect.width * 280;
+
+      if (sx < meta.ML || sx > 280 - meta.MR) { hide(); return; }
+      var tFrac = (sx - meta.ML) / meta.PW;
+      var idx = Math.max(0, Math.min(meta.N - 1, Math.round(tFrac * (meta.N - 1))));
+      var xPx = meta.xScale(idx);
+
+      var cross = svg.querySelector('.crosshair');
+      if (cross) {
+        cross.setAttribute('x1', xPx);
+        cross.setAttribute('x2', xPx);
+        cross.classList.add('show');
+      }
+
+      var rows = [];
+      svg.querySelectorAll('.hover-pt').forEach(function(pt) {
+        var sid = pt.dataset.series;
+        if (state.mutedSeries[sid]) { pt.classList.remove('show'); return; }
+        var sp = DATA[scenario.id] && DATA[scenario.id][project.id] && DATA[scenario.id][project.id][sid];
+        if (!sp || !sp[idx] || sp[idx].value === null) { pt.classList.remove('show'); return; }
+        pt.setAttribute('cx', xPx);
+        pt.setAttribute('cy', meta.yScale(sp[idx].value));
+        pt.classList.add('show');
+        rows.push({ id: sid, value: sp[idx].value });
+      });
+
+      rows.sort(function(a, b) { return a.value - b.value; });
+
+      var points = DATA[scenario.id][project.id][SERIES_ORDER[0]];
+      var ts = points[idx].timestamp;
+      var d = new Date(ts * 1000);
+      var dateStr = d.toISOString().slice(0, 10);
+
+      var html = '<div class="tip-x">' + dateStr + ' &middot; ' + scenario.title + ' &middot; ' + project.name + '</div>';
+      for (var ri = 0; ri < rows.length; ri++) {
+        var r = rows[ri];
+        html += '<div class="tip-row" style="--c: ' + SERIES_COLORS[r.id] + '"><span class="sw"></span><span class="nm">' + SERIES_META[r.id].name + '</span><span class="vl">' + r.value.toFixed(2) + 's</span></div>';
+      }
+
+      tip.innerHTML = html;
+      tip.classList.add('show');
+      var tw = tip.offsetWidth, th = tip.offsetHeight;
+      var tx = e.clientX + 14, ty = e.clientY + 14;
+      if (tx + tw > window.innerWidth - 12) tx = e.clientX - tw - 14;
+      if (ty + th > window.innerHeight - 12) ty = e.clientY - th - 14;
+      tip.style.left = tx + 'px';
+      tip.style.top = ty + 'px';
+    }
+
+    function hide() {
+      tip.classList.remove('show');
+      var cross = svg.querySelector('.crosshair');
+      if (cross) cross.classList.remove('show');
+      svg.querySelectorAll('.hover-pt').forEach(function(pt) { pt.classList.remove('show'); });
+    }
+
+    cell.addEventListener('mousemove', move);
+    cell.addEventListener('mouseleave', hide);
+  }
+
+  function buildSummary() {
+    function aggregate(scenarioId) {
+      var projectMaxes = {};
+      for (var pi = 0; pi < PROJECTS.length; pi++) {
+        var mx = 0;
+        for (var si = 0; si < SERIES_ORDER.length; si++) {
+          var vals = getSeriesValues(scenarioId, PROJECTS[pi].id, SERIES_ORDER[si]);
+          var m = median(vals);
+          if (m > mx) mx = m;
+        }
+        projectMaxes[PROJECTS[pi].id] = mx;
+      }
+
+      var out = [];
+      for (var si = 0; si < SERIES_ORDER.length; si++) {
+        var sid = SERIES_ORDER[si];
+        var prod = 1;
+        var count = 0;
+        for (var pi = 0; pi < PROJECTS.length; pi++) {
+          var vals = getSeriesValues(scenarioId, PROJECTS[pi].id, sid);
+          var m = median(vals);
+          if (m > 0 && projectMaxes[PROJECTS[pi].id] > 0) {
+            prod *= (m / projectMaxes[PROJECTS[pi].id]);
+            count++;
+          }
+        }
+        if (count > 0) {
+          out.push({ id: sid, name: SERIES_META[sid].name, normalized: Math.pow(prod, 1 / count), color: SERIES_COLORS[sid], accent: SERIES_META[sid].accent });
+        }
+      }
+      out.sort(function(a, b) { return a.normalized - b.normalized; });
+      return out;
+    }
+
+    function renderTo(elId, agg) {
+      var el = document.getElementById(elId);
+      el.innerHTML = '';
+      var max = 0;
+      for (var i = 0; i < agg.length; i++) {
+        if (agg[i].normalized > max) max = agg[i].normalized;
+      }
+      for (var i = 0; i < agg.length; i++) {
+        var a = agg[i];
+        var row = document.createElement('div');
+        row.className = 'summary-bar';
+        row.innerHTML = '<div class="lbl ' + (a.accent ? 'self' : '') + '">' + a.name + '</div><div class="track"><div class="fill ' + (a.accent ? 'self' : '') + '" style="--w: ' + (a.normalized / max).toFixed(3) + (a.accent ? '' : '; background: ' + a.color) + '"></div></div><div class="val ' + (a.accent ? 'self' : '') + '">' + a.normalized.toFixed(2) + '&times;</div>';
+        el.appendChild(row);
+      }
+    }
+
+    renderTo('agg-cold', aggregate('install-full-cold'));
+    renderTo('agg-warm', aggregate('install-cache-and-lock'));
+  }
+
+  // Legend interaction
+  document.querySelectorAll('#legend .lg').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var pm = btn.dataset.pm;
+      if (state.mutedSeries[pm]) {
+        delete state.mutedSeries[pm];
+        btn.classList.remove('muted');
+      } else {
+        var count = Object.keys(state.mutedSeries).length;
+        if (count >= SERIES_ORDER.length - 1) return;
+        state.mutedSeries[pm] = true;
+        btn.classList.add('muted');
+      }
+      buildGrid();
+      buildSummary();
+    });
+  });
+
+  // Project filter
+  document.querySelectorAll('.filter-pill[data-project]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.filter-pill[data-project]').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      state.project = btn.dataset.project;
+      buildGrid();
+    });
+  });
+
+  // Init
+  buildGrid();
+  buildSummary();
+})();
+</script>
+</BaseLayout>

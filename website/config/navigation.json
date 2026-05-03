@@ -4,6 +4,7 @@
     { "label": "Concepts", "key": "concepts", "href": "/concepts/switch/" },
     { "label": "Reference", "key": "reference", "href": "/configuration/manifest/" },
     { "label": "Extra", "key": "extra", "href": "/appendix/workspaces-and-peer-deps/" },
+    { "label": "Benchmarks", "key": "benchmarks", "href": "/benchmarks/" },
     { "label": "Quiz", "key": "quiz", "href": "/quiz/" },
     { "label": "Blog", "key": "blog", "href": "/blog" }
   ],
