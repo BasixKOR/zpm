@@ -1,4 +1,4 @@
-import {useState, useCallback, type JSX} from 'react';
+import {useState, useEffect, useCallback, type JSX} from 'react';
 import {BenchmarkChart} from './BenchmarkChart';
 import {BenchmarkTooltip, type HoverInfo} from './BenchmarkTooltip';
 import {BenchmarkSummary} from './BenchmarkSummary';
@@ -104,6 +104,12 @@ export function BenchmarksDashboard({data, seriesOrder, seriesMeta, projects, sc
     } else {
       setHoverInfo(infoOrUpdater);
     }
+  }, []);
+
+  useEffect(() => {
+    const dismiss = () => setHoverInfo(null);
+    window.addEventListener(`scroll`, dismiss, {passive: true});
+    return () => window.removeEventListener(`scroll`, dismiss);
   }, []);
 
   return (

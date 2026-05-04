@@ -1,11 +1,12 @@
-import {useState, useEffect, useMemo, useRef, useCallback, type JSX} from 'react';
+import {useState, useEffect, useMemo, useRef, useCallback, type JSX}                                                          from 'react';
+
+import type {HoverInfo}                                                                                                       from './BenchmarkTooltip';
 import {SERIES_COLORS, median, getSeriesValues, type SeriesMeta, type Scenario, type Project, type Incident, type BenchPoint} from './BenchmarksDashboard';
-import type {HoverInfo} from './BenchmarkTooltip';
-import type {VersionEntry} from './useVersions';
+import type {VersionEntry}                                                                                                    from './useVersions';
 
 const ML = 30, MR = 6, MT = 8, MB = 18;
 
-const GITHUB_REPOS: Record<string, {repo: string; tagPrefix: string}> = {
+const GITHUB_REPOS: Record<string, {repo: string, tagPrefix: string}> = {
   npm: {repo: `npm/cli`, tagPrefix: `v`},
   pnpm: {repo: `pnpm/pnpm`, tagPrefix: `v`},
   classic: {repo: `yarnpkg/yarn`, tagPrefix: `v`},
@@ -16,7 +17,7 @@ interface Props {
   scenario: Scenario;
   project: Project;
   data: Record<string, Array<BenchPoint>>;
-  seriesOrder: readonly string[];
+  seriesOrder: ReadonlyArray<string>;
   seriesMeta: Record<string, SeriesMeta>;
   mutedSeries: Record<string, boolean>;
   incidents: Array<Incident>;
@@ -29,7 +30,7 @@ interface Props {
 export function BenchmarkChart({scenario, project, data, seriesOrder, seriesMeta, mutedSeries, incidents, versions, showVersions, hoveredIndex, onHover}: Props): JSX.Element {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState<{w: number; h: number} | null>(null);
+  const [size, setSize] = useState<{w: number, h: number} | null>(null);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -51,7 +52,7 @@ export function BenchmarkChart({scenario, project, data, seriesOrder, seriesMeta
     if (pw <= 0 || ph <= 0) return null;
 
     const visible = seriesOrder.filter(s => !mutedSeries[s]);
-    const allVals: number[] = [];
+    const allVals: Array<number> = [];
     for (const sid of visible) {
       const vals = getSeriesValues(data, sid);
       for (const v of vals)
@@ -73,7 +74,7 @@ export function BenchmarkChart({scenario, project, data, seriesOrder, seriesMeta
     const yScale = (v: number) => MT + ph - ((v - yMin) / (yMax - yMin)) * ph;
 
     const incidentSet: Record<number, boolean> = {};
-    const incidentRanges: Array<{start: number; end: number; label: string}> = [];
+    const incidentRanges: Array<{start: number, end: number, label: string}> = [];
 
     for (const inc of incidents) {
       let iStart = -1, iEnd = -1;
@@ -89,7 +90,7 @@ export function BenchmarkChart({scenario, project, data, seriesOrder, seriesMeta
 
     const drawOrder = seriesOrder.filter(s => s !== `zpm`).concat(`zpm`);
 
-    const paths: Array<{id: string; d: string; cls: string; color: string}> = [];
+    const paths: Array<{id: string, d: string, cls: string, color: string}> = [];
     for (const sid of drawOrder) {
       if (mutedSeries[sid]) continue;
       const seriesPoints = data[sid];
@@ -99,9 +100,11 @@ export function BenchmarkChart({scenario, project, data, seriesOrder, seriesMeta
       let prevWasNull = true;
       for (let pi = 0; pi < seriesPoints.length; pi++) {
         const sv = seriesPoints[pi].value;
-        if (sv === null || incidentSet[pi]) {prevWasNull = true; continue;}
+        if (sv === null || incidentSet[pi]) {
+          prevWasNull = true; continue;
+        }
         const px = xScale(pi), py = yScale(sv);
-        pathD += (prevWasNull ? `M` : `L`) + px.toFixed(2) + `,` + py.toFixed(2);
+        pathD += `${(prevWasNull ? `M` : `L`) + px.toFixed(2)},${py.toFixed(2)}`;
         prevWasNull = false;
       }
       if (!pathD) continue;
@@ -111,8 +114,8 @@ export function BenchmarkChart({scenario, project, data, seriesOrder, seriesMeta
       paths.push({id: sid, d: pathD, cls, color: SERIES_COLORS[sid]});
     }
 
-    let band: {x: number; y: number; w: number; h: number} | null = null;
-    if (!mutedSeries[`zpm`]) {
+    let band: {x: number, y: number, w: number, h: number} | null = null;
+    if (!mutedSeries.zpm) {
       const zpmVals = getSeriesValues(data, `zpm`);
       const zpmMed = median(zpmVals);
       const top = yScale(zpmMed * 1.08);
@@ -120,7 +123,7 @@ export function BenchmarkChart({scenario, project, data, seriesOrder, seriesMeta
       if (bot > top) band = {x: ML, y: top, w: pw, h: bot - top};
     }
 
-    const versionDots: Array<{cx: number; cy: number; r: number; color: string; cls: string; url: string | null}> = [];
+    const versionDots: Array<{cx: number, cy: number, r: number, color: string, cls: string, url: string | null}> = [];
     if (showVersions && versions) {
       for (const sid of drawOrder) {
         if (mutedSeries[sid]) continue;
@@ -133,7 +136,9 @@ export function BenchmarkChart({scenario, project, data, seriesOrder, seriesMeta
           let bestIdx = 0, bestDist = Infinity;
           for (let vp = 0; vp < N; vp++) {
             const dist = Math.abs(points[vp].timestamp - ver.t);
-            if (dist < bestDist) {bestDist = dist; bestIdx = vp;}
+            if (dist < bestDist) {
+              bestDist = dist; bestIdx = vp;
+            }
           }
           if (incidentSet[bestIdx]) continue;
           const sv = seriesP[bestIdx]?.value;
@@ -163,7 +168,7 @@ export function BenchmarkChart({scenario, project, data, seriesOrder, seriesMeta
 
     const yTicks = [yMin, (yMin + yMax) / 2, yMax].map(v => ({
       value: v,
-      label: (v < 1 ? v.toFixed(2) : v < 10 ? v.toFixed(1) : Math.round(v).toString()) + `s`,
+      label: `${v < 1 ? v.toFixed(2) : v < 10 ? v.toFixed(1) : Math.round(v).toString()}s`,
       pct: (yScale(v) / h * 100),
     }));
 
@@ -193,7 +198,7 @@ export function BenchmarkChart({scenario, project, data, seriesOrder, seriesMeta
   const pill = useMemo(() => {
     if (zpmMedian <= 0) return null;
 
-    const medians: Array<{id: string; m: number}> = [];
+    const medians: Array<{id: string, m: number}> = [];
     for (const sid of seriesOrder) {
       if (mutedSeries[sid]) continue;
       const m = median(getSeriesValues(data, sid));
@@ -201,7 +206,7 @@ export function BenchmarkChart({scenario, project, data, seriesOrder, seriesMeta
     }
 
     const others = medians.filter(x => x.id !== `zpm`);
-    if (!others.length) return {cls: `fastest`, text: `only runner`};
+    if (!others.length) return {cls: `fastest`, text: `no comparison data`};
 
     const fastest = others.reduce((min, x) => x.m < min.m ? x : min, others[0]);
     const name = seriesMeta[fastest.id]?.name ?? fastest.id;
@@ -246,9 +251,11 @@ export function BenchmarkChart({scenario, project, data, seriesOrder, seriesMeta
 
     if (inIncident) {
       let incLabel = ``;
-      for (const ir of chartData.incidentRanges) {
-        if (idx >= ir.start && idx <= ir.end) {incLabel = ir.label; break;}
-      }
+      for (const ir of chartData.incidentRanges)
+        if (idx >= ir.start && idx <= ir.end) {
+          incLabel = ir.label; break;
+        }
+
       onHover({
         mouseX: e.clientX, mouseY: e.clientY, index: idx,
         dateStr, scenarioTitle: scenario.title, projectName: project.name,
@@ -258,7 +265,7 @@ export function BenchmarkChart({scenario, project, data, seriesOrder, seriesMeta
       return;
     }
 
-    const rows: Array<{id: string; value: number}> = [];
+    const rows: Array<{id: string, value: number}> = [];
     for (const sid of seriesOrder) {
       if (mutedSeries[sid]) continue;
       const sp = data[sid];
@@ -274,7 +281,9 @@ export function BenchmarkChart({scenario, project, data, seriesOrder, seriesMeta
         const vers = versions[sid];
         if (!vers?.length) continue;
         for (let i = vers.length - 1; i >= 0; i--) {
-          if (vers[i].t <= ts) {versionMap[sid] = vers[i].v; break;}
+          if (vers[i].t <= ts) {
+            versionMap[sid] = vers[i].v; break;
+          }
         }
       }
     }
@@ -305,7 +314,9 @@ export function BenchmarkChart({scenario, project, data, seriesOrder, seriesMeta
       if (!cd || !svgRef.current) return;
       e.preventDefault();
       const touch = e.touches[0];
-      if (!touch) { prevIdxRef.current = null; oh(null); return; }
+      if (!touch) {
+        prevIdxRef.current = null; oh(null); return;
+      }
       const rect = svgRef.current.getBoundingClientRect();
       const sx = touch.clientX - rect.left;
 
@@ -331,14 +342,16 @@ export function BenchmarkChart({scenario, project, data, seriesOrder, seriesMeta
 
       if (inIncident) {
         let incLabel = ``;
-        for (const ir of cd.incidentRanges) {
-          if (idx >= ir.start && idx <= ir.end) {incLabel = ir.label; break;}
-        }
+        for (const ir of cd.incidentRanges)
+          if (idx >= ir.start && idx <= ir.end) {
+            incLabel = ir.label; break;
+          }
+
         oh({mouseX: touch.clientX, mouseY: touch.clientY, index: idx, dateStr, scenarioTitle: sc.title, projectName: pr.name, isIncident: true, incidentLabel: incLabel, rows: [], versionMap: null, showVersions: sv, seriesMeta: sm});
         return;
       }
 
-      const rows: Array<{id: string; value: number}> = [];
+      const rows: Array<{id: string, value: number}> = [];
       for (const sid of so) {
         if (ms[sid]) continue;
         const sp = d[sid];
@@ -354,7 +367,9 @@ export function BenchmarkChart({scenario, project, data, seriesOrder, seriesMeta
           const vs = ver[sid];
           if (!vs?.length) continue;
           for (let i = vs.length - 1; i >= 0; i--) {
-            if (vs[i].t <= ts) {versionMap[sid] = vs[i].v; break;}
+            if (vs[i].t <= ts) {
+              versionMap[sid] = vs[i].v; break;
+            }
           }
         }
       }
@@ -379,10 +394,10 @@ export function BenchmarkChart({scenario, project, data, seriesOrder, seriesMeta
 
   if (!chartData) {
     return (
-      <div className="chart-cell">
-        <div className="cell-project">{project.name}</div>
-        <div className="cell-meta">
-          <span className="median">{size ? `No data` : ``}</span>
+      <div className={`chart-cell`}>
+        <div className={`cell-project`}>{project.name}</div>
+        <div className={`cell-meta`}>
+          <span className={`median`}>{size ? `No data` : ``}</span>
         </div>
         <div ref={containerRef} style={{position: `relative`, flex: 1, overflow: `visible`}} />
       </div>
@@ -392,21 +407,21 @@ export function BenchmarkChart({scenario, project, data, seriesOrder, seriesMeta
   const gridY = [0.25, 0.5, 0.75];
 
   return (
-    <div ref={cellRef} className="chart-cell" onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}>
-      <div className="cell-project">{project.name}</div>
-      <div className="cell-meta">
-        <span className="median">yarn 6.x median <b>{zpmMedian.toFixed(2)}s</b></span>
+    <div ref={cellRef} className={`chart-cell`} onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}>
+      <div className={`cell-project`}>{project.name}</div>
+      <div className={`cell-meta`}>
+        <span className={`median`}>yarn median <b>{zpmMedian.toFixed(2)}s</b></span>
         {pill && <span className={`cell-pill ${pill.cls}`}>{pill.text}</span>}
       </div>
       <div ref={containerRef} style={{position: `relative`, flex: 1, overflow: `visible`}}>
         <svg ref={svgRef} style={{width: `100%`, height: `100%`, display: `block`, overflow: `visible`}}>
           {gridY.map(f => {
             const gy = MT + f * chartData.ph;
-            return <line key={f} x1={ML} x2={chartData.w - MR} y1={gy} y2={gy} className="ax-line" />;
+            return <line key={f} x1={ML} x2={chartData.w - MR} y1={gy} y2={gy} className={`ax-line`} />;
           })}
 
-          <line x1={ML} x2={ML} y1={MT} y2={MT + chartData.ph} className="ax-line-strong" />
-          <line x1={ML} x2={chartData.w - MR} y1={MT + chartData.ph} y2={MT + chartData.ph} className="ax-line-strong" />
+          <line x1={ML} x2={ML} y1={MT} y2={MT + chartData.ph} className={`ax-line-strong`} />
+          <line x1={ML} x2={chartData.w - MR} y1={MT + chartData.ph} y2={MT + chartData.ph} className={`ax-line-strong`} />
 
           {chartData.incidentRanges.map((ir, i) => {
             const ix1 = chartData.xScale(ir.start);
@@ -414,14 +429,14 @@ export function BenchmarkChart({scenario, project, data, seriesOrder, seriesMeta
             const iw = Math.max(ix2 - ix1, 2);
             return (
               <g key={i}>
-                <rect x={ix1} y={MT} width={iw} height={chartData.ph} className="incident-area" />
-                <rect x={ix1} y={MT} width={iw} height={chartData.ph} className="incident-border" />
+                <rect x={ix1} y={MT} width={iw} height={chartData.ph} className={`incident-area`} />
+                <rect x={ix1} y={MT} width={iw} height={chartData.ph} className={`incident-border`} />
               </g>
             );
           })}
 
           {chartData.band && (
-            <rect x={chartData.band.x} y={chartData.band.y} width={chartData.band.w} height={chartData.band.h} className="ax-band" />
+            <rect x={chartData.band.x} y={chartData.band.y} width={chartData.band.w} height={chartData.band.h} className={`ax-band`} />
           )}
 
           {chartData.paths.map(p => (
@@ -430,7 +445,7 @@ export function BenchmarkChart({scenario, project, data, seriesOrder, seriesMeta
 
           {chartData.versionDots.map((dot, i) =>
             dot.url ? (
-              <a key={i} href={dot.url} target="_blank" rel="noopener noreferrer" className="version-dot-link">
+              <a key={i} href={dot.url} target={`_blank`} rel={`noopener noreferrer`} className={`version-dot-link`}>
                 <circle cx={dot.cx} cy={dot.cy} r={dot.r} fill={dot.color} className={dot.cls} />
               </a>
             ) : (
@@ -444,19 +459,19 @@ export function BenchmarkChart({scenario, project, data, seriesOrder, seriesMeta
               x2={chartData.xScale(hoveredIndex)}
               y1={MT}
               y2={MT + chartData.ph}
-              className="crosshair"
+              className={`crosshair`}
             />
           )}
         </svg>
 
         {chartData.yTicks.map((tick, i) => (
-          <span key={i} className="ax-label ax-label-y" style={{top: `${tick.pct}%`, left: `${(ML - 4) / chartData.w * 100}%`}}>
+          <span key={i} className={`ax-label ax-label-y`} style={{top: `${tick.pct}%`, left: `${(ML - 4) / chartData.w * 100}%`}}>
             {tick.label}
           </span>
         ))}
 
         {chartData.xLabels.map((lbl, i) => (
-          <span key={i} className="ax-label ax-label-x" style={{left: `${lbl.pct}%`, top: `${(MT + chartData.ph + 6) / chartData.h * 100}%`}}>
+          <span key={i} className={`ax-label ax-label-x`} style={{left: `${lbl.pct}%`, top: `${(MT + chartData.ph + 6) / chartData.h * 100}%`}}>
             {lbl.label}
           </span>
         ))}

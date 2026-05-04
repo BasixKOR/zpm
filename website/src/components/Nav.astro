@@ -1,6 +1,7 @@
 ---
 import Logo from '../../public/logo.svg';
 import SimpleIcon from './SimpleIcon.astro';
+import SearchModal from './SearchModal.tsx';
 
 interface Props {
   variant?: 'index' | 'docs';
@@ -35,12 +36,12 @@ const socialLinkClass = 'text-[var(--fg-dim)] inline-flex items-center justify-c
     </div>
     <div class="flex-1"></div>
     <div class="flex items-center gap-2.5 text-[13px] text-[var(--fg-mute)]">
-      <div role="search" class="hide-on-md-narrow inline-flex items-center gap-2 pl-3 pr-2 py-1.5 bg-[color-mix(in_oklch,var(--fg)_4%,transparent)] border border-[var(--line-strong)] rounded-[10px] min-w-[170px] text-[var(--fg-mute)] transition-colors focus-within:border-[var(--accent-line)] focus-within:bg-[color-mix(in_oklch,var(--fg)_7%,transparent)]">
+      <div role="search" class="hide-on-md-narrow inline-flex items-center gap-2 pl-3 pr-2 py-1.5 bg-[color-mix(in_oklch,var(--fg)_4%,transparent)] border border-[var(--line-strong)] rounded-[10px] min-w-[170px] text-[var(--fg-mute)] transition-colors cursor-pointer hover:border-[var(--accent-line)] hover:bg-[color-mix(in_oklch,var(--fg)_7%,transparent)]">
         <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
           <circle cx="7" cy="7" r="4.5"/>
           <path d="M10.5 10.5 L14 14"/>
         </svg>
-        <input type="search" placeholder="Search docs…" aria-label="Search" class="flex-1 bg-transparent border-0 outline-0 text-[var(--fg)] font-[inherit] text-[13px] p-0 min-w-0 placeholder:text-[var(--fg-mute)]" />
+        <span class="flex-1 text-[var(--fg-mute)] text-[13px]">Search docs…</span>
         <kbd class="mono text-[10.5px] px-1.5 py-0.5 border border-[var(--line-strong)] rounded-[5px] text-[var(--fg-mute)] bg-[color-mix(in_oklch,var(--fg)_6%,transparent)] tracking-[0.02em]">⌘K</kbd>
       </div>
       <a href="https://discord.gg/yarnpkg" aria-label="Discord" class={`hide-on-md-narrow ${socialLinkClass}`}>
@@ -65,6 +66,8 @@ const socialLinkClass = 'text-[var(--fg-dim)] inline-flex items-center justify-c
     </div>
   </div>
 </nav>
+
+<SearchModal client:only="react" />
 
 <div id="mobile-menu" class="mobile-menu">
   <div class="mobile-menu-backdrop" id="mobile-menu-backdrop"></div>
