@@ -30,10 +30,12 @@ const formattedDate = post.data.date.toLocaleDateString(`en-US`, {
   day: `numeric`,
 });
 
+const postDescription = post.body ? post.body.replace(/[#*_\[\]`>]/g, ``).slice(0, 155).trim() + `\u2026` : post.data.title;
+
 const bskyShareUrl = `https://bsky.app/intent/compose?text=${encodeURIComponent(post.data.title)}`;
 ---
 
-<BlogLayout title={`${post.data.title} — Yarn Blog`}>
+<BlogLayout title={`${post.data.title} — Yarn Blog`} description={postDescription}>
   <article class="article-shell">
 
     <a class="back-link" href="/blog">

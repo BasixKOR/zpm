@@ -8,8 +8,8 @@
     "record": "node --experimental-strip-types scripts/record-terminal.ts"
   },
   "dependencies": {
-    "@astrojs/node": "^9.5.5",
     "@astrojs/react": "^5.0.4",
+    "@astrojs/sitemap": "^3.7.2",
     "@clipanion/astro": "../scripts/@clipanion-astro.tgz",
     "@clipanion/tools": "../scripts/@clipanion-tools.tgz",
     "@iconify-json/octicon": "^1.2.23",

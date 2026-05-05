@@ -21,7 +21,7 @@ const description = entry.data.commandSpec.documentation?.description ?? ``;
 const pathSegments = entry.data.commandSpec.primaryPath;
 ---
 
-<DocsLayout title={`${entry.data.title} — Yarn CLI reference`} activePage="reference" mainMaxWidth="820px">
+<DocsLayout title={`${entry.data.title} — Yarn CLI reference`} activePage="reference" mainMaxWidth="820px" description={description}>
   <Fragment slot="sidebar">
     <ReferenceSidebar activePage={entry.id} cliEntries={switchEntries} cliPrefix="switch" />
   </Fragment>

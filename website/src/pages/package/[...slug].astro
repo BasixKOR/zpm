@@ -6,7 +6,9 @@ import '../../styles/package.css';
 import simpleIconData from '@iconify-json/simple-icons/icons.json';
 import octIconData from '@iconify-json/octicon/icons.json';
 
-export const prerender = false;
+export function getStaticPaths() {
+  return [{params: {slug: undefined}}];
+}
 
 function extractSimple(name: string) {
   const icon = (simpleIconData as any).icons[name];
@@ -54,7 +56,7 @@ const octicons = {
 };
 ---
 
-<BaseLayout title="Package — Yarn" variant="docs">
+<BaseLayout title="Package — Yarn" variant="docs" description="Browse npm package details, versions, dependencies, and files.">
   <PackagePage client:only="react" brandIcons={brandIcons} octicons={octicons} />
 </BaseLayout>
 

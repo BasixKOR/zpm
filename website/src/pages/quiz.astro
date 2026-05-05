@@ -6,18 +6,7 @@ import quiz from '../../config/quiz.json';
 const { questions, levels } = quiz;
 ---
 
-<BaseLayout title="Do you know Yarn? — A short quiz" variant="docs" activePage="quiz">
-  <Fragment slot="head">
-    <meta name="description" content="Ten quick questions about what Yarn can actually do. Most developers are surprised by a few!" />
-    <meta property="og:type" content="website" />
-    <meta property="og:title" content="Do you know Yarn?" />
-    <meta property="og:description" content="A 10-question quiz about Yarn's features. Most developers are surprised by a few!" />
-    <meta property="og:url" content="https://yarnpkg.com/quiz" />
-    <meta property="og:site_name" content="Yarn" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Do you know Yarn?" />
-    <meta name="twitter:description" content="A 10-question quiz about Yarn's features. Most developers are surprised by a few!" />
-  </Fragment>
+<BaseLayout title="Do you know Yarn? — A short quiz" variant="docs" activePage="quiz" description="Ten quick questions about what Yarn can actually do. Most developers are surprised by a few!">
 
   <main class="quiz-shell">
     <header class="quiz-header">

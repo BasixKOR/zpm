@@ -16,7 +16,7 @@ interface Props {
 const { title, description, breadcrumb, activePage, mainMaxWidth = `780px` } = Astro.props;
 ---
 
-<BaseLayout title={title} variant="docs" activePage={activePage}>
+<BaseLayout title={title} variant="docs" activePage={activePage} description={description}>
   <div class="max-w-[1320px] mx-auto px-6 grid grid-cols-1 md:grid-cols-[240px_minmax(0,1fr)] gap-8 lg:gap-14">
 
     <aside class="docs-sidebar">

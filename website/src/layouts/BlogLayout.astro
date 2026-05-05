@@ -5,12 +5,13 @@ import '../styles/blog.css';
 
 interface Props {
   title: string;
+  description?: string;
 }
 
-const { title } = Astro.props;
+const { title, description } = Astro.props;
 ---
 
-<BaseLayout title={title} variant="docs" activePage="blog">
+<BaseLayout title={title} variant="docs" activePage="blog" description={description}>
   <slot />
 
   <footer class="border-t border-[var(--line)] mt-16 py-10">

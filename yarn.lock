@@ -5,7 +5,7 @@
   "workspaces": {
     "@yarnpkg/documentation": "105cf01165fcffc02e5a354f6734895d01fbb152899e635b1d1b152a04e48c904810d457a85b09d642ca9061bf01e02dc203eabdf0c3a29ddf20036b31e43cde",
     "@yarnpkg/monorepo": "69da8dfb279601957675174872ca291310b88ff5e33fcc0060b11a3503fdef48f629515bcf7d74fbe12b83b2a84b7f0249cf8154978d15bc6a3fa3c634624f94",
-    "@yarnpkg/website": "cd2e5e547f845fc85e30c7474a6ea4afa9f7eac63d7a633186fcc4585447dacc08a20ae7d17e1cedef951c5673f6898ab0d53369b93662229e711b6524d8ca5b",
+    "@yarnpkg/website": "ab3f96013b563844131101c19e8cd1bb1e971418ab4f4316d476c2e30ca485be768037c4587127da514ad0b1ee13d1c4488dac66b0fb8d5e181c2957b6152caf",
     "@yarnpkg/zpm-constraints": "5c6a5440669d0a0244f06ebc980b86b246235da3b4da7fc5c2bbdc0bf61ef23e95d8bb9f2fdb7402d20cf0ac8461b086799a0e0e606054b85e9ac472be1dd9d2",
     "@yarnpkg/zpm-daemon-ui": "64b5d42d2f7f1113e164b3c3137385b0d72824abc41ca9e4d852261f61018f037cbe0b0d5c97d7b3529075ff8b6ceead5803590a5ff9ee3564a785732262564a",
     "acceptance-tests": "9e727eab8feee6a4383eb4abec8384decbaf30d2ee37dca7d2c8fc1e6afff399509282042cc605746ffaca0ed8f7e5b964b88327ecd50c5077d7a44b7ea4a5ae",
@@ -825,21 +825,6 @@
         }
       }
     },
-    "@astrojs/node@npm:^9.5.5": {
-      "checksum": "1fad41426608519021f118d373abf6a172f2ec01bb5b146addeb6379a18df86adf07e87b2f06cfff42ebafea483173ab07d9e8ee33f6b482286fe45f0e439902",
-      "resolution": {
-        "resolution": "@astrojs/node@npm:9.5.5",
-        "version": "9.5.5",
-        "dependencies": {
-          "@astrojs/internal-helpers": "0.7.6",
-          "send": "^1.2.1",
-          "server-destroy": "^1.0.1"
-        },
-        "peerDependencies": {
-          "astro": "^5.17.3"
-        }
-      }
-    },
     "@astrojs/preact@npm:^4.1.0": {
       "checksum": "5254bc7886ea9a8c4b35a1f04b0daf0e1116cce28125e2edfe792278e27f6ef49095d6676ce05134a44c835a0b6ffd57cd8c8197992371a1eae34ff907174d40",
       "resolution": {
@@ -895,6 +880,18 @@
           "sitemap": "^8.0.0",
           "stream-replace-string": "^2.0.0",
           "zod": "^3.25.76"
+        }
+      }
+    },
+    "@astrojs/sitemap@npm:^3.7.2": {
+      "checksum": "3aa0348fce1d2b344b489d27158f4c0b5bc916fbc43cf418469b2bbe6aaf4faba6b8b38db85804906d0a0461a124c2dd4220a43951e7bb5faaa1743014fe095a",
+      "resolution": {
+        "resolution": "@astrojs/sitemap@npm:3.7.2",
+        "version": "3.7.2",
+        "dependencies": {
+          "sitemap": "^9.0.0",
+          "stream-replace-string": "^2.0.0",
+          "zod": "^4.3.6"
         }
       }
     },
@@ -15847,7 +15844,7 @@
         "version": "3.0.0"
       }
     },
-    "encodeurl@npm:^2.0.0, encodeurl@npm:~2.0.0": {
+    "encodeurl@npm:~2.0.0": {
       "checksum": "e91cc8840ba9c86b7d7c75d3afb78895745b72d232721369b6f0466c9805fd3d40ffef7c6bdd5c06b857087d15020e7b00cb2439ab8b03471d69e0d754ee9a30",
       "resolution": {
         "resolution": "encodeurl@npm:2.0.0",
@@ -16472,7 +16469,7 @@
         "version": "3.2.0"
       }
     },
-    "escape-html@npm:^1.0.3, escape-html@npm:~1.0.3": {
+    "escape-html@npm:~1.0.3": {
       "checksum": "d7e6dec7b1427b58631c93e5bbe68729e8cf7e25496828406a58a9a6354aa2d95adac3a54e3117b7691e6a26a6f1fdc8a9ccd1be98a1c9b5b1303a39a98346db",
       "resolution": {
         "resolution": "escape-html@npm:1.0.3",
@@ -17035,7 +17032,7 @@
         "version": "2.0.3"
       }
     },
-    "etag@npm:^1.8.1, etag@npm:~1.8.1": {
+    "etag@npm:~1.8.1": {
       "checksum": "fc5d1f624b96ef48e5f4615a1b388cda5b16313569b23f07005811ece08c8834fdbbc29a7cfa62c08d27da12877958de09a0484cbeca358e1d1901edb2638825",
       "resolution": {
         "resolution": "etag@npm:1.8.1",
@@ -17731,13 +17728,6 @@
       "resolution": {
         "resolution": "fraction.js@npm:5.3.4",
         "version": "5.3.4"
-      }
-    },
-    "fresh@npm:^2.0.0": {
-      "checksum": "2e486d348263424077dd56e1ff73450b6bf5f9270d6fbb2cf3002ae64ff1ba2cf07ef8337a1be64132af50670801c44eb4348b9533560d064a4fc68a48473e35",
-      "resolution": {
-        "resolution": "fresh@npm:2.0.0",
-        "version": "2.0.0"
       }
     },
     "fresh@npm:~0.5.2": {
@@ -19367,7 +19357,7 @@
         }
       }
     },
-    "http-errors@npm:^2.0.1, http-errors@npm:~2.0.0, http-errors@npm:~2.0.1": {
+    "http-errors@npm:~2.0.0, http-errors@npm:~2.0.1": {
       "checksum": "e266bd29d3fd38dff6f78e75e333efc8756edf4e8104bdae3ce733f240fb9c3205a5df6e3420dbedae5934a431e05e7d1f04e6ebaa3fff200e78d87e64e10c6d",
       "resolution": {
         "resolution": "http-errors@npm:2.0.1",
@@ -23129,7 +23119,7 @@
         "version": "1.52.0"
       }
     },
-    "mime-db@npm:>= 1.43.0 < 2, mime-db@npm:^1.54.0": {
+    "mime-db@npm:>= 1.43.0 < 2": {
       "checksum": "f203fc5838a8c4d0452dbd24ec46297df831a6b5c23d501e80629e107c418452b9ca666614c49a3314032e523ed15b67b81ecbf449075b8e2dfcf2ef1b5fe780",
       "resolution": {
         "resolution": "mime-db@npm:1.54.0",
@@ -23143,16 +23133,6 @@
         "version": "2.1.35",
         "dependencies": {
           "mime-db": "1.52.0"
-        }
-      }
-    },
-    "mime-types@npm:^3.0.2": {
-      "checksum": "0fa1f4ebd3afe37444671b64e89c08f881aaf831e1311b6ac3db9dba2b36d7a3a56e5a66d689fface9dc828e38dac76032eefb9e3696704ee61d9178f7e44cec",
-      "resolution": {
-        "resolution": "mime-types@npm:3.0.2",
-        "version": "3.0.2",
-        "dependencies": {
-          "mime-db": "^1.54.0"
         }
       }
     },
@@ -23998,7 +23978,7 @@
         "version": "2.0.11"
       }
     },
-    "on-finished@npm:2.4.1, on-finished@npm:^2.4.1, on-finished@npm:~2.4.1": {
+    "on-finished@npm:2.4.1, on-finished@npm:~2.4.1": {
       "checksum": "9e62d26347f0a452fba65ddaa71dd79f57abb09df1aee050cd07abb0971eb4c5dbe48d95bb4e1c92d3a97262d73324c96926853aff6d5d253703cad8640f5d2f",
       "resolution": {
         "resolution": "on-finished@npm:2.4.1",
@@ -26960,7 +26940,7 @@
         "version": "1.4.1"
       }
     },
-    "sax@npm:^1.5.0": {
+    "sax@npm:^1.4.1, sax@npm:^1.5.0": {
       "checksum": "3d46c61bd8c9efe95d62481fa27fde8052bf9f8dd9502bc149126288a70f50ba074447a9dbc8af941f1afd8b6cb05a0316bbe187ca4b70355ecc67979582c032",
       "resolution": {
         "resolution": "sax@npm:1.6.0",
@@ -27086,26 +27066,6 @@
         "version": "7.7.4"
       }
     },
-    "send@npm:^1.2.1": {
-      "checksum": "b09534cda5d0c5aa2c062c3479a88bfd1ed7abfddb89c4381de9407fd13f5bbacd20bb9e592b7bfc66a4303d3ccb4a87f767c86c5b0c97c079eb383eb1e43a2b",
-      "resolution": {
-        "resolution": "send@npm:1.2.1",
-        "version": "1.2.1",
-        "dependencies": {
-          "debug": "^4.4.3",
-          "encodeurl": "^2.0.0",
-          "escape-html": "^1.0.3",
-          "etag": "^1.8.1",
-          "fresh": "^2.0.0",
-          "http-errors": "^2.0.1",
-          "mime-types": "^3.0.2",
-          "ms": "^2.1.3",
-          "on-finished": "^2.4.1",
-          "range-parser": "^1.2.1",
-          "statuses": "^2.0.2"
-        }
-      }
-    },
     "send@npm:~0.19.0, send@npm:~0.19.1": {
       "checksum": "955fd994ac98b3eb4e90ba48748b194c5b4cc2bde123985b73bc7aad57f1438ffe52ea53f2dc6e9f66ee6cb4913a5512a95e8e19c187b5f6bebc5c58b94ef198",
       "resolution": {
@@ -27188,13 +27148,6 @@
           "parseurl": "~1.3.3",
           "send": "~0.19.1"
         }
-      }
-    },
-    "server-destroy@npm:^1.0.1": {
-      "checksum": "18532955c8d9b215062b8b691a89dc197d0d02a2e7a3cfca1750574747fc987d9477b0ee493235d1c1ffae8a129d02ff7661edf6dad69ef23dbe3c2e6ac70fc5",
-      "resolution": {
-        "resolution": "server-destroy@npm:1.0.1",
-        "version": "1.0.1"
       }
     },
     "set-blocking@npm:^2.0.0": {
@@ -27588,6 +27541,19 @@
         }
       }
     },
+    "sitemap@npm:^9.0.0": {
+      "checksum": "1b5dfbb94ceb076a0661a30c91405980c3f51bbe2423c06ac37d0dc1a4e1f51e7e65f7348543a3165df7d2269a3df2b92e8f8431e714a85fb7acdd10a85c286f",
+      "resolution": {
+        "resolution": "sitemap@npm:9.0.1",
+        "version": "9.0.1",
+        "dependencies": {
+          "@types/node": "^24.9.2",
+          "@types/sax": "^1.2.1",
+          "arg": "^5.0.0",
+          "sax": "^1.4.1"
+        }
+      }
+    },
     "slash@npm:^3.0.0": {
       "checksum": "62148be0758445340c8b3035b19c056fb05a65b54cd78441af4a8a140f6ec7d138f49491b7029e2376600be96d9fefbfc761cd2b53c272885cc2c1f1f1f1a2a6",
       "resolution": {
@@ -27898,7 +27864,7 @@
         "version": "2.0.1"
       }
     },
-    "statuses@npm:^2.0.2, statuses@npm:~2.0.1, statuses@npm:~2.0.2": {
+    "statuses@npm:~2.0.1, statuses@npm:~2.0.2": {
       "checksum": "cdce10f2d970af45069b1b8e7b06e9b043c1e65c9749dd699f6cbce3385a9a1b60b6087e1ebc33d486121a93c7d6eb466ae1c3794695ce2a1f5db2fef65f1782",
       "resolution": {
         "resolution": "statuses@npm:2.0.2",
@@ -30812,6 +30778,13 @@
       "resolution": {
         "resolution": "zod@npm:4.1.12",
         "version": "4.1.12"
+      }
+    },
+    "zod@npm:^4.3.6": {
+      "checksum": "8d5f746b783362f5fd0942816a6a9ac7166a0e2d8362e72b58cef2c4b5de0bb477fa64a76f0304ed8580ffa761b57d3519787fb0ea64660804619ff9cd5b6a16",
+      "resolution": {
+        "resolution": "zod@npm:4.4.3",
+        "version": "4.4.3"
       }
     },
     "zod-to-json-schema@npm:^3.24.6": {
