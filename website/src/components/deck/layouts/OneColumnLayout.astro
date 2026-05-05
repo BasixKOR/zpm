@@ -12,11 +12,14 @@ interface Props {
   bodyMaxWidth?: string;
 }
 
-const { eyebrow, title, sectionTag, bottomLeft, bottomRight, label, titleMaxWidth = '1500px', bodyMaxWidth = '1100px' } = Astro.props;
+const { eyebrow, title, sectionTag, bottomLeft, bottomRight, label, titleMaxWidth = `1500px`, bodyMaxWidth = `1100px` } = Astro.props;
 ---
 
 <ContentSlide sectionTag={sectionTag} bottomLeft={bottomLeft} bottomRight={bottomRight} label={label}>
-  <div class="reveal reveal-1 font-mono text-sm tracking-[0.14em] text-[var(--fg-mute)] uppercase mb-7">{eyebrow}</div>
+  <div class="reveal reveal-1 font-mono text-sm tracking-[0.14em] text-[var(--fg-mute)] uppercase mb-7">
+    {eyebrow}
+  </div>
+
   <h2 class="slide-title reveal reveal-2 text-[76px] leading-[1.02] tracking-[-0.028em] font-medium m-0 mb-9 text-balance" style={`max-width: ${titleMaxWidth}`} set:html={title} />
 
   <div style={`max-width: ${bodyMaxWidth}`}>

@@ -89,11 +89,19 @@ function renderFacets(text: string, facets?: BskyFacet[]): string {
 }
 
 function escapeHtml(s: string): string {
-  return s.replace(/&/g, `&amp;`).replace(/</g, `&lt;`).replace(/>/g, `&gt;`).replace(/"/g, `&quot;`);
+  return s
+    .replace(/&/g, `&amp;`)
+    .replace(/</g, `&lt;`)
+    .replace(/>/g, `&gt;`)
+    .replace(/"/g, `&quot;`);
 }
 
 function escapeAttr(s: string): string {
-  return s.replace(/&/g, `&amp;`).replace(/"/g, `&quot;`).replace(/</g, `&lt;`).replace(/>/g, `&gt;`);
+  return s
+    .replace(/&/g, `&amp;`)
+    .replace(/"/g, `&quot;`)
+    .replace(/</g, `&lt;`)
+    .replace(/>/g, `&gt;`);
 }
 
 function postUrlFromUri(uri: string, handle: string): string {
@@ -104,6 +112,7 @@ function postUrlFromUri(uri: string, handle: string): string {
 export async function fetchSkeets(handle: string, limit = 5): Promise<Skeet[]> {
   try {
     const url = `${API_BASE}/app.bsky.feed.getAuthorFeed?actor=${encodeURIComponent(handle)}&limit=${limit * 2}`;
+
     const res = await fetch(url);
     if (!res.ok) return [];
 

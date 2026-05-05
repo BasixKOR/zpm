@@ -5,10 +5,10 @@ import ReferenceSidebar from '../../components/ReferenceSidebar.astro';
 import PageHeader from '../../components/PageHeader.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 
-const switchEntries = await getCollection('switch');
+const switchEntries = await getCollection(`switch`);
 
 export async function getStaticPaths() {
-  const entries = await getCollection('switch');
+  const entries = await getCollection(`switch`);
   return entries.map(entry => ({
     params: {slug: entry.id.replace(/^switch\//, ``)},
     props: {entry},
@@ -27,6 +27,7 @@ const pathSegments = entry.data.commandSpec.primaryPath;
   </Fragment>
 
   <Breadcrumb segments={["Docs", "Reference", "Switch", ...pathSegments.slice(1)]} />
+
   <PageHeader
     title={entry.data.title}
     lead={description}

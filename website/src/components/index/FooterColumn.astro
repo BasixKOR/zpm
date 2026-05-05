@@ -8,8 +8,13 @@ const { title, links } = Astro.props;
 ---
 
 <div>
-  <h4 class="text-xs mono text-[var(--fg-mute)] tracking-[0.1em] m-0 mb-4 font-medium">{title}</h4>
+  <h4 class="text-xs mono text-[var(--fg-mute)] tracking-[0.1em] m-0 mb-4 font-medium">
+    {title}
+  </h4>
+
   {links.map(link => (
-    <a href={link.href} class="block text-sm text-[var(--fg-dim)] no-underline py-1 hover:text-[var(--fg)] transition-colors">{link.label}</a>
+    <a class="block text-sm text-[var(--fg-dim)] no-underline py-1 hover:text-[var(--fg)] transition-colors" href={link.href}>
+      {link.label}
+    </a>
   ))}
 </div>

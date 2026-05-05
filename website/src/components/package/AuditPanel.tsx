@@ -3,6 +3,7 @@ import {OctIcon} from './icons';
 
 export function AuditPanel() {
   const {oct} = useIcons();
+
   const bars = [
     {label: `Maintenance`, value: 0.84, display: `84`},
     {label: `Popularity`, value: 0.76, display: `76`},
@@ -21,6 +22,7 @@ export function AuditPanel() {
         <div className={`text-sm text-[var(--fg-mute)] mb-6`}>
           Scores are computed from npm registry metadata. Detailed audit data requires a full dependency analysis.
         </div>
+
         {bars.map(bar => (
           <div key={bar.label} className={`grid grid-cols-[90px_1fr_auto] gap-3 items-center mb-2.5 last:mb-0`}>
             <div className={`mono text-[11px] text-[var(--fg-mute)] uppercase tracking-[0.06em]`}>{bar.label}</div>

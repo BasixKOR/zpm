@@ -11,6 +11,7 @@ export const splatRoute = createRoute({
 export const routeTree = rootRoute.addChildren([splatRoute]);
 
 let routerInstance: ReturnType<typeof createRouter> | null = null;
+
 export function getRouter() {
   if (!routerInstance)
     routerInstance = createRouter({routeTree});

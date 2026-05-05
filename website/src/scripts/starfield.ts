@@ -1,4 +1,4 @@
-import { CONSTELLATION_LIBRARY } from '../data/constellations';
+import {CONSTELLATION_LIBRARY} from '../data/constellations';
 
 export interface StarfieldState {
   theme: string;
@@ -36,7 +36,7 @@ export function createStarfield(
   canvas: HTMLCanvasElement,
   state: StarfieldState,
 ): { initStars: () => void } {
-  const ctx = canvas.getContext('2d')!;
+  const ctx = canvas.getContext(`2d`)!;
   let stars: Star[] = [];
   let constellationStars: Star[] = [];
   let constellations: [Star, Star][] = [];
@@ -49,13 +49,13 @@ export function createStarfield(
 
   (function loadCat() {
     const im = new Image();
-    im.crossOrigin = 'anonymous';
+    im.crossOrigin = `anonymous`;
     im.onload = () => { catImg = im; catImgReady = true; computeCatPath(); };
-    im.src = 'cat.png';
+    im.src = `cat.png`;
   })();
 
   function computeCatPath() {
-    const el = document.getElementById('cat-img');
+    const el = document.getElementById(`cat-img`);
     if (!el) { catRect = null; return; }
     const rect = el.getBoundingClientRect();
     if (catImg) {
@@ -76,8 +76,8 @@ export function createStarfield(
     H = window.innerHeight;
     canvas.width = W * DPR;
     canvas.height = H * DPR;
-    canvas.style.width = W + 'px';
-    canvas.style.height = H + 'px';
+    canvas.style.width = W + `px`;
+    canvas.style.height = H + `px`;
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     computeCatPath();
     initStars();
@@ -88,6 +88,7 @@ export function createStarfield(
     const targetOnScreen = (density / 100) * 2700;
     const base = targetOnScreen * 3.0;
     const count = Math.max(0, Math.round(base * (W * H) / (1920 * 1080)));
+
     stars = [];
     for (let i = 0; i < count; i++) {
       const u = Math.random(), v = Math.random();
@@ -95,6 +96,7 @@ export function createStarfield(
       const phi = Math.acos(2 * v - 1);
       stars.push({ theta, phi, r: Math.random()*1.2+0.25, baseAlpha: Math.random()*0.6+0.3, twinklePhase: Math.random()*Math.PI*2, twinkleSpeed: Math.random()*0.8+0.3 });
     }
+
     constellations = [];
     constellationStars = [];
     const MIN_ANGLE = 0.42;
@@ -112,7 +114,9 @@ export function createStarfield(
       });
       if (ok) anchors.push({ theta: theta0, phi: phi0 });
     }
+
     const shuffled = CONSTELLATION_LIBRARY.slice().sort(() => Math.random() - 0.5);
+
     for (let idx = 0; idx < anchors.length && idx < shuffled.length; idx++) {
       const anchor = anchors[idx];
       const pattern = shuffled[idx];
@@ -171,9 +175,9 @@ export function createStarfield(
     t = ts * 0.001;
     rotationAngle += (state.starSpeed || 0) * dt;
     ctx.clearRect(0, 0, W, H);
-    const isDark = state.theme === 'dark';
-    const starColor = isDark ? '255, 255, 255' : '255, 200, 100';
-    const conColor = isDark ? '200, 210, 255' : '12, 16, 48';
+    const isDark = state.theme === `dark`;
+    const starColor = isDark ? `255, 255, 255` : `255, 200, 100`;
+    const conColor = isDark ? `200, 210, 255` : `12, 16, 48`;
     ctx.save();
     const opacityMul = Math.max(0, Math.min(1, (state.starOpacity ?? 100) / 100));
     const cx = W/2, cy = H/2;
@@ -242,17 +246,17 @@ export function createStarfield(
       return ss.life < ss.maxLife;
     });
     if (catImgReady && catRect) {
-      ctx.globalCompositeOperation = 'destination-out';
+      ctx.globalCompositeOperation = `destination-out`;
       ctx.drawImage(catImg!, catRect.x, catRect.y, catRect.w, catRect.h);
-      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalCompositeOperation = `source-over`;
     }
     ctx.restore();
     requestAnimationFrame(tick);
   }
 
-  window.addEventListener('resize', resize);
-  window.addEventListener('scroll', () => computeCatPath(), { passive: true });
-  window.addEventListener('load', () => setTimeout(computeCatPath, 200));
+  window.addEventListener(`resize`, resize);
+  window.addEventListener(`scroll`, () => computeCatPath(), { passive: true });
+  window.addEventListener(`load`, () => setTimeout(computeCatPath, 200));
   document.fonts?.ready?.then(() => computeCatPath());
 
   resize();

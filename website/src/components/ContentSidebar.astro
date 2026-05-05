@@ -10,7 +10,7 @@ interface Props {
 
 const { sections, activePage } = Astro.props;
 
-const allDocs = await getCollection('docs');
+const allDocs = await getCollection(`docs`);
 const groups = sections.flatMap(section => buildSidebarGroups(allDocs, section, activePage));
 ---
 

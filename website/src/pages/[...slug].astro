@@ -7,7 +7,7 @@ import navigation from '../../config/navigation.json';
 const categoryToSidebar = navigation.categoryToSidebar as Record<string, string>;
 
 export async function getStaticPaths() {
-  const docs = await getCollection('docs');
+  const docs = await getCollection(`docs`);
   return docs.map(doc => ({
     params: {slug: doc.data.slug},
     props: {doc},
@@ -18,9 +18,9 @@ const { doc } = Astro.props;
 const { Content } = await render(doc);
 
 const groupLabel = getGroupLabelForSlug(doc.data.slug);
-const sidebar = categoryToSidebar[doc.data.category ?? '']
-  ?? getDirForSlug(doc.data.slug)?.split('/')[0]
-  ?? 'getting-started';
+const sidebar = categoryToSidebar[doc.data.category ?? ``]
+  ?? getDirForSlug(doc.data.slug)?.split(`/`)[0]
+  ?? `getting-started`;
 
 const frontmatter = {
   title: doc.data.title,

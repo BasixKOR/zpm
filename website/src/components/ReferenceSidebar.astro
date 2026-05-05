@@ -23,14 +23,14 @@ function slugify(s: string): string {
 }
 
 const refConfig = navigation.sidebars.reference;
-const isProtocolPage = activePage.startsWith('protocol/');
+const isProtocolPage = activePage.startsWith(`protocol/`);
 
 const configGroup: SidebarGroup = {
-  title: 'Reference',
+  title: `Reference`,
   items: refConfig.links.map(link => ({
     label: link.label,
     href: link.href,
-    active: 'page' in link ? activePage === link.page : 'pagePrefix' in link ? activePage.startsWith(link.pagePrefix!) : false,
+    active: `page` in link ? activePage === link.page : `pagePrefix` in link ? activePage.startsWith(link.pagePrefix!) : false,
   })),
 };
 
@@ -38,7 +38,7 @@ const groups: SidebarGroup[] = [configGroup];
 
 if (isProtocolPage) {
   groups.push({
-    title: 'Protocols',
+    title: `Protocols`,
     items: refConfig.protocols.map(p => ({
       label: p.label,
       href: p.href,
@@ -50,7 +50,7 @@ if (isProtocolPage) {
 
 if (fields) {
   groups.push({
-    title: 'Fields',
+    title: `Fields`,
     items: fields.map(name => ({
       label: name,
       href: `#field-${slugify(name)}`,

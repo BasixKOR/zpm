@@ -7,7 +7,7 @@ interface Props {
   bottomRight?: string;
 }
 
-const { label = 'Closing', bottomLeft, bottomRight } = Astro.props;
+const { label = `Closing`, bottomLeft, bottomRight } = Astro.props;
 ---
 
 <section class="slide relative w-[1920px] h-[1080px] overflow-hidden text-[var(--fg)] font-['Space_Grotesk',system-ui,sans-serif] bg-transparent!" data-screen-label={label}>

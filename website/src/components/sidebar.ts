@@ -18,29 +18,36 @@ export interface SidebarGroup {
   items: SidebarItem[];
 }
 
-const metaGlob = import.meta.glob<string>('../docs/**/_meta.{yml,yaml}', { eager: true, query: '?raw', import: 'default' });
-const docGlob = import.meta.glob<string>('../docs/**/*.md', { eager: true, query: '?raw', import: 'default' });
+const metaGlob = import.meta.glob<string>(`../docs/**/_meta.{yml,yaml}`, {eager: true, query: `?raw`, import: `default`});
+const docGlob = import.meta.glob<string>(`../docs/**/*.md`, {eager: true, query: `?raw`, import: `default`});
 
-const metaLookup = new Map<string, { label: string; order: number }>();
+const metaLookup = new Map<string, {label: string; order: number}>();
+
 for (const [filePath, content] of Object.entries(metaGlob)) {
-  const relDir = filePath.replace(/^\.\.\/docs\//, '').replace(/\/_meta\.(yml|yaml)$/, '');
+  const relDir = filePath
+    .replace(/^\.\.\/docs\//, ``)
+    .replace(/\/_meta\.(yml|yaml)$/, ``);
   const label = content.match(/^label:\s*(.+)$/m)?.[1]?.trim();
-  const order = parseInt(content.match(/^order:\s*(\d+)$/m)?.[1] ?? '99', 10);
+  const order = parseInt(content.match(/^order:\s*(\d+)$/m)?.[1] ?? `99`, 10);
   metaLookup.set(relDir, { label: label ?? relDir, order });
 }
 
 const slugToDir = new Map<string, string>();
+
 for (const [filePath, content] of Object.entries(docGlob)) {
   const slug = content.match(/^slug:\s*(.+)$/m)?.[1]?.trim();
   if (slug) {
-    const relPath = filePath.replace(/^\.\.\/docs\//, '');
-    const lastSlash = relPath.lastIndexOf('/');
-    slugToDir.set(slug, lastSlash >= 0 ? relPath.substring(0, lastSlash) : '.');
+    const relPath = filePath.replace(/^\.\.\/docs\//, ``);
+    const lastSlash = relPath.lastIndexOf(`/`);
+    slugToDir.set(slug, lastSlash >= 0 ? relPath.substring(0, lastSlash) : `.`);
   }
 }
 
 export function formatLabel(dirName: string): string {
-  return dirName.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join(' ');
+  return dirName
+    .split(`-`)
+    .map(w => w[0].toUpperCase() + w.slice(1))
+    .join(` `);
 }
 
 export function getDirForSlug(slug: string): string | undefined {
@@ -55,7 +62,7 @@ export function getGroupLabelForSlug(slug: string): string | undefined {
   const dir = slugToDir.get(slug);
   if (!dir) return undefined;
   const meta = metaLookup.get(dir);
-  return meta?.label ?? formatLabel(dir.split('/').pop()!);
+  return meta?.label ?? formatLabel(dir.split(`/`).pop()!);
 }
 
 export function buildSidebarGroups(
@@ -67,18 +74,19 @@ export function buildSidebarGroups(
     const dir = getDirForSlug(doc.data.slug);
     if (!dir?.startsWith(section)) return false;
     if (doc.data.sidebar?.hidden) return false;
+
     return true;
   });
 
-  const groupMap = new Map<string, { label: string; sortKey: number; docs: typeof docs }>();
+  const groupMap = new Map<string, {label: string; sortKey: number; docs: typeof docs}>();
 
   for (const doc of docs) {
-    const fsDir = getDirForSlug(doc.data.slug) ?? '.';
+    const fsDir = getDirForSlug(doc.data.slug) ?? `.`;
 
     if (!groupMap.has(fsDir)) {
       const meta = getMetaForDir(fsDir);
       groupMap.set(fsDir, {
-        label: meta?.label ?? formatLabel(fsDir.split('/').pop()!),
+        label: meta?.label ?? formatLabel(fsDir.split(`/`).pop()!),
         sortKey: meta?.order ?? 99,
         docs: [],
       });

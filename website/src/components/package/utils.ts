@@ -6,9 +6,11 @@ const TAB_NAMES = new Set<string>([`versions`, `files`, `file`, `audit`]);
 
 export function parseSplat(splat: string): ParsedUrl {
   const parts = splat.split(`/`).map(decodeURIComponent).filter(Boolean);
-  if (!parts.length) return {name: ``};
+  if (!parts.length)
+    return {name: ``};
 
   let idx = 0;
+
   let name: string;
   if (parts[0].startsWith(`@`) && parts.length >= 2) {
     name = `${parts[0]}/${parts[1]}`;
@@ -98,12 +100,15 @@ export function formatDateShort(dateStr: string): string {
 
 export function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
+
   const days = Math.floor(diff / 86400000);
   if (days < 1) return `today`;
   if (days === 1) return `1d`;
   if (days < 30) return `${days}d`;
+
   const months = Math.floor(days / 30);
   if (months < 12) return `${months}mo`;
+
   const years = Math.floor(months / 12);
   return `${years}y`;
 }
@@ -115,10 +120,19 @@ export function getLicense(license: RegistryData[`license`]): string {
 }
 
 export function getRepoUrl(repo: RegistryData[`repository`]): string | null {
-  if (!repo) return null;
+  if (!repo)
+    return null;
+
   let url = typeof repo === `string` ? repo : repo.url;
-  if (!url) return null;
-  url = url.replace(/^git\+/, ``).replace(/\.git$/, ``).replace(/^git:\/\//, `https://`).replace(/^ssh:\/\/git@/, `https://`);
+  if (!url)
+    return null;
+
+  url = url
+    .replace(/^git\+/, ``)
+    .replace(/\.git$/, ``)
+    .replace(/^git:\/\//, `https://`)
+    .replace(/^ssh:\/\/git@/, `https://`);
+
   return url;
 }
 
@@ -130,7 +144,11 @@ export function getBugsUrl(bugs: RegistryData[`bugs`]): string | null {
 // ── Markdown Renderer ──
 
 function escapeHtml(str: string): string {
-  return str.replace(/&/g, `&amp;`).replace(/</g, `&lt;`).replace(/>/g, `&gt;`).replace(/"/g, `&quot;`);
+  return str
+    .replace(/&/g, `&amp;`)
+    .replace(/</g, `&lt;`)
+    .replace(/>/g, `&gt;`)
+    .replace(/"/g, `&quot;`);
 }
 
 function isSafeUrl(url: string): boolean {
@@ -145,9 +163,11 @@ function isSafeUrl(url: string): boolean {
 }
 
 export function renderMarkdown(md: string): string {
-  if (!md) return ``;
+  if (!md)
+    return ``;
 
   const codeBlocks: Array<string> = [];
+
   let html = md.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
     codeBlocks.push(`<pre><code>${escapeHtml(code.trimEnd())}</code></pre>`);
     return `\x00CB${codeBlocks.length - 1}\x00`;
@@ -155,37 +175,46 @@ export function renderMarkdown(md: string): string {
 
   html = escapeHtml(html);
 
-  html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_, alt, src) => {
-    const safeSrc = isSafeUrl(src) ? src : ``;
-    return safeSrc ? `<img src="${safeSrc}" alt="${alt}" loading="lazy"/>` : alt;
-  });
+  html = html
+    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_, alt, src) => {
+      const safeSrc = isSafeUrl(src) ? src : ``;
+      return safeSrc ? `<img src="${safeSrc}" alt="${alt}" loading="lazy"/>` : alt;
+    });
 
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, url) => {
-    const safe = isSafeUrl(url) ? url : `#`;
-    return `<a href="${safe}" target="_blank" rel="noopener noreferrer">${text}</a>`;
-  });
+  html = html
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, url) => {
+      const safe = isSafeUrl(url) ? url : `#`;
+      return `<a href="${safe}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+    });
 
-  html = html.replace(/^######\s+(.+)$/gm, `<h6>$1</h6>`);
-  html = html.replace(/^#####\s+(.+)$/gm, `<h5>$1</h5>`);
-  html = html.replace(/^####\s+(.+)$/gm, `<h4>$1</h4>`);
-  html = html.replace(/^###\s+(.+)$/gm, `<h3>$1</h3>`);
-  html = html.replace(/^##\s+(.+)$/gm, `<h2>$1</h2>`);
-  html = html.replace(/^#\s+(.+)$/gm, `<h1>$1</h1>`);
+  html = html
+    .replace(/^######\s+(.+)$/gm, `<h6>$1</h6>`)
+    .replace(/^#####\s+(.+)$/gm, `<h5>$1</h5>`)
+    .replace(/^####\s+(.+)$/gm, `<h4>$1</h4>`)
+    .replace(/^###\s+(.+)$/gm, `<h3>$1</h3>`)
+    .replace(/^##\s+(.+)$/gm, `<h2>$1</h2>`)
+    .replace(/^#\s+(.+)$/gm, `<h1>$1</h1>`);
 
-  html = html.replace(/\*\*\*(.+?)\*\*\*/g, `<strong><em>$1</em></strong>`);
-  html = html.replace(/\*\*(.+?)\*\*/g, `<strong>$1</strong>`);
-  html = html.replace(/(?<!\w)\*(.+?)\*(?!\w)/g, `<em>$1</em>`);
+  html = html
+    .replace(/\*\*\*(.+?)\*\*\*/g, `<strong><em>$1</em></strong>`)
+    .replace(/\*\*(.+?)\*\*/g, `<strong>$1</strong>`)
+    .replace(/(?<!\w)\*(.+?)\*(?!\w)/g, `<em>$1</em>`);
 
-  html = html.replace(/`([^`]+)`/g, `<code>$1</code>`);
+  html = html
+    .replace(/`([^`]+)`/g, `<code>$1</code>`);
 
-  html = html.replace(/^&gt;\s+(.+)$/gm, `<blockquote><p>$1</p></blockquote>`);
+  html = html
+    .replace(/^&gt;\s+(.+)$/gm, `<blockquote><p>$1</p></blockquote>`);
 
-  html = html.replace(/^---+$/gm, `<hr/>`);
+  html = html
+    .replace(/^---+$/gm, `<hr/>`);
 
-  html = html.replace(/^[*-]\s+(.+)$/gm, `<li>$1</li>`);
-  html = html.replace(/((?:<li>[\s\S]*?<\/li>\s*)+)/g, `<ul>$1</ul>`);
+  html = html
+    .replace(/^[*-]\s+(.+)$/gm, `<li>$1</li>`)
+    .replace(/((?:<li>[\s\S]*?<\/li>\s*)+)/g, `<ul>$1</ul>`);
 
-  html = html.replace(/^\d+\.\s+(.+)$/gm, `<li>$1</li>`);
+  html = html
+    .replace(/^\d+\.\s+(.+)$/gm, `<li>$1</li>`);
 
   const lines = html.split(`\n`);
   const result: Array<string> = [];
@@ -224,9 +253,11 @@ export function buildFileTree(files: Array<FileEntry>, packageName: string): Tre
 
     for (let i = 0; i < parts.length; i++) {
       const isFile = i === parts.length - 1;
-      if (!current.children) current.children = [];
-      let child = current.children.find(c => c.name === parts[i]);
 
+      if (!current.children)
+        current.children = [];
+
+      let child = current.children.find(c => c.name === parts[i]);
       if (!child) {
         child = {
           name: parts[i],
@@ -241,6 +272,7 @@ export function buildFileTree(files: Array<FileEntry>, packageName: string): Tre
   }
 
   sortTree(root);
+
   return root;
 }
 
@@ -258,7 +290,9 @@ function sortTree(node: TreeNode): void {
 // ── Sparkline ──
 
 export function sparklinePath(data: Array<number>, w: number, h: number): string {
-  if (data.length < 2) return ``;
+  if (data.length < 2)
+    return ``;
+
   const max = Math.max(...data);
   const min = Math.min(...data);
   const range = max - min || 1;
@@ -435,8 +469,10 @@ const PRETTIER: Record<string, PrettierCfg> = {
 
 export async function formatWithPrettier(code: string, filepath: string): Promise<string> {
   const ext = filepath.split(`.`).pop()?.toLowerCase() ?? ``;
+
   const cfg = PRETTIER[ext];
-  if (!cfg) return code;
+  if (!cfg)
+    return code;
 
   try {
     const [prettier, plugins] = await Promise.all([

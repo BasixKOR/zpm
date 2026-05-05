@@ -12,16 +12,23 @@ const { tag, bottomLeft, bottomRight, revealBrand = false } = Astro.props;
 ---
 
 <div class="slide-stars absolute inset-0 z-1 pointer-events-none opacity-90"></div>
+
 <div class="absolute inset-[56px_88px] z-3 pointer-events-none flex justify-between items-start font-mono text-[13px] tracking-[0.1em] text-[var(--fg-mute)] uppercase">
   <span class:list={[revealBrand && 'reveal reveal-1']}>
     <YarnBrand />
   </span>
-  <span class:list={[revealBrand && 'reveal reveal-1']}>{tag}</span>
+  <span class:list={[revealBrand && `reveal reveal-1`]}>
+    {tag}
+  </span>
 </div>
 
 {(bottomLeft || bottomRight) && (
   <div class="absolute inset-[auto_88px_56px] z-3 pointer-events-none flex justify-between items-end font-mono text-xs text-[var(--fg-mute)]">
-    <span>{bottomLeft}</span>
-    <span>{bottomRight}</span>
+    <span>
+      {bottomLeft}
+    </span>
+    <span>
+      {bottomRight}
+    </span>
   </div>
 )}

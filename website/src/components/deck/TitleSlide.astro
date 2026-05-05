@@ -6,7 +6,7 @@ interface Props {
   label?: string;
 }
 
-const { tag = '// internal', label = '01 Title' } = Astro.props;
+const { tag = `// internal`, label = `01 Title` } = Astro.props;
 ---
 
 <section class="slide relative w-[1920px] h-[1080px] overflow-hidden text-[var(--fg)] font-['Space_Grotesk',system-ui,sans-serif] bg-transparent!" data-screen-label={label}>

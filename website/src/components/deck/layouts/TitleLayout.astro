@@ -30,5 +30,9 @@ const { tag, label, eyebrow, eyebrowSuffix, title, lede, versions, bottomRight }
     </div>
   )}
 
-  {bottomRight && <span slot="bottom-right" class="reveal reveal-5">{bottomRight}</span>}
+  {bottomRight && (
+    <span class="reveal reveal-5" slot="bottom-right">
+      {bottomRight}
+    </span>
+  )}
 </TitleSlide>

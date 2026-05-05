@@ -8,8 +8,10 @@ export function VersionsTimeline({versions, distTags, time}: {
   versions: Array<string>; distTags: Record<string, string>; time: Record<string, string>;
 }) {
   const {oct} = useIcons();
+
   const [showAll, setShowAll] = useState(false);
   const [includeNoisy, setIncludeNoisy] = useState(false);
+
   const sorted = (includeNoisy ? versions.slice() : versions.filter(v => !isNoisyPrerelease(v))).sort(compareSemverDesc);
   const displayed = showAll ? sorted : sorted.slice(0, 15);
 

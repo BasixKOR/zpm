@@ -3,7 +3,10 @@ export function MaintainersCard({maintainers}: {maintainers: Array<{name: string
 
   const hueForName = (name: string) => {
     let hash = 0;
-    for (let i = 0; i < name.length; i++) hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0;
+
+    for (let i = 0; i < name.length; i++)
+      hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0;
+
     return Math.abs(hash) % 360;
   };
 

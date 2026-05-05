@@ -29,16 +29,21 @@ export function LeftRail({
       </div>
 
       <div className={`mono text-[10.5px] tracking-[0.12em] text-[var(--fg-mute)] uppercase px-3 mb-2`}>Overview</div>
+
       <NavLink icon={<OctIcon icon={oct.info} size={14}/>} label={`Information`} id={`info`} active={activeNav === `info`} onClick={onNavClick}/>
+
       {homepage && (
         <NavLinkExternal icon={<OctIcon icon={oct.globe} size={14}/>} label={`Website`} href={homepage}/>
       )}
+
       {repoUrl && (
         <NavLinkExternal icon={<BrandIcon icon={brand.github} size={14}/>} label={`Repository`} href={repoUrl}/>
       )}
 
       <div className={`mono text-[10.5px] tracking-[0.12em] text-[var(--fg-mute)] uppercase px-3 mt-[18px] mb-2`}>Index</div>
+
       <NavLink icon={<OctIcon icon={oct.versions} size={14}/>} label={`Versions`} id={`versions`} active={activeNav === `versions`} onClick={onNavClick} badge={String(versionCount)}/>
+
       <NavLink icon={<OctIcon icon={oct[`file-directory`]} size={14}/>} label={`Files`} id={`files`} active={activeNav === `files`} onClick={onNavClick}/>
     </aside>
   );

@@ -9,8 +9,8 @@ interface Props {
   activePage?: string;
 }
 
-const { title, variant = 'index', activePage } = Astro.props;
-const isDocs = variant === 'docs';
+const { title, variant = `index`, activePage } = Astro.props;
+const isDocs = variant === `docs`;
 ---
 
 <!doctype html>
@@ -31,7 +31,9 @@ const isDocs = variant === 'docs';
 <body class="m-0 p-0 overflow-x-hidden antialiased">
 
 <div class="sky fixed inset-0 z-0"></div>
-<canvas class="stars-canvas fixed inset-0 z-[1] pointer-events-none" id="stars"></canvas>
+
+<canvas id="stars" class="stars-canvas fixed inset-0 z-[1] pointer-events-none"></canvas>
+
 {isDocs && (
   <div class="fixed inset-0 z-[2] pointer-events-none bg-[color-mix(in_oklch,var(--bg-0)_35%,transparent)]"></div>
 )}

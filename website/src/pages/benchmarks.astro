@@ -670,7 +670,7 @@ const INCIDENTS = [
       <h1 class="text-[clamp(36px,4.4vw,52px)] font-medium tracking-[-0.025em] leading-[1.05] text-balance m-0">Package manager comparison.</h1>
       <p class="m-0 mt-5 text-[18px] leading-[1.55] text-[var(--fg-dim)] max-w-[640px] text-pretty">
         Continuous benchmarks of{' '}
-        <a href="/concepts/yarn-6" class="text-[var(--fg)] underline decoration-dotted underline-offset-2 hover:decoration-solid">Yarn 6.x</a>,
+        <a class="text-[var(--fg)] underline decoration-dotted underline-offset-2 hover:decoration-solid" href="/concepts/yarn-6">Yarn 6.x</a>,
         <span class="text-[var(--fg)]">Yarn 4.x</span>,
         <span class="text-[var(--fg)]">npm</span>,
         <span class="text-[var(--fg)]">pnpm</span>, and
@@ -753,12 +753,6 @@ const INCIDENTS = [
         </tbody>
       </table>
     </div>
-
-    <h3 id="caveats">Caveats</h3>
-    <ul>
-      <li>Linker choice matters: numbers below are <strong>Plug&rsquo;n&rsquo;Play for Yarn</strong>, the default linker for each other manager. Switching Yarn to <code>node-modules</code> removes some of its lead in <em>Full cold</em>.</li>
-      <li>These numbers don't measure correctness. Determinism and soundness are evaluated separately. We use an extensive testsuite to ensure Yarn is not only fast but also stable.</li>
-    </ul>
   </div>
 
 </div>

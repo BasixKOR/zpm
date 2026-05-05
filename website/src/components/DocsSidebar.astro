@@ -10,15 +10,18 @@ const { groups } = Astro.props;
 
 {groups.map(group => (
   <div class="sb-group">
-    <h4 class="sb-title">{group.title}</h4>
+    <h4 class="sb-title">
+      {group.title}
+    </h4>
+
     {group.items.map(item =>
-      'subtitle' in item
-        ? <h5 class="sb-subtitle">{item.subtitle}</h5>
-        : <a
-            class:list={['sb-link', { active: item.active, sub: item.sub, mono: item.mono }]}
-            href={item.href}
-            {...(item.section ? { 'data-section': '' } : {})}
-          >{item.label}</a>
+      `subtitle` in item
+        ? <h5 class="sb-subtitle">
+            {item.subtitle}
+          </h5>
+        : <a class:list={[`sb-link`, { active: item.active, sub: item.sub, mono: item.mono }]} href={item.href} {...(item.section ? { 'data-section': '' } : {})}>
+            {item.label}
+          </a>
     )}
   </div>
 ))}

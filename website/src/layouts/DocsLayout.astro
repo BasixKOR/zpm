@@ -13,7 +13,7 @@ interface Props {
   mainMaxWidth?: string;
 }
 
-const { title, description, breadcrumb, activePage, mainMaxWidth = '780px' } = Astro.props;
+const { title, description, breadcrumb, activePage, mainMaxWidth = `780px` } = Astro.props;
 ---
 
 <BaseLayout title={title} variant="docs" activePage={activePage}>

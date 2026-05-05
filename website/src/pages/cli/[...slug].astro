@@ -5,10 +5,10 @@ import ReferenceSidebar from '../../components/ReferenceSidebar.astro';
 import PageHeader from '../../components/PageHeader.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 
-const cliEntries = await getCollection('cli');
+const cliEntries = await getCollection(`cli`);
 
 export async function getStaticPaths() {
-  const entries = await getCollection('cli');
+  const entries = await getCollection(`cli`);
   return entries.map(entry => ({
     params: {slug: entry.id.replace(/^cli\//, ``)},
     props: {entry},
@@ -27,6 +27,7 @@ const pathSegments = entry.data.commandSpec.primaryPath;
   </Fragment>
 
   <Breadcrumb segments={["Docs", "Reference", "CLI", ...pathSegments]} />
+
   <PageHeader
     title={entry.data.title}
     lead={description}

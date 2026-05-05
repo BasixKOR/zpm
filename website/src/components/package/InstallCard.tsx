@@ -9,7 +9,9 @@ export function InstallCard({name, pmTab, onPmTabChange}: {
   name: string; pmTab: PmTab; onPmTabChange: (t: PmTab) => void;
 }) {
   const {oct, brand} = useIcons();
+
   const [copied, setCopied] = useState(false);
+
   const cmd = PM_COMMANDS[pmTab];
   const fullCmd = `${cmd.verb} ${cmd.rest} ${name}`;
 
@@ -23,6 +25,7 @@ export function InstallCard({name, pmTab, onPmTabChange}: {
     <div className={`border border-[var(--line-strong)] rounded-[14px] bg-[var(--card)] backdrop-blur-lg mb-7 overflow-hidden`}>
       <div className={`flex items-center justify-between py-3 px-4 border-b border-[var(--line)]`}>
         <span className={`mono text-[10.5px] tracking-[0.12em] text-[var(--fg-mute)] uppercase`}>// install</span>
+
         <div className={`inline-flex gap-0.5 border border-[var(--line)] rounded-lg p-0.5`}>
           {([`yarn`, `npm`, `pnpm`, `bun`] as Array<PmTab>).map(pm => (
             <button
@@ -40,6 +43,7 @@ export function InstallCard({name, pmTab, onPmTabChange}: {
           ))}
         </div>
       </div>
+
       <div className={`flex items-center gap-3.5 py-3.5 px-4 mono text-sm border-t border-[var(--term-border)] bg-[var(--term-bg)] backdrop-blur-[12px]`}>
         <span className={`text-[var(--term-prompt)] select-none`}>$</span>
         <span className={`flex-1 text-[var(--term-fg)]`}>

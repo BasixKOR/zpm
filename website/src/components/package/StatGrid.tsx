@@ -3,12 +3,14 @@ import {formatBytes, formatDate} from './utils';
 
 function StatCell({label, value, unit}: {label: string, value: string, unit?: string}) {
   const parts = value.match(/^([\d.,]+)\s*(.*)$/);
+
   const num = parts ? parts[1] : value;
   const suffix = parts ? parts[2] : unit;
 
   return (
     <div className={`border-r border-b border-[var(--line)] py-3.5 px-4`}>
       <div className={`mono text-[10px] tracking-[0.12em] text-[var(--fg-mute)] uppercase mb-1.5`}>{label}</div>
+
       <div className={`text-lg text-[var(--fg)] font-medium tracking-[-0.01em] flex items-baseline gap-1.5`}>
         {num}
         {suffix && <span className={`mono text-[11px] text-[var(--fg-mute)] font-normal`}>{suffix}</span>}

@@ -1,7 +1,6 @@
 import {useState, useEffect, useCallback, useMemo, useContext} from 'react';
 
-import {PackageCtx}                from './contexts';
-import {IconCtx}                   from './contexts';
+import {PackageCtx, IconCtx}       from './contexts';
 import {LeftRail}                  from './LeftRail';
 import {VersionSelector}           from './VersionSelector';
 import {TabBar}                    from './TabBar';
@@ -52,7 +51,6 @@ export function PackagePageInner() {
   const activeTab: Tab = parsed.tab ?? (parsed.compareVersion ? `files` : `readme`);
   const urlFile = parsed.filePath ?? null;
   const urlCompare = parsed.compareVersion ?? null;
-
   const activeNav = activeTab === `versions` ? `versions` : activeTab === `files` ? `files` : `info`;
 
   const [registry, setRegistry] = useState<RegistryData | null>(null);
@@ -63,7 +61,8 @@ export function PackagePageInner() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const selectedVersion = urlVersion || (registry ? registry[`dist-tags`]?.latest || Object.keys(registry.versions).pop() || `` : ``);
+  const selectedVersion = urlVersion
+    || (registry ? registry[`dist-tags`]?.latest || Object.keys(registry.versions).pop() || `` : ``);
 
   useEffect(() => {
     if (!name) {
@@ -243,16 +242,19 @@ export function PackagePageInner() {
                 <h1 className={`mono text-[clamp(34px,4.6vw,54px)] font-medium tracking-[-0.025em] text-[var(--fg)] leading-[0.95] m-0 mb-2.5`}>
                   {name}
                 </h1>
+
                 {registry.description && (
                   <p className={`text-[17px] text-[var(--fg-dim)] leading-relaxed max-w-[640px] m-0 mb-5`}>
                     {registry.description}
                   </p>
                 )}
+
                 <div className={`flex items-center gap-3.5 flex-wrap text-[12.5px] text-[var(--fg-mute)]`}>
                   <span className={`inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full bg-[var(--accent-soft)] border border-[var(--accent-line)] text-[var(--accent)] no-underline`}>
                     <OctIcon icon={octicons.law} size={11}/>
                     {license}
                   </span>
+
                   {repoUrl && (
                     <a href={repoUrl} target={`_blank`} rel={`noopener noreferrer`}
                       className={`inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full border border-[var(--line-strong)] text-[var(--fg-dim)] no-underline transition-colors hover:text-[var(--fg)] hover:border-[var(--fg-mute)]`}
@@ -261,6 +263,7 @@ export function PackagePageInner() {
                       {repoUrl.replace(/^https?:\/\/(www\.)?github\.com\//, ``)}
                     </a>
                   )}
+
                   {registry.homepage && (
                     <a href={registry.homepage} target={`_blank`} rel={`noopener noreferrer`}
                       className={`inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full border border-[var(--line-strong)] text-[var(--fg-dim)] no-underline transition-colors hover:text-[var(--fg)] hover:border-[var(--fg-mute)]`}
@@ -299,6 +302,7 @@ export function PackagePageInner() {
             {activeTab === `readme` && (
               <>
                 <InstallCard name={name} pmTab={pmTab} onPmTabChange={setPmTab}/>
+
                 <ReadmePanel readme={readme} name={name}/>
               </>
             )}
@@ -307,23 +311,30 @@ export function PackagePageInner() {
               <VersionsTimeline versions={allVersions} distTags={distTags} time={registry.time}/>
             )}
 
-            {activeTab === `audit` && <AuditPanel/>}
+            {activeTab === `audit` && (
+              <AuditPanel/>
+            )}
           </main>
 
           {/* Right Rail */}
           <aside className={`flex flex-col gap-[18px] lg:sticky lg:top-[90px]`}>
             <DownloadsCard downloads={downloads}/>
+
             <VersionsCard
               versions={allVersions}
               distTags={distTags}
               time={registry.time}
               onVersionChange={handleVersionChange}
             />
+
             <DependenciesCard deps={deps} title={`Dependency`}/>
+
             {Object.keys(peerDeps).length > 0 && (
               <DependenciesCard deps={peerDeps} title={`Peer dependency`}/>
             )}
+
             <MaintainersCard maintainers={maintainers}/>
+
             <KeywordsCard keywords={keywords}/>
           </aside>
         </div>

@@ -28,11 +28,13 @@ export function VersionSelector({
 
   const isLatest = distTags.latest === version;
   const age = time[version] ? timeAgo(time[version]) : ``;
+
   const tagForVersion = (v: string) => Object.entries(distTags).find(([, ver]) => ver === v)?.[0];
 
   return (
     <div className={`flex flex-col gap-2 items-end shrink-0 pt-1.5 relative`} ref={ref}>
       <span className={`mono text-[10px] tracking-[0.12em] text-[var(--fg-mute)] uppercase`}>version</span>
+
       <button
         onClick={() => setOpen(!open)}
         className={`inline-flex items-center gap-2.5 py-2 px-3 border border-[var(--line-strong)] rounded-[10px] bg-[var(--card)] cursor-pointer mono text-[13px] text-[var(--fg)] transition-colors hover:border-[var(--fg-mute)]`}

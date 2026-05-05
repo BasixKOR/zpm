@@ -5,7 +5,7 @@ import PostMeta from '../../components/PostMeta.astro';
 import SkeetCard from '../../components/SkeetCard.astro';
 import { fetchSkeets, type Skeet } from '../../utils/bluesky';
 
-const posts = await getCollection('blog');
+const posts = await getCollection(`blog`);
 
 const enrichedPosts = await Promise.all(posts.map(async (post) => {
   const { remarkPluginFrontmatter } = await render(post);
@@ -14,22 +14,22 @@ const enrichedPosts = await Promise.all(posts.map(async (post) => {
   return { ...post, readingTime };
 }));
 
-const skeets = await fetchSkeets('yarnpkg.dev', 5);
+const skeets = await fetchSkeets(`yarnpkg.dev`, 5);
 
 type TimelinePost = { type: 'post'; sortDate: Date; post: typeof enrichedPosts[number] };
 type TimelineSkeet = { type: 'skeet'; sortDate: Date; skeet: Skeet };
 type TimelineEntry = TimelinePost | TimelineSkeet;
 
 const entries: TimelineEntry[] = [
-  ...enrichedPosts.map(post => ({ type: 'post' as const, sortDate: post.data.date, post })),
-  ...skeets.map(skeet => ({ type: 'skeet' as const, sortDate: skeet.sortDate, skeet })),
+  ...enrichedPosts.map(post => ({ type: `post` as const, sortDate: post.data.date, post })),
+  ...skeets.map(skeet => ({ type: `skeet` as const, sortDate: skeet.sortDate, skeet })),
 ];
 
 entries.sort((a, b) => b.sortDate.getTime() - a.sortDate.getTime());
 
 const monthGroups = new Map<string, TimelineEntry[]>();
 for (const entry of entries) {
-  const key = entry.sortDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+  const key = entry.sortDate.toLocaleDateString(`en-US`, { year: `numeric`, month: `long` });
   if (!monthGroups.has(key)) monthGroups.set(key, []);
   monthGroups.get(key)!.push(entry);
 }
@@ -52,20 +52,32 @@ for (const entry of entries) {
     <div class="timeline">
       {Array.from(monthGroups.entries()).map(([month, groupEntries]) => (
         <>
-          <div class="tl-month"><span class="tl-month-inner">{month}</span></div>
+          <div class="tl-month">
+            <span class="tl-month-inner">
+              {month}
+            </span>
+          </div>
 
           {groupEntries.map(entry => {
             if (entry.type === 'post') {
               const { post } = entry;
-              const formattedDate = post.data.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-              const excerpt = post.body?.split('\n').find((l: string) => l.trim() && !l.startsWith('#') && !l.startsWith('---') && !l.startsWith('{')) || '';
+              const formattedDate = post.data.date.toLocaleDateString(`en-US`, { month: `short`, day: `numeric`, year: `numeric` });
+              const excerpt = post.body?.split(`\n`).find((l: string) => l.trim() && !l.startsWith(`#`) && !l.startsWith(`---`) && !l.startsWith(`{`)) || ``;
 
               return (
                 <div class="tl-item is-post">
-                  <a href={`/blog/${post.data.slug}/`} class="tl-post">
-                    {post.data.category && <div class="post-kind">{post.data.category}</div>}
-                    <h2 class="post-title">{post.data.title}</h2>
-                    <p class="post-excerpt">{excerpt.slice(0, 200)}{excerpt.length > 200 ? '\u2026' : ''}</p>
+                  <a class="tl-post" href={`/blog/${post.data.slug}/`}>
+                    {post.data.category && (
+                      <div class="post-kind">
+                        {post.data.category}
+                      </div>
+                    )}
+                    <h2 class="post-title">
+                      {post.data.title}
+                    </h2>
+                    <p class="post-excerpt">
+                      {excerpt.slice(0, 200)}{excerpt.length > 200 ? `\u2026` : ``}
+                    </p>
                     <PostMeta
                       author={post.data.author}
                       date={formattedDate}

@@ -246,12 +246,15 @@ function DocResultRow({item, isActive, onMouseEnter, onClick}: {item: SearchItem
       aria-selected={isActive}
     >
       <ResultGlyph kind={item.kind}/>
+
       <span className="min-w-0">
         <span className="text-sm text-[var(--fg)] font-medium truncate block" dangerouslySetInnerHTML={{__html: item.titleHtml}}/>
+
         {item.snippetHtml && (
           <span className="search-snippet-clamp text-[12.5px] text-[var(--fg-dim)] mt-0.5 leading-[1.45]" dangerouslySetInnerHTML={{__html: item.snippetHtml}}/>
         )}
       </span>
+
       <span className="flex flex-col items-end gap-1.5 mono text-[10.5px] text-[var(--fg-mute)] whitespace-nowrap shrink-0">
         {item.crumbs && item.crumbs.length > 0 && <Crumbs crumbs={item.crumbs}/>}
         <span className={`inline-flex items-center gap-1.5 mono text-[10px] text-[var(--accent)] transition-opacity duration-150 ${isActive ? `opacity-100` : `opacity-0 group-hover:opacity-100`}`}>
@@ -277,9 +280,11 @@ function PkgResultRow({item, isActive, onMouseEnter, onClick}: {item: SearchItem
       aria-selected={isActive}
     >
       <ResultGlyph kind="pkg"/>
+
       <span className="min-w-0">
         <div className="flex items-baseline gap-2">
           <span className="text-sm text-[var(--fg)] font-medium mono truncate" dangerouslySetInnerHTML={{__html: item.titleHtml}}/>
+
           {item.downloads && flameColor && (
             <span className="mono text-[10.5px] tabular-nums inline-flex items-center gap-1">
               <FlameIcon color={flameColor}/>
@@ -287,13 +292,16 @@ function PkgResultRow({item, isActive, onMouseEnter, onClick}: {item: SearchItem
             </span>
           )}
         </div>
+
         <span className="search-snippet-clamp text-[12.5px] text-[var(--fg-dim)] mt-0.5 leading-[1.45]" dangerouslySetInnerHTML={{__html: item.snippetHtml || ``}}/>
+
         <span className="mono text-[10.5px] text-[var(--fg-mute)] tracking-[0.02em] mt-0.5 block">
           <span>{item.author}</span>
           <span className="opacity-40 px-1">·</span>
           <span>{item.license}</span>
         </span>
       </span>
+
       <span className="flex flex-col items-end gap-1.5 mono text-[10.5px] text-[var(--fg-mute)] whitespace-nowrap shrink-0">
         {item.version && (
           <span className="bg-[color-mix(in_oklch,var(--fg)_5%,transparent)] border border-[var(--line)] px-[7px] py-0.5 rounded-full text-[var(--fg-dim)]">
@@ -357,8 +365,10 @@ function EmptyState({onSelect}: {onSelect: (term: string) => void}) {
           ))}
         </div>
       )}
+
       <div className="px-5 py-1.5 pb-2.5">
         <div className="mono text-[10.5px] text-[var(--fg-mute)] tracking-[0.12em] uppercase mb-2">Suggested</div>
+
         <div className="grid grid-cols-2 gap-2">
           {SUGGESTED.map((term, i) => (
             <div
@@ -382,7 +392,9 @@ function NoResults({query}: {query: string}) {
       <div className="w-11 h-11 border border-[var(--line-strong)] rounded-full inline-flex items-center justify-center text-[var(--fg-mute)] mb-3.5">
         <NoResultsIcon/>
       </div>
+
       <div className="text-[var(--fg)] text-[15px] mb-1.5">No matches</div>
+
       <div className="text-[var(--fg-mute)] text-[13px]">
         Nothing for <span className="text-[var(--fg-dim)] mono">"{query}"</span> in this scope.
       </div>
@@ -399,6 +411,7 @@ function Footer() {
         <span className="inline-flex items-center gap-1.5"><Kbd>tab</Kbd> filter</span>
         <span className="inline-flex items-center gap-1.5"><Kbd>esc</Kbd> close</span>
       </div>
+
       <span className="inline-flex items-center gap-1.5 mono">
         <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] shadow-[0_0_8px_var(--accent)]"/>
         search by Algolia
@@ -626,6 +639,7 @@ export default function SearchModal() {
         {/* Header */}
         <div className="flex items-center gap-3.5 py-3.5 pl-5 pr-4 border-b border-[var(--line)]">
           <SearchIcon className="text-[var(--fg-mute)] shrink-0"/>
+
           <input
             ref={inputRef}
             type="search"
@@ -644,6 +658,7 @@ export default function SearchModal() {
               <CloseIcon/>
             </button>
           )}
+
           <button
             onClick={closeModal}
             className="mono text-[10.5px] text-[var(--fg-mute)] border border-[var(--line-strong)] bg-[color-mix(in_oklch,var(--fg)_4%,transparent)] px-[7px] py-[3px] rounded-[5px] tracking-[0.04em] cursor-pointer transition-colors hover:text-[var(--fg)] hover:border-[var(--fg-mute)]"
@@ -655,6 +670,7 @@ export default function SearchModal() {
         {/* Scope chips */}
         <div className="flex gap-1 px-3.5 py-2.5 border-b border-[var(--line)] items-center" role="tablist">
           <span className="mono text-[10.5px] text-[var(--fg-mute)] tracking-[0.1em] uppercase mr-2">scope</span>
+
           {SCOPES.map(s => (
             <ScopeChip
               key={s.key}

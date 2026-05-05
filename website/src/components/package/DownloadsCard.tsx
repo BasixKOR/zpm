@@ -6,13 +6,16 @@ export function DownloadsCard({downloads}: {downloads: Array<DownloadDay> | null
 
   const lastWeek = downloads.slice(-7).reduce((s, d) => s + d.downloads, 0);
   const prevWeek = downloads.slice(-14, -7).reduce((s, d) => s + d.downloads, 0);
+
   const pctChange = prevWeek > 0 ? ((lastWeek - prevWeek) / prevWeek * 100) : 0;
+
   const dailyData = downloads.map(d => d.downloads);
   const startDate = downloads[0]?.day;
   const endDate = downloads[downloads.length - 1]?.day;
 
   const W = 280;
   const H = 56;
+
   const line = sparklinePath(dailyData, W, H);
   const area = line ? `${line} L${W},${H} L0,${H} Z` : ``;
 
@@ -22,6 +25,7 @@ export function DownloadsCard({downloads}: {downloads: Array<DownloadDay> | null
         <span className={`mono text-[10.5px] tracking-[0.12em] text-[var(--fg-mute)] uppercase`}>Weekly downloads</span>
         <span className={`text-[11.5px] text-[var(--fg-mute)]`}>all versions</span>
       </div>
+
       <div className={`text-[28px] font-medium text-[var(--fg)] tracking-[-0.02em] tabular-nums mb-1`}>
         {formatNumberFull(lastWeek)}
         {pctChange !== 0 && (
@@ -30,9 +34,11 @@ export function DownloadsCard({downloads}: {downloads: Array<DownloadDay> | null
           </span>
         )}
       </div>
+
       <div className={`mono text-[10.5px] text-[var(--fg-mute)] mb-3`}>
         {startDate} → {endDate}
       </div>
+
       {line && (
         <>
           <svg className={`w-full h-14 block`} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio={`none`}>

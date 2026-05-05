@@ -21,22 +21,35 @@ const { questions, levels } = quiz;
 
   <main class="quiz-shell">
     <header class="quiz-header">
-      <div class="quiz-eyebrow">A short pop quiz</div>
-      <h1 class="quiz-title">Do you know Yarn?</h1>
+      <div class="quiz-eyebrow">
+        A short pop quiz
+      </div>
+
+      <h1 class="quiz-title">
+        Do you know Yarn?
+      </h1>
+
       <p class="quiz-subtitle">
         Ten yes-or-no questions about what Yarn can actually do. Most developers are surprised by a few!
       </p>
     </header>
 
     <div class="quiz-progress" aria-label="Progress">
-      <div class="bar"><div class="bar-fill" id="progress-fill"></div></div>
+      <div class="bar">
+        <div id="progress-fill" class="bar-fill"></div>
+      </div>
+
       <div class="score">
-        <span class="num" id="progress-num">1</span>
+        <span id="progress-num" class="num">1</span>
         <span>/</span>
-        <span id="progress-total">10</span>
-        <span style="margin: 0 6px; opacity: 0.4;">&middot;</span>
-        <span class="num" id="score-num">0</span>
-        <span> correct</span>
+        <span id="progress-total">
+          10
+        </span>
+        <span class="mx-[6px] opacity-40">&middot;</span>
+        <span id="score-num" class="num">0</span>
+        <span>
+          correct
+        </span>
       </div>
     </div>
 
@@ -46,10 +59,13 @@ const { questions, levels } = quiz;
 
     <footer class="quiz-footer mt-16 pt-8 border-t border-[var(--line)] text-[13px] text-[var(--fg-mute)] flex flex-wrap items-center justify-between gap-3">
       <div>
-        Made by the <a href="/" class="text-[var(--fg-dim)] hover:text-[var(--fg)] transition-colors no-underline border-b border-[var(--line-strong)] hover:border-[var(--fg-dim)]">Yarn team</a>.
+        Made by the <a class="text-[var(--fg-dim)] hover:text-[var(--fg)] transition-colors no-underline border-b border-[var(--line-strong)] hover:border-[var(--fg-dim)]" href="/">Yarn team</a>.
       </div>
+
       <div class="mono text-[11px] tracking-[0.08em] uppercase">
-        <a href="/welcome/" class="text-[var(--fg-dim)] hover:text-[var(--fg)] transition-colors no-underline">Docs &rarr;</a>
+        <a class="text-[var(--fg-dim)] hover:text-[var(--fg)] transition-colors no-underline" href="/welcome/">
+          Docs &rarr;
+        </a>
       </div>
     </footer>
   </main>

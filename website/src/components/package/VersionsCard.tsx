@@ -7,8 +7,10 @@ export function VersionsCard({versions, distTags, time, onVersionChange}: {
   time: Record<string, string>; onVersionChange: (v: string) => void;
 }) {
   const [showAll, setShowAll] = useState(false);
+
   const sorted = versions.filter(v => !isNoisyPrerelease(v)).sort(compareSemverDesc);
   const displayed = showAll ? sorted : sorted.slice(0, 6);
+
   const tagForVersion = (v: string) => Object.entries(distTags).find(([, ver]) => ver === v)?.[0];
 
   return (

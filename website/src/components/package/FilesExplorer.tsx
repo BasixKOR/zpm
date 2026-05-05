@@ -41,8 +41,10 @@ function ExplorerTreeNode({node, depth, selectedFile, onSelectFile, changeMap}: 
   changeMap?: Map<string, string>;
 }) {
   const [expanded, setExpanded] = useState(depth < 1);
+
   const isDir = !!node.children;
   const indent = depth * 16;
+
   const changeType = changeMap?.get(node.path);
   const nameColor = changeType ? CHANGE_COLORS[changeType] : undefined;
 
@@ -98,6 +100,7 @@ export function FilesExplorer({
   compareVersion: string | null;
 }) {
   const {oct} = useIcons();
+
   const [fileContent, setFileContent] = useState<string | null>(null);
   const [fileLoading, setFileLoading] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -118,6 +121,7 @@ export function FilesExplorer({
   const sorted = useMemo(() =>
     versions.filter(v => !isNoisyPrerelease(v)).sort(compareSemverDesc)
   , [versions]);
+
   const tagForVersion = (v: string) => Object.entries(distTags).find(([, ver]) => ver === v)?.[0];
 
   const exitCompare = useCallback(() => {
@@ -281,9 +285,11 @@ export function FilesExplorer({
   const editorTheme = monacoReady ? (isDark ? `pkg-dark` : `pkg-light`) : (isDark ? `vs-dark` : `vs`);
 
   const inCompare = !!compareVersion;
+
   const awaitingFormat = prettify && selectedFile != null && canPrettify(selectedFile);
   const contentFormatted = !awaitingFormat || formattedContent != null;
   const origFormatted = !awaitingFormat || !inCompare || formattedOrig != null;
+
   const isLoading = fileLoading || (inCompare && origLoading) || (awaitingFormat && (!contentFormatted || !origFormatted));
 
   const displayContent = awaitingFormat && formattedContent != null ? formattedContent : fileContent;
@@ -297,6 +303,7 @@ export function FilesExplorer({
       >
         ← Back to the package page
       </button>
+
       <div className={`flex items-center gap-2`}>
         <span className={`mono text-[13px] font-medium text-[var(--fg)]`}>{name}</span>
         {inCompare ? (

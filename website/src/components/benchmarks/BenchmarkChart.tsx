@@ -49,7 +49,9 @@ export function BenchmarkChart({scenario, project, data, seriesOrder, seriesMeta
     const {w, h} = size;
     const pw = w - ML - MR;
     const ph = h - MT - MB;
-    if (pw <= 0 || ph <= 0) return null;
+
+    if (pw <= 0 || ph <= 0)
+      return null;
 
     const visible = seriesOrder.filter(s => !mutedSeries[s]);
     const allVals: Array<number> = [];
@@ -196,7 +198,8 @@ export function BenchmarkChart({scenario, project, data, seriesOrder, seriesMeta
   const zpmMedian = useMemo(() => median(zpmValues), [zpmValues]);
 
   const pill = useMemo(() => {
-    if (zpmMedian <= 0) return null;
+    if (zpmMedian <= 0)
+      return null;
 
     const medians: Array<{id: string, m: number}> = [];
     for (const sid of seriesOrder) {
@@ -206,7 +209,8 @@ export function BenchmarkChart({scenario, project, data, seriesOrder, seriesMeta
     }
 
     const others = medians.filter(x => x.id !== `zpm`);
-    if (!others.length) return {cls: `fastest`, text: `no comparison data`};
+    if (!others.length)
+      return {cls: `fastest`, text: `no comparison data`};
 
     const fastest = others.reduce((min, x) => x.m < min.m ? x : min, others[0]);
     const name = seriesMeta[fastest.id]?.name ?? fastest.id;
@@ -218,6 +222,7 @@ export function BenchmarkChart({scenario, project, data, seriesOrder, seriesMeta
     }
 
     const diff = +(zpmMedian - fastest.m).toFixed(1);
+
     const cls = diff / zpmMedian <= 0.1 ? `contested` : `slower`;
     return {cls, text: `${diff}s slower than ${name}`};
   }, [data, seriesOrder, seriesMeta, mutedSeries, zpmMedian]);

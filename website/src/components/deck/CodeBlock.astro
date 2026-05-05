@@ -20,9 +20,19 @@ const highlighted = code && lang ? await highlight(code, lang) : null;
       <span class="slide-codeblock-dot size-2.5 rounded-full bg-[var(--line-strong)]"></span>
       <span class="slide-codeblock-dot size-2.5 rounded-full bg-[var(--line-strong)]"></span>
     </span>
-    {filename && <span class="text-[13px] text-[var(--fg-dim)]">{filename}</span>}
-    {lang && <span class="ml-auto text-[11px] tracking-[0.12em] uppercase py-1 px-[9px] border border-[var(--line-strong)] rounded-full text-[var(--fg-mute)]">{lang}</span>}
+    {filename && (
+      <span class="text-[13px] text-[var(--fg-dim)]">
+        {filename}
+      </span>
+    )}
+
+    {lang && (
+      <span class="ml-auto text-[11px] tracking-[0.12em] uppercase py-1 px-[9px] border border-[var(--line-strong)] rounded-full text-[var(--fg-mute)]">
+        {lang}
+      </span>
+    )}
   </div>
+
   {highlighted
     ? <pre class:list={[compact ? 'py-5.5 px-[26px] text-[17px] leading-[1.6]' : 'pt-[26px] px-[30px] pb-7 text-xl leading-[1.65]', 'm-0 overflow-auto text-[var(--fg)] tab-[2]']}><Fragment set:html={highlighted} /></pre>
     : <pre class:list={[compact ? 'py-5.5 px-[26px] text-[17px] leading-[1.6]' : 'pt-[26px] px-[30px] pb-7 text-xl leading-[1.65]', 'm-0 overflow-auto text-[var(--fg)] tab-[2]']}><slot /></pre>}

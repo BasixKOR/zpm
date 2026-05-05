@@ -6,12 +6,13 @@ import FooterColumn from '../components/index/FooterColumn.astro';
 import VersionPill from '../components/index/VersionPill.astro';
 
 const [stableVersion, canaryVersion, benchmarkSummary] = await Promise.all([
-  fetch('https://repo.yarnpkg.com/channels/berry/stable').then(r => r.text()).then(v => v.trim()),
-  fetch('https://repo.yarnpkg.com/channels/zpm/canary').then(r => r.text()).then(v => v.trim()),
-  fetch('https://repo.yarnpkg.com/benchmarks/gatsby/summary').then(r => r.json()),
+  fetch(`https://repo.yarnpkg.com/channels/berry/stable`).then(r => r.text()).then(v => v.trim()),
+  fetch(`https://repo.yarnpkg.com/channels/zpm/canary`).then(r => r.text()).then(v => v.trim()),
+  fetch(`https://repo.yarnpkg.com/benchmarks/gatsby/summary`).then(r => r.json()),
 ]);
+
 const installFullCold = benchmarkSummary
-  .filter((d: {subtest: string}) => d.subtest === 'install-full-cold')
+  .filter((d: {subtest: string}) => d.subtest === `install-full-cold`)
   .sort((a: {median: number}, b: {median: number}) => a.median - b.median);
 ---
 
@@ -169,8 +170,10 @@ html[data-theme="light"] img.cat { filter: brightness(0.15); }
                 <VersionPill label="canary" title="Canary" version={`v${canaryVersion}`} href="/concepts/yarn-6" />
                 <div class="group absolute bottom-[8px] left-[calc(100%_+_4px)] rotate-[-2deg] transition-transform hover:rotate-[1deg] hover:scale-105">
                   <div class="absolute top-1 left-1 w-full h-full rounded-[14px] bg-black"/>
-                  <a href="/concepts/yarn-6" class="relative inline-flex items-center px-4 py-1.5 rounded-[14px] text-[12px] font-bold tracking-[0.01em] no-underline bg-white text-black whitespace-nowrap">
-                    <svg class="absolute bottom-[10px] right-[calc(100%_-_12px)]" style="width: 20px; height: 10px;" viewBox="0 0 20 10"><path d="M 0 10 L 20 0 L 20 10 L 0 10" fill="white"/></svg>
+                  <a class="relative inline-flex items-center px-4 py-1.5 rounded-[14px] text-[12px] font-bold tracking-[0.01em] no-underline bg-white text-black whitespace-nowrap" href="/concepts/yarn-6">
+                    <svg class="absolute bottom-[10px] right-[calc(100%_-_12px)] w-5 h-2.5" viewBox="0 0 20 10">
+                      <path d="M 0 10 L 20 0 L 20 10 L 0 10" fill="white"/>
+                    </svg>
                     Click to know more!
                   </a>
                 </div>
@@ -179,20 +182,26 @@ html[data-theme="light"] img.cat { filter: brightness(0.15); }
           </div>
           <h1 class="text-[clamp(48px,6.4vw,92px)] leading-[0.96] tracking-[-0.035em] font-medium m-0 mb-7 text-balance">
             Ship with<br/>
-            <em class="not-italic text-[var(--fg-dim)] font-light">confidence.</em>
+            <em class="not-italic text-[var(--fg-dim)] font-light">
+              confidence.
+            </em>
           </h1>
+
           <p class="text-[19px] leading-[1.55] text-[var(--fg-dim)] max-w-[540px] m-0 mb-10 text-pretty">
-            Deterministic, offline-first package management for JavaScript. Built for monorepos.
+            Deterministic, offline-first package management for JavaScript.
+            Built for monorepos.
           </p>
 
           <div class="flex gap-3 items-center flex-wrap mb-12">
-            <a href="/getting-started/" class="inline-flex items-center gap-2 px-[22px] py-[13px] rounded-[10px] text-[14.5px] font-medium no-underline border border-transparent cursor-pointer transition-all bg-[var(--fg)] text-[var(--bg-0)] hover:-translate-y-px">
+            <a class="inline-flex items-center gap-2 px-[22px] py-[13px] rounded-[10px] text-[14.5px] font-medium no-underline border border-transparent cursor-pointer transition-all bg-[var(--fg)] text-[var(--bg-0)] hover:-translate-y-px" href="/getting-started/">
               Get started
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6">
                 <path d="M3 7h8M8 4l3 3-3 3"/>
               </svg>
             </a>
-            <a href="/welcome/" class="inline-flex items-center gap-2 px-[22px] py-[13px] rounded-[10px] text-[14.5px] font-medium no-underline bg-transparent text-[var(--fg)] border border-[var(--line-strong)] transition-colors hover:border-[var(--fg-dim)]">Read the docs</a>
+            <a class="inline-flex items-center gap-2 px-[22px] py-[13px] rounded-[10px] text-[14.5px] font-medium no-underline bg-transparent text-[var(--fg)] border border-[var(--line-strong)] transition-colors hover:border-[var(--fg-dim)]" href="/welcome/">
+              Read the docs
+            </a>
           </div>
 
           <div id="install-box" role="group" aria-label="Install command" class="install-glow relative bg-[var(--card)] border border-[var(--card-border)] rounded-[14px] pl-[18px] pr-1.5 py-1.5 flex items-center gap-3.5 font-mono text-xs sm:text-sm max-w-[480px] backdrop-blur-md transition-colors hover:border-[var(--line-strong)] cursor-pointer">
@@ -203,24 +212,43 @@ html[data-theme="light"] img.cat { filter: brightness(0.15); }
                 <rect x="3" y="3" width="7" height="7" rx="1"/>
                 <path d="M2 8V2h6" opacity="0.6"/>
               </svg>
-              <span id="copy-label">Copy</span>
+              <span id="copy-label">
+                Copy
+              </span>
             </button>
           </div>
         </div>
 
         <div class="relative aspect-square w-full max-w-[280px] mx-auto md:max-w-[520px] md:mx-0 md:justify-self-end">
           <div class="absolute inset-0 border border-[var(--line)] rounded-full pointer-events-none"></div>
+
           <div class="hidden md:block absolute -inset-10 border border-[var(--line)] rounded-full pointer-events-none opacity-50"></div>
+
           <div class="hidden md:block absolute -inset-20 border border-[var(--line)] rounded-full pointer-events-none opacity-25"></div>
-          <img class="cat w-full h-full block object-contain" id="cat-img" src="cat.png" alt="" aria-hidden="true" crossorigin="anonymous" />
+
+          <img
+            id="cat-img"
+            class="cat w-full h-full block object-contain"
+            src="cat.png"
+            alt=""
+            aria-hidden="true"
+            crossorigin="anonymous"
+          />
+
           <div id="tip-card" aria-live="polite" class="absolute -bottom-6 left-0 right-0 md:left-auto md:right-[-12px] w-full md:w-80 max-w-full px-[18px] py-3.5 bg-[var(--card)] border border-[var(--card-border)] rounded-xl backdrop-blur-xl backdrop-saturate-150 shadow-[0_10px_40px_-20px_rgba(0,0,0,0.6)] z-[2] font-sans">
             <div class="flex items-center justify-between gap-3 mb-1.5">
-              <span class="mono text-[10.5px] tracking-[0.1em] text-[var(--fg-mute)] uppercase whitespace-nowrap">// did you know</span>
-              <span class="mono text-[10.5px] text-[var(--fg-mute)] tabular-nums" id="tip-count">01 / 06</span>
+              <span class="mono text-[10.5px] tracking-[0.1em] text-[var(--fg-mute)] uppercase whitespace-nowrap">
+                // did you know
+              </span>
+              <span id="tip-count" class="mono text-[10.5px] text-[var(--fg-mute)] tabular-nums">
+                01 / 06
+              </span>
             </div>
+
             <p id="tip-body" class="text-[13px] leading-[1.5] text-[var(--fg-dim)] text-pretty min-h-[3.9em] m-0 mb-2.5"></p>
+
             <div class="flex items-center gap-1 justify-end">
-              <div class="inline-flex gap-1 px-2" id="tip-dots"></div>
+              <div id="tip-dots" class="inline-flex gap-1 px-2"></div>
               <button id="tip-prev" aria-label="Previous tip" class="w-[26px] h-[26px] border border-[var(--line)] rounded-md bg-transparent text-[var(--fg-dim)] cursor-pointer inline-flex items-center justify-center transition-all p-0 hover:text-[var(--fg)] hover:border-[var(--line-strong)] active:scale-95">
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6.5 2L3 5l3.5 3"/></svg>
               </button>
@@ -280,11 +308,19 @@ html[data-theme="light"] img.cat { filter: brightness(0.15); }
       <div class="grid grid-cols-1 md:grid-cols-[1fr_1.3fr] gap-10 md:gap-20 items-center">
         <div class="text-sm text-[var(--fg-dim)] leading-[1.6]">
           <div class="mb-3.5">
-            <span class="inline-flex items-center gap-2 mr-5 mono text-xs text-[var(--fg)]"><span class="w-2.5 h-2.5 rounded-sm bg-[var(--accent)]"></span>Yarn 6.x</span>
-            <span class="inline-flex items-center gap-2 mr-5 mono text-xs text-[var(--fg)]"><span class="w-2.5 h-2.5 rounded-sm bg-[var(--fg-dim)]"></span>others</span>
+            <span class="inline-flex items-center gap-2 mr-5 mono text-xs text-[var(--fg)]">
+              <span class="w-2.5 h-2.5 rounded-sm bg-[var(--accent)]"></span>
+              Yarn 6.x
+            </span>
+            <span class="inline-flex items-center gap-2 mr-5 mono text-xs text-[var(--fg)]">
+              <span class="w-2.5 h-2.5 rounded-sm bg-[var(--fg-dim)]"></span>
+              others
+            </span>
           </div>
           <p>Full cold install (<span class="mono">install-full-cold</span>) of the Gatsby fixture — no cache, no lockfile, no <span class="mono">node_modules</span>. Median of multiple runs.</p>
-          <p class="text-xs text-[var(--fg-mute)] mono mt-8 pt-5 border-t border-[var(--line)]">// source: repo.yarnpkg.com/benchmarks/gatsby/summary</p>
+          <p class="text-xs text-[var(--fg-mute)] mono mt-8 pt-5 border-t border-[var(--line)]">
+            // source: repo.yarnpkg.com/benchmarks/gatsby/summary
+          </p>
         </div>
 
         <div id="chart" class="flex flex-col gap-5" data-benchmarks={JSON.stringify(installFullCold)}></div>
@@ -300,7 +336,10 @@ html[data-theme="light"] img.cat { filter: brightness(0.15); }
       </SectionHeader>
       <div class="flex flex-wrap gap-x-16 gap-y-12 items-center justify-center py-5 opacity-80">
         {['fintech co.', 'social network', 'video platform', 'e-commerce', 'dev tools', 'cloud provider', 'ride-hailing', 'streaming'].map(name => (
-          <div class="text-[22px] font-medium tracking-[-0.02em] text-[var(--fg-dim)] flex items-center gap-2.5"><span class="w-2.5 h-2.5 rounded-sm bg-[var(--fg-mute)] opacity-60"></span>{name}</div>
+          <div class="text-[22px] font-medium tracking-[-0.02em] text-[var(--fg-dim)] flex items-center gap-2.5">
+            <span class="w-2.5 h-2.5 rounded-sm bg-[var(--fg-mute)] opacity-60"></span>
+            {name}
+          </div>
         ))}
       </div>
     </div>
@@ -318,7 +357,9 @@ html[data-theme="light"] img.cat { filter: brightness(0.15); }
               <path d="M13 3 Q10 10 13 13 Q16 16 13 23" opacity="0.5"/>
             </svg>
           </span>
-          <span>yarn</span>
+          <span>
+            yarn
+          </span>
         </div>
         The modern JavaScript package manager. BSD-2-Clause. Built by a distributed team of maintainers and contributors.
       </div>
@@ -358,108 +399,125 @@ import { createStarfield } from '../scripts/starfield';
 import TIPS from '../../config/tips.json';
 
 const state = {
-  theme: 'dark',
+  theme: `dark`,
   starDensity: 57,
   starMotion: 41,
   starOpacity: 43,
   constellations: true,
   accentHue: 280,
 };
-const _savedTheme = localStorage.getItem('yarn-theme');
+
+const _savedTheme = localStorage.getItem(`yarn-theme`);
 if (_savedTheme) state.theme = _savedTheme;
+
 function motionToRad(m) { return (m / 100) * 0.08; }
 state.starSpeed = motionToRad(state.starMotion);
 
 let reinitStars;
 
 function applyTheme(t) {
-  document.documentElement.setAttribute('data-theme', t);
-  localStorage.setItem('yarn-theme', t);
+  document.documentElement.setAttribute(`data-theme`, t);
+  localStorage.setItem(`yarn-theme`, t);
   state.theme = t;
   reinitStars?.();
 }
+
 function applyAccent(h) {
-  document.documentElement.style.setProperty('--accent-h', h);
+  document.documentElement.style.setProperty(`--accent-h`, h);
 }
 applyTheme(state.theme);
 applyAccent(state.accentHue);
 
-document.getElementById('theme-toggle').addEventListener('click', () => {
-  applyTheme(state.theme === 'dark' ? 'light' : 'dark');
+document.getElementById(`theme-toggle`).addEventListener(`click`, () => {
+  applyTheme(state.theme === `dark` ? `light` : `dark`);
 });
 
-const installBox = document.getElementById('install-box');
-const copyBtn = document.getElementById('copy-btn');
-const copyLabel = document.getElementById('copy-label');
-installBox.addEventListener('click', async () => {
+const installBox = document.getElementById(`install-box`);
+const copyBtn = document.getElementById(`copy-btn`);
+const copyLabel = document.getElementById(`copy-label`);
+
+installBox.addEventListener(`click`, async () => {
   try {
-    await navigator.clipboard.writeText('curl repo.yarnpkg.com/install | bash');
-    installBox.classList.add('copied');
-    copyLabel.textContent = 'Copied';
-    setTimeout(() => { installBox.classList.remove('copied'); copyLabel.textContent = 'Copy'; }, 1400);
+    await navigator.clipboard.writeText(`curl repo.yarnpkg.com/install | bash`);
+    installBox.classList.add(`copied`);
+    copyLabel.textContent = `Copied`;
+    setTimeout(() => { installBox.classList.remove(`copied`); copyLabel.textContent = `Copy`; }, 1400);
   } catch (e) {
-    copyLabel.textContent = 'Ctrl+C';
+    copyLabel.textContent = `Ctrl+C`;
   }
 });
 
-const tipBody = document.getElementById('tip-body');
-const tipCount = document.getElementById('tip-count');
-const tipDots = document.getElementById('tip-dots');
+const tipBody = document.getElementById(`tip-body`);
+const tipCount = document.getElementById(`tip-count`);
+const tipDots = document.getElementById(`tip-dots`);
+
 for (let i = TIPS.length - 1; i > 0; i--) {
   const j = Math.floor(Math.random() * (i + 1));
   [TIPS[i], TIPS[j]] = [TIPS[j], TIPS[i]];
 }
+
 TIPS.forEach((_, i) => {
-  const d = document.createElement('span');
-  d.className = 'tip-dot w-[5px] h-[5px] rounded-full bg-[var(--line-strong)] transition-all cursor-pointer' + (i === 0 ? ' active' : '');
-  d.addEventListener('click', () => setTip(i));
+  const d = document.createElement(`span`);
+  d.className = `tip-dot w-[5px] h-[5px] rounded-full bg-[var(--line-strong)] transition-all cursor-pointer` + (i === 0 ? ` active` : ``);
+  d.addEventListener(`click`, () => setTip(i));
   tipDots.appendChild(d);
 });
+
 let tipIdx = 0;
 let tipTimer = null;
-function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+function pad(n) { return n < 10 ? `0` + n : `` + n; }
+
 function renderTip() {
-  tipBody.classList.add('fading');
+  tipBody.classList.add(`fading`);
   setTimeout(() => {
     tipBody.innerHTML = TIPS[tipIdx];
     tipCount.textContent = `${pad(tipIdx + 1)} / ${pad(TIPS.length)}`;
-    tipDots.querySelectorAll('.tip-dot').forEach((d, i) => d.classList.toggle('active', i === tipIdx));
-    tipBody.classList.remove('fading');
+    tipDots.querySelectorAll(`.tip-dot`).forEach((d, i) => d.classList.toggle(`active`, i === tipIdx));
+    tipBody.classList.remove(`fading`);
   }, 180);
 }
+
 function setTip(i) {
   tipIdx = ((i % TIPS.length) + TIPS.length) % TIPS.length;
   renderTip();
   restartTimer();
 }
+
 function restartTimer() {
   if (tipTimer) clearInterval(tipTimer);
   tipTimer = setInterval(() => setTip(tipIdx + 1), 7000);
 }
-document.getElementById('tip-prev').addEventListener('click', () => setTip(tipIdx - 1));
-document.getElementById('tip-next').addEventListener('click', () => setTip(tipIdx + 1));
+
+document.getElementById(`tip-prev`).addEventListener(`click`, () => setTip(tipIdx - 1));
+document.getElementById(`tip-next`).addEventListener(`click`, () => setTip(tipIdx + 1));
+
 tipBody.innerHTML = TIPS[0];
 tipCount.textContent = `01 / ${pad(TIPS.length)}`;
+
 restartTimer();
 
 /* ─────────────────── Starfield ─────────────────── */
-const canvas = document.getElementById('stars');
+
+const canvas = document.getElementById(`stars`);
 const { initStars } = createStarfield(canvas, state);
 reinitStars = initStars;
 
 /* ─────────────────── Perf chart bars ─────────────────── */
-const chart = document.getElementById('chart');
-const renameMap = { zpm: 'Yarn 6.x', yarn: 'Yarn 4.x' };
+
+const chart = document.getElementById(`chart`);
+const renameMap = { zpm: `Yarn 6.x`, yarn: `Yarn 4.x` };
 const chartData = JSON.parse(chart.dataset.benchmarks).map((d) => ({
   name: renameMap[d.pm] ?? d.pm,
   value: d.median,
-  self: d.pm === 'zpm',
+  self: d.pm === `zpm`,
 }));
 const maxVal = Math.max(...chartData.map(d => d.value));
 chartData.forEach((d, i) => {
   const pct = (d.value / maxVal) * 100;
-  const row = document.createElement('div');
-  row.className = 'grid grid-cols-[120px_1fr_70px] gap-5 items-center';
+  const row = document.createElement(`div`);
+
+  row.className = `grid grid-cols-[120px_1fr_70px] gap-5 items-center`;
   row.innerHTML = `
     <div class="bar-label ${d.self ? 'self' : ''} text-[13px] text-[var(--fg-dim)] mono">${d.name}</div>
     <div class="h-7 bg-[var(--card)] border border-[var(--card-border)] rounded-md overflow-hidden relative">
@@ -467,11 +525,12 @@ chartData.forEach((d, i) => {
     </div>
     <div class="bar-value ${d.self ? 'self' : ''} mono text-[13px] text-[var(--fg-dim)] text-right tabular-nums">${d.value.toFixed(1)}s</div>
   `;
+
   chart.appendChild(row);
 });
 
 new IntersectionObserver(([e]) => {
-  if (e.isIntersecting) chart.classList.add('in-view');
+  if (e.isIntersecting) chart.classList.add(`in-view`);
 }, { threshold: 0.3 }).observe(chart);
 
 </script>
