@@ -5,7 +5,7 @@
   "workspaces": {
     "@yarnpkg/documentation": "105cf01165fcffc02e5a354f6734895d01fbb152899e635b1d1b152a04e48c904810d457a85b09d642ca9061bf01e02dc203eabdf0c3a29ddf20036b31e43cde",
     "@yarnpkg/monorepo": "69da8dfb279601957675174872ca291310b88ff5e33fcc0060b11a3503fdef48f629515bcf7d74fbe12b83b2a84b7f0249cf8154978d15bc6a3fa3c634624f94",
-    "@yarnpkg/website": "79599dc6d1f71e4c68122bd31d6e1f9e3ae772f092b5d0039a94c84edf06bc4c3b56eadba037eb959919d637e181d30291842c0cfd76e7129119b9b8f425f6ad",
+    "@yarnpkg/website": "cd2e5e547f845fc85e30c7474a6ea4afa9f7eac63d7a633186fcc4585447dacc08a20ae7d17e1cedef951c5673f6898ab0d53369b93662229e711b6524d8ca5b",
     "@yarnpkg/zpm-constraints": "5c6a5440669d0a0244f06ebc980b86b246235da3b4da7fc5c2bbdc0bf61ef23e95d8bb9f2fdb7402d20cf0ac8461b086799a0e0e606054b85e9ac472be1dd9d2",
     "@yarnpkg/zpm-daemon-ui": "64b5d42d2f7f1113e164b3c3137385b0d72824abc41ca9e4d852261f61018f037cbe0b0d5c97d7b3529075ff8b6ceead5803590a5ff9ee3564a785732262564a",
     "acceptance-tests": "9e727eab8feee6a4383eb4abec8384decbaf30d2ee37dca7d2c8fc1e6afff399509282042cc605746ffaca0ed8f7e5b964b88327ecd50c5077d7a44b7ea4a5ae",
@@ -822,6 +822,21 @@
         },
         "peerDependencies": {
           "astro": "^5.0.0"
+        }
+      }
+    },
+    "@astrojs/node@npm:^9.5.5": {
+      "checksum": "1fad41426608519021f118d373abf6a172f2ec01bb5b146addeb6379a18df86adf07e87b2f06cfff42ebafea483173ab07d9e8ee33f6b482286fe45f0e439902",
+      "resolution": {
+        "resolution": "@astrojs/node@npm:9.5.5",
+        "version": "9.5.5",
+        "dependencies": {
+          "@astrojs/internal-helpers": "0.7.6",
+          "send": "^1.2.1",
+          "server-destroy": "^1.0.1"
+        },
+        "peerDependencies": {
+          "astro": "^5.17.3"
         }
       }
     },
@@ -5112,6 +5127,16 @@
         "version": "0.4.3"
       }
     },
+    "@iconify-json/octicon@npm:^1.2.23": {
+      "checksum": "3c874e6dc2c2f4cfcc99cde437a05308070a0362031ea752b70945bff1b5e8d4e53025a40d09fafd3ddf36c88b77964c15be20d583a365967a762ddf7bc066d0",
+      "resolution": {
+        "resolution": "@iconify-json/octicon@npm:1.2.23",
+        "version": "1.2.23",
+        "dependencies": {
+          "@iconify/types": "*"
+        }
+      }
+    },
     "@iconify-json/simple-icons@npm:^1.2.79": {
       "checksum": "be68b05726dde19a2a449b9384292e83d0ee286abed27e2fa5a111356b95353a48836bfdd1738d5e084912277e6403883a8afe543a648648c36571df5e32a502",
       "resolution": {
@@ -6195,6 +6220,16 @@
         }
       }
     },
+    "@monaco-editor/loader@npm:^1.5.0": {
+      "checksum": "444ae06b6842291707e12864d6bfb6c675bb2c2f703b4b12a004f5e7895e31620f388b9d64789c872ceb74d05586939adb0c10c4f4c3fc5051d869f5a23ebf2f",
+      "resolution": {
+        "resolution": "@monaco-editor/loader@npm:1.7.0",
+        "version": "1.7.0",
+        "dependencies": {
+          "state-local": "^1.0.6"
+        }
+      }
+    },
     "@monaco-editor/react@npm:4.7.0-rc.0": {
       "checksum": "50add44d95cd811900f4ad23f3aca8fd1a0458bbe83ecadcd83945f6181478aad4266d653450bc753de26ccf07cbb8383e5e7ed341c231af9ed0bfb0734c13b9",
       "resolution": {
@@ -6202,6 +6237,21 @@
         "version": "4.7.0-rc.0",
         "dependencies": {
           "@monaco-editor/loader": "^1.4.0"
+        },
+        "peerDependencies": {
+          "monaco-editor": ">= 0.25.0 < 1",
+          "react": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0",
+          "react-dom": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0"
+        }
+      }
+    },
+    "@monaco-editor/react@npm:^4.7.0": {
+      "checksum": "ae51b244eed069e00504946ce38ea24a5c0e99ab01b46b7aa46bcd8dab6d9dec8169cc4c73a07a28ef0afc6f2d0fe00bc2b00432f479b1ba6533294d1309c3bc",
+      "resolution": {
+        "resolution": "@monaco-editor/react@npm:4.7.0",
+        "version": "4.7.0",
+        "dependencies": {
+          "@monaco-editor/loader": "^1.5.0"
         },
         "peerDependencies": {
           "monaco-editor": ">= 0.25.0 < 1",
@@ -9630,6 +9680,23 @@
         }
       }
     },
+    "@tanstack/react-router@npm:^1.169.1": {
+      "checksum": "ce28935bbf3469847bb7872ce497600e11aa378fb4cf6f11fbbb152ffef92a0778b2d52f2c9fef5abc24d0a910b3f3f054c64990f6c377a042d50245b74e2224",
+      "resolution": {
+        "resolution": "@tanstack/react-router@npm:1.169.1",
+        "version": "1.169.1",
+        "dependencies": {
+          "@tanstack/history": "1.161.6",
+          "@tanstack/react-store": "^0.9.3",
+          "@tanstack/router-core": "1.169.1",
+          "isbot": "^5.1.22"
+        },
+        "peerDependencies": {
+          "react": ">=18.0.0 || >=19.0.0",
+          "react-dom": ">=18.0.0 || >=19.0.0"
+        }
+      }
+    },
     "@tanstack/react-store@npm:^0.9.3": {
       "checksum": "9a654be54d8b14a1775271ef270b82cd5672ce08833d971590efaa1a2b5d25dd83edf0d6032f3a4d76884853dc81cfbf45847b438f029184a5f9a0a86bc753dc",
       "resolution": {
@@ -9650,6 +9717,19 @@
       "resolution": {
         "resolution": "@tanstack/router-core@npm:1.168.15",
         "version": "1.168.15",
+        "dependencies": {
+          "@tanstack/history": "1.161.6",
+          "cookie-es": "^3.0.0",
+          "seroval": "^1.5.0",
+          "seroval-plugins": "^1.5.0"
+        }
+      }
+    },
+    "@tanstack/router-core@npm:1.169.1": {
+      "checksum": "a0536a4b4601ddf90a340f22b989564480dbc14d235e7b6ef54826afd98fc1e79fcdf17a8c051a983a3cd4d98868554d4d103e987c9264f0377be3f91e219a08",
+      "resolution": {
+        "resolution": "@tanstack/router-core@npm:1.169.1",
+        "version": "1.169.1",
         "dependencies": {
           "@tanstack/history": "1.161.6",
           "cookie-es": "^3.0.0",
@@ -15767,7 +15847,7 @@
         "version": "3.0.0"
       }
     },
-    "encodeurl@npm:~2.0.0": {
+    "encodeurl@npm:^2.0.0, encodeurl@npm:~2.0.0": {
       "checksum": "e91cc8840ba9c86b7d7c75d3afb78895745b72d232721369b6f0466c9805fd3d40ffef7c6bdd5c06b857087d15020e7b00cb2439ab8b03471d69e0d754ee9a30",
       "resolution": {
         "resolution": "encodeurl@npm:2.0.0",
@@ -16392,7 +16472,7 @@
         "version": "3.2.0"
       }
     },
-    "escape-html@npm:~1.0.3": {
+    "escape-html@npm:^1.0.3, escape-html@npm:~1.0.3": {
       "checksum": "d7e6dec7b1427b58631c93e5bbe68729e8cf7e25496828406a58a9a6354aa2d95adac3a54e3117b7691e6a26a6f1fdc8a9ccd1be98a1c9b5b1303a39a98346db",
       "resolution": {
         "resolution": "escape-html@npm:1.0.3",
@@ -16955,7 +17035,7 @@
         "version": "2.0.3"
       }
     },
-    "etag@npm:~1.8.1": {
+    "etag@npm:^1.8.1, etag@npm:~1.8.1": {
       "checksum": "fc5d1f624b96ef48e5f4615a1b388cda5b16313569b23f07005811ece08c8834fdbbc29a7cfa62c08d27da12877958de09a0484cbeca358e1d1901edb2638825",
       "resolution": {
         "resolution": "etag@npm:1.8.1",
@@ -17651,6 +17731,13 @@
       "resolution": {
         "resolution": "fraction.js@npm:5.3.4",
         "version": "5.3.4"
+      }
+    },
+    "fresh@npm:^2.0.0": {
+      "checksum": "2e486d348263424077dd56e1ff73450b6bf5f9270d6fbb2cf3002ae64ff1ba2cf07ef8337a1be64132af50670801c44eb4348b9533560d064a4fc68a48473e35",
+      "resolution": {
+        "resolution": "fresh@npm:2.0.0",
+        "version": "2.0.0"
       }
     },
     "fresh@npm:~0.5.2": {
@@ -19280,7 +19367,7 @@
         }
       }
     },
-    "http-errors@npm:~2.0.0, http-errors@npm:~2.0.1": {
+    "http-errors@npm:^2.0.1, http-errors@npm:~2.0.0, http-errors@npm:~2.0.1": {
       "checksum": "e266bd29d3fd38dff6f78e75e333efc8756edf4e8104bdae3ce733f240fb9c3205a5df6e3420dbedae5934a431e05e7d1f04e6ebaa3fff200e78d87e64e10c6d",
       "resolution": {
         "resolution": "http-errors@npm:2.0.1",
@@ -23042,7 +23129,7 @@
         "version": "1.52.0"
       }
     },
-    "mime-db@npm:>= 1.43.0 < 2": {
+    "mime-db@npm:>= 1.43.0 < 2, mime-db@npm:^1.54.0": {
       "checksum": "f203fc5838a8c4d0452dbd24ec46297df831a6b5c23d501e80629e107c418452b9ca666614c49a3314032e523ed15b67b81ecbf449075b8e2dfcf2ef1b5fe780",
       "resolution": {
         "resolution": "mime-db@npm:1.54.0",
@@ -23056,6 +23143,16 @@
         "version": "2.1.35",
         "dependencies": {
           "mime-db": "1.52.0"
+        }
+      }
+    },
+    "mime-types@npm:^3.0.2": {
+      "checksum": "0fa1f4ebd3afe37444671b64e89c08f881aaf831e1311b6ac3db9dba2b36d7a3a56e5a66d689fface9dc828e38dac76032eefb9e3696704ee61d9178f7e44cec",
+      "resolution": {
+        "resolution": "mime-types@npm:3.0.2",
+        "version": "3.0.2",
+        "dependencies": {
+          "mime-db": "^1.54.0"
         }
       }
     },
@@ -23901,7 +23998,7 @@
         "version": "2.0.11"
       }
     },
-    "on-finished@npm:2.4.1, on-finished@npm:~2.4.1": {
+    "on-finished@npm:2.4.1, on-finished@npm:^2.4.1, on-finished@npm:~2.4.1": {
       "checksum": "9e62d26347f0a452fba65ddaa71dd79f57abb09df1aee050cd07abb0971eb4c5dbe48d95bb4e1c92d3a97262d73324c96926853aff6d5d253703cad8640f5d2f",
       "resolution": {
         "resolution": "on-finished@npm:2.4.1",
@@ -25148,6 +25245,13 @@
       "resolution": {
         "resolution": "prelude-ls@npm:1.2.1",
         "version": "1.2.1"
+      }
+    },
+    "prettier@npm:^3.5.0": {
+      "checksum": "f085db460c4e2d3203be291a7b34455c6304be4dc4b76ae22ec7eefc01a5254fbe48ea1e37dffcc156854987311f9ffe91aee641f3697f482dc9db9b2b577796",
+      "resolution": {
+        "resolution": "prettier@npm:3.8.3",
+        "version": "3.8.3"
       }
     },
     "pretty-error@npm:^2.1.2": {
@@ -26982,6 +27086,26 @@
         "version": "7.7.4"
       }
     },
+    "send@npm:^1.2.1": {
+      "checksum": "b09534cda5d0c5aa2c062c3479a88bfd1ed7abfddb89c4381de9407fd13f5bbacd20bb9e592b7bfc66a4303d3ccb4a87f767c86c5b0c97c079eb383eb1e43a2b",
+      "resolution": {
+        "resolution": "send@npm:1.2.1",
+        "version": "1.2.1",
+        "dependencies": {
+          "debug": "^4.4.3",
+          "encodeurl": "^2.0.0",
+          "escape-html": "^1.0.3",
+          "etag": "^1.8.1",
+          "fresh": "^2.0.0",
+          "http-errors": "^2.0.1",
+          "mime-types": "^3.0.2",
+          "ms": "^2.1.3",
+          "on-finished": "^2.4.1",
+          "range-parser": "^1.2.1",
+          "statuses": "^2.0.2"
+        }
+      }
+    },
     "send@npm:~0.19.0, send@npm:~0.19.1": {
       "checksum": "955fd994ac98b3eb4e90ba48748b194c5b4cc2bde123985b73bc7aad57f1438ffe52ea53f2dc6e9f66ee6cb4913a5512a95e8e19c187b5f6bebc5c58b94ef198",
       "resolution": {
@@ -27064,6 +27188,13 @@
           "parseurl": "~1.3.3",
           "send": "~0.19.1"
         }
+      }
+    },
+    "server-destroy@npm:^1.0.1": {
+      "checksum": "18532955c8d9b215062b8b691a89dc197d0d02a2e7a3cfca1750574747fc987d9477b0ee493235d1c1ffae8a129d02ff7661edf6dad69ef23dbe3c2e6ac70fc5",
+      "resolution": {
+        "resolution": "server-destroy@npm:1.0.1",
+        "version": "1.0.1"
       }
     },
     "set-blocking@npm:^2.0.0": {
@@ -27767,7 +27898,7 @@
         "version": "2.0.1"
       }
     },
-    "statuses@npm:~2.0.1, statuses@npm:~2.0.2": {
+    "statuses@npm:^2.0.2, statuses@npm:~2.0.1, statuses@npm:~2.0.2": {
       "checksum": "cdce10f2d970af45069b1b8e7b06e9b043c1e65c9749dd699f6cbce3385a9a1b60b6087e1ebc33d486121a93c7d6eb466ae1c3794695ce2a1f5db2fef65f1782",
       "resolution": {
         "resolution": "statuses@npm:2.0.2",

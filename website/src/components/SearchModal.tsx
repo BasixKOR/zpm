@@ -1,8 +1,20 @@
 import {liteClient as algoliasearch}                        from 'algoliasearch/lite';
+import octIconData                                           from '@iconify-json/octicon/icons.json';
 import {useState, useEffect, useRef, useCallback, type JSX} from 'react';
 
 const docsClient = algoliasearch(`STXW7VT1S5`, `ecdfaea128fd901572b14543a2116eee`);
 const pkgClient = algoliasearch(`OFCNCOG2CU`, `f54e21fa3a2a0160595bb058179bfb1e`);
+
+function octicon(name: string, size: number, className?: string) {
+  const icon = (octIconData as any).icons[name];
+  if (!icon) return null;
+  const w = icon.width ?? 16;
+  const h = icon.height ?? 16;
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${w} ${h}`} fill="currentColor" aria-hidden="true" className={className}
+      dangerouslySetInnerHTML={{__html: icon.body}}/>
+  );
+}
 
 type Scope = `all` | `docs` | `pkg` | `cli`;
 type ResultKind = `docs` | `pkg` | `cli`;
@@ -25,55 +37,40 @@ interface SearchItem {
 // ── Icons ──
 
 function SearchIcon({size = 16, className}: {size?: number, className?: string}) {
-  return (
-    <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
-      <circle cx="7" cy="7" r="4.5"/>
-      <path d="M10.5 10.5 L14 14"/>
-    </svg>
-  );
+  return octicon(`search-16`, size, className);
 }
 
 function CloseIcon() {
-  return <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M3 3l6 6M9 3l-6 6"/></svg>;
+  return octicon(`x-16`, 12);
 }
 
 function ClockIcon() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4">
-      <circle cx="7" cy="7" r="5.5"/>
-      <path d="M7 4v3.5l2.5 1.5"/>
-    </svg>
-  );
+  return octicon(`clock-16`, 13);
 }
 
 function FlameIcon({color}: {color: string}) {
   return (
-    <svg width="10" height="10" viewBox="0 0 12 12" fill={color} className="shrink-0">
-      <path d="M6 0C6 0 2 4 2 7.5a4 4 0 0 0 8 0C10 4 6 0 6 0zM6 10.5a2.5 2.5 0 0 1-2.5-2.5c0-1.5 2.5-5 2.5-5s2.5 3.5 2.5 5A2.5 2.5 0 0 1 6 10.5z"/>
-    </svg>
+    <span style={{color}} className="shrink-0 inline-flex">
+      {octicon(`flame-16`, 10)}
+    </span>
   );
 }
 
 function NoResultsIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
-      <circle cx="8" cy="8" r="5"/>
-      <path d="M11.5 11.5L16 16M5.5 8H10.5"/>
-    </svg>
-  );
+  return octicon(`search-16`, 18);
 }
 
 const SCOPE_ICONS: Record<string, JSX.Element | null> = {
   all: null,
-  docs: <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4"><rect x="2" y="1.5" width="8" height="9" rx="0.5"/><path d="M4 4h4M4 6h4M4 8h2.5"/></svg>,
-  pkg: <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M6 1.5L10.5 4 6 6.5 1.5 4 6 1.5z"/><path d="M1.5 4v4.5L6 11l4.5-2.5V4M6 6.5V11"/></svg>,
-  cli: <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M2.5 4l2 2-2 2M6 8h3.5"/></svg>,
+  docs: octicon(`file-16`, 11)!,
+  pkg: octicon(`package-16`, 11)!,
+  cli: octicon(`terminal-16`, 11)!,
 };
 
 const KIND_GLYPHS: Record<ResultKind, JSX.Element> = {
-  docs: <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4"><rect x="2.5" y="1.8" width="9" height="10.4" rx="0.7"/><path d="M4.7 4.5h4.6M4.7 6.7h4.6M4.7 8.9h3"/></svg>,
-  pkg: <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M7 1.7L12 4.3 7 6.9 2 4.3 7 1.7z"/><path d="M2 4.3v5.4L7 12.3 12 9.7V4.3M7 6.9V12.3"/></svg>,
-  cli: <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 5l2.2 2L3 9M7 9.3h4"/></svg>,
+  docs: octicon(`file-16`, 14)!,
+  pkg: octicon(`package-16`, 14)!,
+  cli: octicon(`terminal-16`, 14)!,
 };
 
 const SCOPES: Array<{key: Scope, label: string}> = [
@@ -132,24 +129,48 @@ function getFlameColor(downloadsRaw?: number): string | null {
   return null;
 }
 
-function groupResults(results: Array<SearchItem>, scope: Scope): Array<[ResultKind, Array<SearchItem>]> {
+function looksLikePackage(q: string): boolean {
+  const t = q.trim();
+  if (!t) return false;
+  return /^@?[a-z0-9][\w.\-]*(?:\/[a-z0-9][\w.\-]*)?$/i.test(t);
+}
+
+interface ResultGroup {
+  kind: ResultKind;
+  label: string;
+  items: Array<SearchItem>;
+}
+
+function groupResults(results: Array<SearchItem>, scope: Scope, query: string): Array<ResultGroup> {
   const filtered = scope === `all` ? results : results.filter(r => r.kind === scope);
-  const groups: Array<[ResultKind, Array<SearchItem>]> = [];
+  const groups: Array<ResultGroup> = [];
 
   if (scope === `all`) {
-    for (const k of [`docs`, `pkg`, `cli`] as Array<ResultKind>) {
-      const items = filtered.filter(r => r.kind === k);
-      if (items.length) groups.push([k, items]);
+    const docs = filtered.filter(r => r.kind === `docs`);
+    const pkgs = filtered.filter(r => r.kind === `pkg`);
+    const cli = filtered.filter(r => r.kind === `cli`);
+
+    if (looksLikePackage(query)) {
+      const hotPkgs = pkgs.filter(r => getFlameColor(r.downloadsRaw) != null).slice(0, 2);
+      const restPkgs = pkgs.filter(r => !hotPkgs.includes(r));
+      if (hotPkgs.length) groups.push({kind: `pkg`, label: `Popular packages`, items: hotPkgs});
+      if (docs.length) groups.push({kind: `docs`, label: KIND_LABELS.docs, items: docs});
+      if (cli.length) groups.push({kind: `cli`, label: KIND_LABELS.cli, items: cli});
+      if (restPkgs.length) groups.push({kind: `pkg`, label: KIND_LABELS.pkg, items: restPkgs});
+    } else {
+      if (docs.length) groups.push({kind: `docs`, label: KIND_LABELS.docs, items: docs});
+      if (pkgs.length) groups.push({kind: `pkg`, label: KIND_LABELS.pkg, items: pkgs});
+      if (cli.length) groups.push({kind: `cli`, label: KIND_LABELS.cli, items: cli});
     }
   } else if (filtered.length) {
-    groups.push([scope as ResultKind, filtered]);
+    groups.push({kind: scope as ResultKind, label: KIND_LABELS[scope as ResultKind], items: filtered});
   }
 
   return groups;
 }
 
-function flattenGroups(groups: Array<[ResultKind, Array<SearchItem>]>): Array<SearchItem> {
-  return groups.flatMap(([, items]) => items);
+function flattenGroups(groups: Array<ResultGroup>): Array<SearchItem> {
+  return groups.flatMap(g => g.items);
 }
 
 // ── Subcomponents ──
@@ -202,10 +223,10 @@ function Crumbs({crumbs, separator = `›`}: {crumbs: Array<string>, separator?:
   );
 }
 
-function GroupHeader({kind, count}: {kind: ResultKind, count: number}) {
+function GroupHeader({label, count}: {label: string, count: number}) {
   return (
     <div className="flex items-center gap-2.5 px-5 pt-3.5 pb-1.5 mono text-[10.5px] text-[var(--fg-mute)] tracking-[0.12em] uppercase">
-      <span>{KIND_LABELS[kind]}</span>
+      <span>{label}</span>
       <span className="flex-1 h-px bg-[var(--line)]"/>
       <span className="tabular-nums tracking-[0.04em]">{count}</span>
     </div>
@@ -285,7 +306,7 @@ function PkgResultRow({item, isActive, onMouseEnter, onClick}: {item: SearchItem
 }
 
 function ResultGroups({groups, activeIdx, onHover, onSelect}: {
-  groups: Array<[ResultKind, Array<SearchItem>]>;
+  groups: Array<ResultGroup>;
   activeIdx: number;
   onHover: (idx: number) => void;
   onSelect: (item: SearchItem) => void;
@@ -293,15 +314,15 @@ function ResultGroups({groups, activeIdx, onHover, onSelect}: {
   let idx = 0;
   return (
     <>
-      {groups.map(([kind, items]) => (
-        <div key={kind}>
-          <GroupHeader kind={kind} count={items.length}/>
-          {items.map(item => {
+      {groups.map((group, gi) => (
+        <div key={gi}>
+          <GroupHeader label={group.label} count={group.items.length}/>
+          {group.items.map(item => {
             const myIdx = idx++;
             const Row = item.kind === `pkg` ? PkgResultRow : DocResultRow;
             return (
               <Row
-                key={`${kind}-${myIdx}`}
+                key={`${gi}-${myIdx}`}
                 item={item}
                 isActive={myIdx === activeIdx}
                 onMouseEnter={() => onHover(myIdx)}
@@ -511,7 +532,7 @@ export default function SearchModal() {
         titleHtml: highlightValue(hit, `name`),
         snippet: stripTags(hit.description || ``),
         snippetHtml: highlightValue(hit, `description`),
-        href: `/package/${encodeURIComponent(hit.name)}`,
+        href: `/package/${hit.name}`,
         version: hit.version,
         downloads: hit.humanDownloadsLast30Days,
         downloadsRaw: hit.downloadsLast30Days,
@@ -544,7 +565,7 @@ export default function SearchModal() {
   const counts: Record<string, number> = {all: results.length, docs: 0, pkg: 0, cli: 0};
   results.forEach(r => counts[r.kind]++);
 
-  const groups = groupResults(results, scope);
+  const groups = groupResults(results, scope, query);
   const flatItems = flattenGroups(groups);
 
   const navigateToResult = useCallback((item: SearchItem) => {

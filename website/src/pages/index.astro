@@ -165,7 +165,16 @@ html[data-theme="light"] img.cat { filter: brightness(0.15); }
           <div class="flex gap-2 flex-wrap mb-7">
             <VersionPill label="stable" title="Stable" version={`v${stableVersion}`} accent />
             {stableVersion !== canaryVersion && (
-              <VersionPill label="canary" title="Canary" version={`v${canaryVersion}`} />
+              <div class="relative">
+                <VersionPill label="canary" title="Canary" version={`v${canaryVersion}`} href="/concepts/yarn-6" />
+                <div class="group absolute bottom-[8px] left-[calc(100%_+_4px)] rotate-[-2deg] transition-transform hover:rotate-[1deg] hover:scale-105">
+                  <div class="absolute top-1 left-1 w-full h-full rounded-[14px] bg-black"/>
+                  <a href="/concepts/yarn-6" class="relative inline-flex items-center px-4 py-1.5 rounded-[14px] text-[12px] font-bold tracking-[0.01em] no-underline bg-white text-black whitespace-nowrap">
+                    <svg class="absolute bottom-[10px] right-[calc(100%_-_12px)]" style="width: 20px; height: 10px;" viewBox="0 0 20 10"><path d="M 0 10 L 20 0 L 20 10 L 0 10" fill="white"/></svg>
+                    Click to know more!
+                  </a>
+                </div>
+              </div>
             )}
           </div>
           <h1 class="text-[clamp(48px,6.4vw,92px)] leading-[0.96] tracking-[-0.035em] font-medium m-0 mb-7 text-balance">
