@@ -5,7 +5,7 @@
   "workspaces": {
     "@yarnpkg/documentation": "105cf01165fcffc02e5a354f6734895d01fbb152899e635b1d1b152a04e48c904810d457a85b09d642ca9061bf01e02dc203eabdf0c3a29ddf20036b31e43cde",
     "@yarnpkg/monorepo": "69da8dfb279601957675174872ca291310b88ff5e33fcc0060b11a3503fdef48f629515bcf7d74fbe12b83b2a84b7f0249cf8154978d15bc6a3fa3c634624f94",
-    "@yarnpkg/website": "ab3f96013b563844131101c19e8cd1bb1e971418ab4f4316d476c2e30ca485be768037c4587127da514ad0b1ee13d1c4488dac66b0fb8d5e181c2957b6152caf",
+    "@yarnpkg/website": "12d6e401d8ce902b618a18af7f1c4ea379d56bc7f129ed2e319f4373d37fecf0758780133cf413f63e23a5b06a446b38aa529a45a3bc67a6cda6b492727d3ce3",
     "@yarnpkg/zpm-constraints": "5c6a5440669d0a0244f06ebc980b86b246235da3b4da7fc5c2bbdc0bf61ef23e95d8bb9f2fdb7402d20cf0ac8461b086799a0e0e606054b85e9ac472be1dd9d2",
     "@yarnpkg/zpm-daemon-ui": "64b5d42d2f7f1113e164b3c3137385b0d72824abc41ca9e4d852261f61018f037cbe0b0d5c97d7b3529075ff8b6ceead5803590a5ff9ee3564a785732262564a",
     "acceptance-tests": "9e727eab8feee6a4383eb4abec8384decbaf30d2ee37dca7d2c8fc1e6afff399509282042cc605746ffaca0ed8f7e5b964b88327ecd50c5077d7a44b7ea4a5ae",
@@ -7691,6 +7691,22 @@
         }
       }
     },
+    "@puppeteer/browsers@npm:2.13.0": {
+      "checksum": "197d8eed4cc2404dc819cee0eab29b1ee39e7f1d52d4ed1925b7a28dc9d7fea6028be73f8657583643f884ef9146b7e604f81ce9994eeea729749514ce9ce78f",
+      "resolution": {
+        "resolution": "@puppeteer/browsers@npm:2.13.0",
+        "version": "2.13.0",
+        "dependencies": {
+          "debug": "^4.4.3",
+          "extract-zip": "^2.0.1",
+          "progress": "^2.0.3",
+          "proxy-agent": "^6.5.0",
+          "semver": "^7.7.4",
+          "tar-fs": "^3.1.1",
+          "yargs": "^17.7.2"
+        }
+      }
+    },
     "@reduxjs/toolkit@npm:1.x.x || 2.x.x": {
       "checksum": "8c2d32ddefe86471fecefcdc884f811ddac0b73a8fb76f0eb1a4d26aaf5ca4f8fb3097ff44d4cd465b0dff0462ecaa7eb205c0cef1a74e461d1ad511bcaa6422",
       "resolution": {
@@ -9749,6 +9765,13 @@
         "version": "0.3.0"
       }
     },
+    "@tootallnate/quickjs-emscripten@npm:^0.23.0": {
+      "checksum": "dccf0294df79f181b1befe7bf3854ba230d4ec4d0286d028757f6bc8a8a85fabfd093e7e97d2f8097e1a63ab4b9fc6d3dc1a074ec8ca3708a8eedba51b5eeca0",
+      "resolution": {
+        "resolution": "@tootallnate/quickjs-emscripten@npm:0.23.0",
+        "version": "0.23.0"
+      }
+    },
     "@trysound/sax@npm:0.2.0": {
       "checksum": "c868ca287c96cbadb6b108f6de47c200ef441591605962b036b3e34e9e41647f32c53fdd2ff28621ec497cb6419bd17606f8b4e5327e282c70640b9817ff53f6",
       "resolution": {
@@ -10547,6 +10570,16 @@
       "resolution": {
         "resolution": "@types/yargs-parser@npm:21.0.3",
         "version": "21.0.3"
+      }
+    },
+    "@types/yauzl@npm:^2.9.1": {
+      "checksum": "9e64beb8f1359e08a7c1e1d68f41365fd0b0cf684d503fb59464969c68d6ef251215d6df319135f86219e29124b119d51c705d8a9ba43fd3700e400d5d38869a",
+      "resolution": {
+        "resolution": "@types/yauzl@npm:2.10.3",
+        "version": "2.10.3",
+        "dependencies": {
+          "@types/node": "*"
+        }
       }
     },
     "@types/yoga-layout@npm:1.9.2": {
@@ -12607,6 +12640,16 @@
         "version": "2.0.6"
       }
     },
+    "ast-types@npm:^0.13.4": {
+      "checksum": "4b422f01c2f157367eaf633d3ac19185b6bb17a8dde50fc23755797ee5116aef7693b5d3f272a33302c257711a26c1604e465b5610123cfdee38ea73ac46e4bb",
+      "resolution": {
+        "resolution": "ast-types@npm:0.13.4",
+        "version": "0.13.4",
+        "dependencies": {
+          "tslib": "^2.0.1"
+        }
+      }
+    },
     "ast-types-flow@npm:^0.0.8": {
       "checksum": "0b2a09e4016b5c40f78bd8dbeb248ba2ef5cc948ff1753cb8c00776103685a7e0ef3c54396fb9d00876435ce1848d4105df46620db8eb8c038f649fd27ea61d6",
       "resolution": {
@@ -13313,6 +13356,13 @@
         "version": "2.9.11"
       }
     },
+    "basic-ftp@npm:^5.0.2": {
+      "checksum": "8fdb5fcd7d7d190915111480f8d0c600bb2d47841b6cc7f4444a0af4af5cf2ecda5896b1c84462e566f92d2e15ce8f1cc638e6b9af1e06e3ba4f78f17c0a88f4",
+      "resolution": {
+        "resolution": "basic-ftp@npm:5.3.1",
+        "version": "5.3.1"
+      }
+    },
     "bcp-47@npm:^2.1.0": {
       "checksum": "f5054dedbee7fbc27e8f25d1240676e4738171145b9c59f48d3b9ce77cc52e68f9b5ad63c2dd19d9d2a3db05ec43a09b65f7a8018f7effe957141f50621cc8d0",
       "resolution": {
@@ -13607,6 +13657,13 @@
       "resolution": {
         "resolution": "buffer-alloc-unsafe@npm:1.1.0",
         "version": "1.1.0"
+      }
+    },
+    "buffer-crc32@npm:~0.2.3": {
+      "checksum": "d89b84a216fa05c03d6e5ae08f95e99860a16649a029aaee438974c52d21e0eaf470b160c58b0fe2eb5ec33549fc22c8fcec13081ab608f9d963264d5bc1355b",
+      "resolution": {
+        "resolution": "buffer-crc32@npm:0.2.13",
+        "version": "0.2.13"
       }
     },
     "buffer-fill@npm:^1.0.0": {
@@ -14063,6 +14120,20 @@
       "resolution": {
         "resolution": "chrome-trace-event@npm:1.0.4",
         "version": "1.0.4"
+      }
+    },
+    "chromium-bidi@npm:14.0.0": {
+      "checksum": "cae5fd00b4075b9fe54e23472b3270cf9143bc92d0efb1deeb80a9a069598f7f79513b867beeb83032af957e488f793b35dd104cefe38a6ddc8f97fa8bc03c65",
+      "resolution": {
+        "resolution": "chromium-bidi@npm:14.0.0",
+        "version": "14.0.0",
+        "dependencies": {
+          "mitt": "^3.0.1",
+          "zod": "^3.24.1"
+        },
+        "peerDependencies": {
+          "devtools-protocol": "*"
+        }
       }
     },
     "ci-info@npm:2.0.0, ci-info@npm:^2.0.0": {
@@ -14691,6 +14762,25 @@
         ]
       }
     },
+    "cosmiconfig@npm:^9.0.0": {
+      "checksum": "2bf8031d0b38f78a17dd58ee3c8d015f3ffe90575ad75b6650fa1eae9e1f201ef287e86a28e8dfdd0ac0d4be3d48e684463dbf375c87ee3d1b15b087e7f2f7d9",
+      "resolution": {
+        "resolution": "cosmiconfig@npm:9.0.1",
+        "version": "9.0.1",
+        "dependencies": {
+          "env-paths": "^2.2.1",
+          "import-fresh": "^3.3.0",
+          "js-yaml": "^4.1.0",
+          "parse-json": "^5.2.0"
+        },
+        "peerDependencies": {
+          "typescript": ">=4.9.5"
+        },
+        "optionalPeerDependencies": [
+          "typescript"
+        ]
+      }
+    },
     "create-gatsby@npm:^3.15.0": {
       "checksum": "43ba2faf84669812e9faab24a553154fb47e99e6a4e929d77fe6397fd335833c087bd888afde684ad11f64aca18305795e3886402d5ad3fc0528341b63924df4",
       "resolution": {
@@ -15181,6 +15271,13 @@
         "version": "1.0.8"
       }
     },
+    "data-uri-to-buffer@npm:^6.0.2": {
+      "checksum": "1a11b1580a588cf0e86e69d5b22665fd7a7e208cc35a2ff8260f3e022ad70a21b985c84b2d75d55207259eb3cb1a7d4d9d38880a8198239bd5836ed69ec7a144",
+      "resolution": {
+        "resolution": "data-uri-to-buffer@npm:6.0.2",
+        "version": "6.0.2"
+      }
+    },
     "data-view-buffer@npm:^1.0.2": {
       "checksum": "add9cacee8648329f1dc071be2526430dac7d45a999f795c7adba94a5150352d4bf376c8f9d94396510c2c9daa198807b721ecb378e18de0ecaee30040219e27",
       "resolution": {
@@ -15410,6 +15507,18 @@
         "version": "6.1.7"
       }
     },
+    "degenerator@npm:^5.0.0": {
+      "checksum": "8275b85eb6d64d896c3b27bb044626c8f105a5a08fdefbd3b4af0c33e0f6c5dd04fb0e466033002cd88f1eac29ddf349c26f58a0221a1a1881f1d2d4bac89f24",
+      "resolution": {
+        "resolution": "degenerator@npm:5.0.1",
+        "version": "5.0.1",
+        "dependencies": {
+          "ast-types": "^0.13.4",
+          "escodegen": "^2.1.0",
+          "esprima": "^4.0.1"
+        }
+      }
+    },
     "delayed-stream@npm:~1.0.0": {
       "checksum": "d2187242c5f681c60e798f712d3c1365388318e1c47eb046150ae909dfda38bcf54840a1633cf0f307abd0a9da7b94e09ec4b7b7a5cbd0430e4fe9bd4a8554f0",
       "resolution": {
@@ -15534,6 +15643,13 @@
         "dependencies": {
           "dequal": "^2.0.0"
         }
+      }
+    },
+    "devtools-protocol@npm:0.0.1595872": {
+      "checksum": "c752520d6e7609bc6acf73d54fcaed9c98b5f84ca5ce5b651f3f268c4d6051731e6d82170d81d08d7aede2abb5400beb7b35aac485eda2bb58ff8c5944aef9a1",
+      "resolution": {
+        "resolution": "devtools-protocol@npm:0.0.1595872",
+        "version": "0.0.1595872"
       }
     },
     "dfa@npm:^1.2.0": {
@@ -15975,7 +16091,7 @@
         "version": "6.0.1"
       }
     },
-    "env-paths@npm:^2.2.0": {
+    "env-paths@npm:^2.2.0, env-paths@npm:^2.2.1": {
       "checksum": "51a7ee0e4fb29ed3a4412ad18b5980c4569934530f66982ba64cf1ca69c36ca99a8227a16dcfca006d921cbf2be5e94f54ebe96e3bd443c245ad00631f74edc8",
       "resolution": {
         "resolution": "env-paths@npm:2.2.1",
@@ -16502,6 +16618,22 @@
       "resolution": {
         "resolution": "escape-string-regexp@npm:5.0.0",
         "version": "5.0.0"
+      }
+    },
+    "escodegen@npm:^2.1.0": {
+      "checksum": "696edbfc8f6c14f4cc83e28e40e189e4e7532095b4eae136525a63ad963833dbd19a21d851a8dd9a6570c3eb24e51a1c4c0b8688bedeb46f54243ed60ed55c43",
+      "resolution": {
+        "resolution": "escodegen@npm:2.1.0",
+        "version": "2.1.0",
+        "dependencies": {
+          "esprima": "^4.0.1",
+          "estraverse": "^5.2.0",
+          "esutils": "^2.0.2",
+          "source-map": "~0.6.1"
+        },
+        "optionalDependencies": [
+          "source-map"
+        ]
       }
     },
     "eslint@npm:^7.32.0": {
@@ -17260,6 +17392,22 @@
         }
       }
     },
+    "extract-zip@npm:^2.0.1": {
+      "checksum": "f342b2ef1f64792daaa4aaef50f7b9fba0f55cdece6cd67ae22e852a6320de5f9bc3be99114ea48f79b29612e4e8936974ed152e908261638c44ae50b3e63e7d",
+      "resolution": {
+        "resolution": "extract-zip@npm:2.0.1",
+        "version": "2.0.1",
+        "dependencies": {
+          "@types/yauzl": "^2.9.1",
+          "debug": "^4.1.1",
+          "get-stream": "^5.1.0",
+          "yauzl": "^2.10.0"
+        },
+        "optionalDependencies": [
+          "@types/yauzl"
+        ]
+      }
+    },
     "fast-content-type-parse@npm:^3.0.0": {
       "checksum": "64aaf7553b6aac65fbaeea8221081d7903c0c8ed2771ebe8f2a3ad76ec5c047aa46225345fc096e0770ee8896c395a4a042bcf52c9e2cfb848141d1d541d7bfa",
       "resolution": {
@@ -17374,6 +17522,16 @@
       "resolution": {
         "resolution": "fbjs-css-vars@npm:1.0.2",
         "version": "1.0.2"
+      }
+    },
+    "fd-slicer@npm:~1.1.0": {
+      "checksum": "1b3f5fe1b972f0ebb3064fead4e2fd101053d60335b2e4d3ec4abf3ae1725da87dab7864a21630c94c71ee5290b39db6760c25926cc6e64fb990f3b0ce278a54",
+      "resolution": {
+        "resolution": "fd-slicer@npm:1.1.0",
+        "version": "1.1.0",
+        "dependencies": {
+          "pend": "~1.2.0"
+        }
       }
     },
     "fdir@npm:^6.4.4, fdir@npm:^6.5.0": {
@@ -18410,6 +18568,18 @@
         }
       }
     },
+    "get-uri@npm:^6.0.1": {
+      "checksum": "6dc6ea787b7a529f7c844255180ccdea9850ea8f3fecabe057d16a7b42d6ee30418a22a373e6d782c55f2312d0e4b25df7b5555b66c7fcf5c49303dddeb3d4dc",
+      "resolution": {
+        "resolution": "get-uri@npm:6.0.5",
+        "version": "6.0.5",
+        "dependencies": {
+          "basic-ftp": "^5.0.2",
+          "data-uri-to-buffer": "^6.0.2",
+          "debug": "^4.3.4"
+        }
+      }
+    },
     "git-up@npm:^7.0.0": {
       "checksum": "0a3fca6b8f263d96d04241d040e62fbd008706fc435cbfeb7e46effdfda12a726f43c8fc68a819c46473cad102d7a11d3532e3892d66df436f545cb87dc4c65d",
       "resolution": {
@@ -19371,7 +19541,7 @@
         }
       }
     },
-    "http-proxy-agent@npm:^7.0.0": {
+    "http-proxy-agent@npm:^7.0.0, http-proxy-agent@npm:^7.0.1": {
       "checksum": "3223f6efcb7ea95107b69b9159062703fa6c111ca303e9aea4ba1896424e55c661a13e03e4b0f3e076e11608fff14958da52e85a641541148782b1daae0f2c9c",
       "resolution": {
         "resolution": "http-proxy-agent@npm:7.0.2",
@@ -19404,7 +19574,7 @@
         }
       }
     },
-    "https-proxy-agent@npm:^7.0.1": {
+    "https-proxy-agent@npm:^7.0.1, https-proxy-agent@npm:^7.0.6": {
       "checksum": "b31ecbc625b12bf8143444d081d91b2d292555cda3b2cabfbaff19bcd6db2611b587361af3276696d46a51e1ec3cf07751be0370aa4f3a160d1899b63984bc0d",
       "resolution": {
         "resolution": "https-proxy-agent@npm:7.0.6",
@@ -22036,6 +22206,13 @@
         }
       }
     },
+    "lru-cache@npm:^7.14.1": {
+      "checksum": "a3bd91b1fc8895e11924cfcad9678069e8c0d34c435dd8e77b28109a00d8bbea92b29a9ef0fc3b3a1c9a074bb4d56aa4b10bf3745fa32903e719cfb824e6c15a",
+      "resolution": {
+        "resolution": "lru-cache@npm:7.18.3",
+        "version": "7.18.3"
+      }
+    },
     "lru-queue@npm:^0.1.0": {
       "checksum": "84fe16c3a449126632e6fd7ad8c8e8ae61919cf79dc18ce207c98e408a084191638747f32e56dca59dd7c82b118685eca902a10ba2c1754ef5b6571e43b5c872",
       "resolution": {
@@ -23357,6 +23534,13 @@
         "version": "1.2.0"
       }
     },
+    "mitt@npm:^3.0.1": {
+      "checksum": "7d26a58cf291844bc9ef6cd13c2f7fa4adc0e8964eb02514a2b7687454182f89bf8d2199377b0021ef1e91c6b845cf026c2d3619c23b911b784944fd3a500cd4",
+      "resolution": {
+        "resolution": "mitt@npm:3.0.1",
+        "version": "3.0.1"
+      }
+    },
     "mkdirp@npm:0.3.0": {
       "checksum": "dd3dcbe7d63743123120e9546077b27e6d405b9d3a4dcf1c658cb6b9b0a79636c97c87611027f49355e5f5eb007cbffdaa356c707a9c0d04bdc45223499e8b9d",
       "resolution": {
@@ -23538,6 +23722,13 @@
       "resolution": {
         "resolution": "neotraverse@npm:0.6.18",
         "version": "0.6.18"
+      }
+    },
+    "netmask@npm:^2.0.2": {
+      "checksum": "1e9622f57c5a3e56b4bd6073e1841c5448a679b4f2b7185582f537d84da7ca567d8ac8b1ab8f15540bedfaceaedcd765e8a505cfe35500473862f02ea4ad5874",
+      "resolution": {
+        "resolution": "netmask@npm:2.1.1",
+        "version": "2.1.1"
       }
     },
     "next-tick@npm:^1.1.0": {
@@ -24247,6 +24438,34 @@
         "version": "2.2.0"
       }
     },
+    "pac-proxy-agent@npm:^7.1.0": {
+      "checksum": "a574fb97633f9c78cdc6f9131c542c32c96a12b03636f65227b6fa7396cc00f642c4ca0fea0aaec4fb8f199ef26e76696be2db22d057a0ab5ba018f7c1bce474",
+      "resolution": {
+        "resolution": "pac-proxy-agent@npm:7.2.0",
+        "version": "7.2.0",
+        "dependencies": {
+          "@tootallnate/quickjs-emscripten": "^0.23.0",
+          "agent-base": "^7.1.2",
+          "debug": "^4.3.4",
+          "get-uri": "^6.0.1",
+          "http-proxy-agent": "^7.0.0",
+          "https-proxy-agent": "^7.0.6",
+          "pac-resolver": "^7.0.1",
+          "socks-proxy-agent": "^8.0.5"
+        }
+      }
+    },
+    "pac-resolver@npm:^7.0.1": {
+      "checksum": "9adab7dc8a2cebfa18b0301b61d7d0d980d6e7b70f6c5ce07da53fa61e14f0f1ffd66602fecbb3b2fd854b55f155eb9dd687712d965ac339ee08623bc68bc78f",
+      "resolution": {
+        "resolution": "pac-resolver@npm:7.0.1",
+        "version": "7.0.1",
+        "dependencies": {
+          "degenerator": "^5.0.0",
+          "netmask": "^2.0.2"
+        }
+      }
+    },
     "package-json@npm:^8.1.0": {
       "checksum": "1df27c4b4d5b07f287a1b99904c9d4f6c5cc66b7f0067716db68974635519729878264864939e1d388177e4411a48bdce9a7fca18ec5da9a51a4257765e75574",
       "resolution": {
@@ -24589,6 +24808,13 @@
           "os-tmpdir": "^1.0.2",
           "which": "^2.0.2"
         }
+      }
+    },
+    "pend@npm:~1.2.0": {
+      "checksum": "0cc9f0c5ce05fd80002b23a8995768fb183adb14c9a549226c750bfd39b76a5761ca55680fa015ecb0f0317dd67f6f15d0220931e9289ba6f3216afc703b7714",
+      "resolution": {
+        "resolution": "pend@npm:1.2.0",
+        "version": "1.2.0"
       }
     },
     "physical-cpu-count@npm:^2.0.0": {
@@ -25394,6 +25620,23 @@
         }
       }
     },
+    "proxy-agent@npm:^6.5.0": {
+      "checksum": "04c3ddfeec796fc4533b8c8ccd502a05209339e5e6f0619993158efe1180ff6cf80143d777f4a4ff46b65225618790d9364dccbf6f4d4b74ae8e20c202272c78",
+      "resolution": {
+        "resolution": "proxy-agent@npm:6.5.0",
+        "version": "6.5.0",
+        "dependencies": {
+          "agent-base": "^7.1.2",
+          "debug": "^4.3.4",
+          "http-proxy-agent": "^7.0.1",
+          "https-proxy-agent": "^7.0.6",
+          "lru-cache": "^7.14.1",
+          "pac-proxy-agent": "^7.1.0",
+          "proxy-from-env": "^1.1.0",
+          "socks-proxy-agent": "^8.0.5"
+        }
+      }
+    },
     "proxy-from-env@npm:^1.1.0": {
       "checksum": "081b9e632fc93cb11cf7cc29a1fdd8671ff57262f76456468ccb0309c3c6742b3901880057deaf4e802ce7d3633cc55db29a1630b65ef384efb95797bab4323f",
       "resolution": {
@@ -25435,6 +25678,37 @@
       "resolution": {
         "resolution": "punycode@npm:2.3.1",
         "version": "2.3.1"
+      }
+    },
+    "puppeteer@npm:^24.42.0": {
+      "checksum": "732d20c7a2bf0673d34ffdece08d7db1509cdfd15fe030876cca34adb09939f7bf3ba0462548ca060f878e0682b3c19044eb495c4a1f29312caf0befec7fd5b5",
+      "resolution": {
+        "resolution": "puppeteer@npm:24.42.0",
+        "version": "24.42.0",
+        "dependencies": {
+          "@puppeteer/browsers": "2.13.0",
+          "chromium-bidi": "14.0.0",
+          "cosmiconfig": "^9.0.0",
+          "devtools-protocol": "0.0.1595872",
+          "puppeteer-core": "24.42.0",
+          "typed-query-selector": "^2.12.1"
+        }
+      }
+    },
+    "puppeteer-core@npm:24.42.0": {
+      "checksum": "1ae3adc475d923d3667320c775a79a2b37a51dad9636387d4e6af61998053451e493eaa740e879fb79de140279805b2db6c1e9764c46984c62a14658457b842e",
+      "resolution": {
+        "resolution": "puppeteer-core@npm:24.42.0",
+        "version": "24.42.0",
+        "dependencies": {
+          "@puppeteer/browsers": "2.13.0",
+          "chromium-bidi": "14.0.0",
+          "debug": "^4.4.3",
+          "devtools-protocol": "0.0.1595872",
+          "typed-query-selector": "^2.12.1",
+          "webdriver-bidi-protocol": "0.4.1",
+          "ws": "^8.19.0"
+        }
       }
     },
     "pure-rand@npm:^6.0.0": {
@@ -27059,7 +27333,7 @@
         "version": "7.7.3"
       }
     },
-    "semver@npm:^7.7.3": {
+    "semver@npm:^7.7.3, semver@npm:^7.7.4": {
       "checksum": "d401b8989928aa117ff8b892cef246fa129be291f59af945b23945e929171ccd0d3c5f378efd87bde1cec7b948240d502821f55e859d8a98676b6581a5ad2aa9",
       "resolution": {
         "resolution": "semver@npm:7.7.4",
@@ -27686,7 +27960,7 @@
         }
       }
     },
-    "socks-proxy-agent@npm:^8.0.3": {
+    "socks-proxy-agent@npm:^8.0.3, socks-proxy-agent@npm:^8.0.5": {
       "checksum": "d7b900f1efb6e3f0e714f7ef3e2fbeff0b7597884f8cee137c0cc2dedc2ed71fdcd5d95745f12cd92b1e43e5fa0381bbef1343bf65ec3b3bac6ba70c613c0e36",
       "resolution": {
         "resolution": "socks-proxy-agent@npm:8.0.5",
@@ -28527,6 +28801,23 @@
         ]
       }
     },
+    "tar-fs@npm:^3.1.1": {
+      "checksum": "498a9a2ccf2e89eb035cca83a02a5c90cc884ea16be4d5659066eca9309a9290345e9b82ffed75bc5fade455943b9da4c11fa2915e8621c875f32c23e7bf82d3",
+      "resolution": {
+        "resolution": "tar-fs@npm:3.1.2",
+        "version": "3.1.2",
+        "dependencies": {
+          "bare-fs": "^4.0.1",
+          "bare-path": "^3.0.0",
+          "pump": "^3.0.0",
+          "tar-stream": "^3.1.5"
+        },
+        "optionalDependencies": [
+          "bare-fs",
+          "bare-path"
+        ]
+      }
+    },
     "tar-stream@npm:^1.1.2": {
       "checksum": "046a5f0ecff2ba034e5d15970c46620c22abf6197cfaf6f8bee839ad0c5b754af6fec337b01d2aca408491823f0f1d4091e6138b08cb23c58e75eb217fb33e11",
       "resolution": {
@@ -28906,7 +29197,7 @@
         "version": "1.14.1"
       }
     },
-    "tslib@npm:^2.0.3, tslib@npm:^2.1.0, tslib@npm:^2.4.0, tslib@npm:^2.8.0, tslib@npm:^2.8.1": {
+    "tslib@npm:^2.0.1, tslib@npm:^2.0.3, tslib@npm:^2.1.0, tslib@npm:^2.4.0, tslib@npm:^2.8.0, tslib@npm:^2.8.1": {
       "checksum": "c98405752fb389846955d0676c45c0626b9b74efc7c5149378173de4caccb46e8a0a61ca7ba7701cd15c95260d9c1050d896a3f11dcbc5c51c69548ca4bb4f4f",
       "resolution": {
         "resolution": "tslib@npm:2.8.1",
@@ -29113,6 +29404,13 @@
           "possible-typed-array-names": "^1.0.0",
           "reflect.getprototypeof": "^1.0.6"
         }
+      }
+    },
+    "typed-query-selector@npm:^2.12.1": {
+      "checksum": "3065b7cf5438d926fee96bf2e5d47b60d3763903df4cfdff62ad4f90569789fcf169778dadef18775ee758b1ae7ad2c4d42d540617c565888e2d29d5b0bba46a",
+      "resolution": {
+        "resolution": "typed-query-selector@npm:2.12.2",
+        "version": "2.12.2"
       }
     },
     "typedarray@npm:^0.0.6": {
@@ -30178,6 +30476,13 @@
         "version": "2.0.1"
       }
     },
+    "webdriver-bidi-protocol@npm:0.4.1": {
+      "checksum": "2202df872967b45e869006893dfe6eb01606ea7c364a6afa0cacfe711ed3d19ade2075df87e967c531b07a9fa8ad01205db01060c1073bbf851b469074fef3ec",
+      "resolution": {
+        "resolution": "webdriver-bidi-protocol@npm:0.4.1",
+        "version": "0.4.1"
+      }
+    },
     "webidl-conversions@npm:^3.0.0": {
       "checksum": "db66b4805d1067e3b7be55a429f54cc8df6b96f2567eea5101ccf4cd3ba518ad7dc23b8c47b25ff88b31183b9192171fa239ed9dec8abba78e997c3cd24fed57",
       "resolution": {
@@ -30532,6 +30837,21 @@
         ]
       }
     },
+    "ws@npm:^8.19.0": {
+      "checksum": "941834a8dc230e4205da2489d60c6a1baa7ba040ccd64bee5078520ef83d710c2cab3b9635fe780981d5658e6dc4fdba4a982a9b991940ebf8837f7640c795cb",
+      "resolution": {
+        "resolution": "ws@npm:8.20.0",
+        "version": "8.20.0",
+        "peerDependencies": {
+          "bufferutil": "^4.0.1",
+          "utf-8-validate": ">=5.0.2"
+        },
+        "optionalPeerDependencies": [
+          "bufferutil",
+          "utf-8-validate"
+        ]
+      }
+    },
     "ws@npm:~8.18.3": {
       "checksum": "529c182c40da5808c4c97bed8da62f3e85529e60f5e1f00e48211e02a65b185d723fff01884e6b36c83f0cf9b187f5d5e0db590646296fcf9570bc4f61b8efb7",
       "resolution": {
@@ -30677,7 +30997,7 @@
         }
       }
     },
-    "yargs@npm:^17.3.1": {
+    "yargs@npm:^17.3.1, yargs@npm:^17.7.2": {
       "checksum": "bbb8969599aa9a47c3ea5a77f933f00991d984ffc6a5c1ffd7c2815635ea140577f023686a4802ed79dd82fc20950105821d8220e6347fec422831d5c223386b",
       "resolution": {
         "resolution": "yargs@npm:17.7.2",
@@ -30709,6 +31029,17 @@
       "resolution": {
         "resolution": "yargs-parser@npm:21.1.1",
         "version": "21.1.1"
+      }
+    },
+    "yauzl@npm:^2.10.0": {
+      "checksum": "209102714cd0a703123747e5da5fd7c06cc393b8bdba2eb7620067206ed73f13ad08a64bb7986c4fb34f222fee7ac0c877bcd1d6c7551a96d2aef97d39bd558d",
+      "resolution": {
+        "resolution": "yauzl@npm:2.10.0",
+        "version": "2.10.0",
+        "dependencies": {
+          "buffer-crc32": "~0.2.3",
+          "fd-slicer": "~1.1.0"
+        }
       }
     },
     "yocto-queue@npm:^0.1.0": {
@@ -30766,7 +31097,7 @@
         }
       }
     },
-    "zod@npm:^3.25.76": {
+    "zod@npm:^3.24.1, zod@npm:^3.25.76": {
       "checksum": "a20d04bea6728391ce95867a9a54df39fa4a0835eea7534d33e78cb0447b4d52b5d8540f9ea981528c0ce9fb481f69db08df9b61d1ad35469bf6a3acbb0edc8b",
       "resolution": {
         "resolution": "zod@npm:3.25.76",

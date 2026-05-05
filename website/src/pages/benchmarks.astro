@@ -25,10 +25,10 @@ const PROJECTS = [
 ];
 
 const SCENARIOS = [
-  { id: 'install-full-cold',      num: '01', title: 'Full cold install',  desc: 'Simulates the very first install on a machine that has never seen the project — no cache, no lockfile, no artifacts. Everything is fetched from the registry and written from scratch.', tag: 'fresh machine' },
-  { id: 'install-cache-only',     num: '02', title: 'Cache only',         desc: 'Like checking out a repo for the first time on a CI runner that has already built other projects. The lockfile is missing so resolution runs from scratch, but tarballs are reused from the global cache.', tag: 'fresh clone, shared cache' },
-  { id: 'install-cache-and-lock', num: '03', title: 'Cache + lockfile',   desc: 'The most common CI and day-to-day path. The lockfile and cache are both present — the manager just needs to materialize dependencies on disk.', tag: 'routine CI run' },
-  { id: 'install-ready',          num: '04', title: 'Recurrent call',     desc: 'Everything is already in place. Measures how quickly the manager can verify the tree and exit — matters every time you run install as part of a script or editor hook.', tag: 'already installed' },
+  { id: 'install-full-cold',      num: '01', title: 'Full cold install',  desc: 'Simulates the very first install on a machine that has never seen the project — no cache, no lockfile, no artifacts. Everything is fetched from the registry and written from scratch.' },
+  { id: 'install-cache-only',     num: '02', title: 'Cache only',         desc: 'Like checking out a repo for the first time on a CI runner that has already built other projects. The lockfile is missing so resolution runs from scratch, but tarballs are reused from the global cache.' },
+  { id: 'install-cache-and-lock', num: '03', title: 'Cache + lockfile',   desc: 'The most common CI and day-to-day path. The lockfile and cache are both present — the manager just needs to materialize dependencies on disk.' },
+  { id: 'install-ready',          num: '04', title: 'Recurrent call',     desc: 'Everything is already in place. Measures how quickly the manager can verify the tree and exit — matters every time you run install as part of a script or editor hook.' },
 ];
 
 const DATA: Record<string, Record<string, Record<string, { timestamp: number; value: number | null }[]>>> = {};
@@ -667,7 +667,7 @@ const INCIDENTS = [
   <!-- Heading + Run metadata -->
   <div class="bench-header mb-10">
     <div>
-      <h1 class="text-[clamp(36px,4.4vw,52px)] font-medium tracking-[-0.025em] leading-[1.05] text-balance m-0">Package manager comparison.</h1>
+      <h1 class="text-[clamp(36px,4.4vw,52px)] font-medium tracking-[-0.025em] leading-[1.05] text-balance m-0">How fast are we?</h1>
       <p class="m-0 mt-5 text-[18px] leading-[1.55] text-[var(--fg-dim)] max-w-[640px] text-pretty">
         Continuous benchmarks of{' '}
         <a class="text-[var(--fg)] underline decoration-dotted underline-offset-2 hover:decoration-solid" href="/concepts/yarn-6">Yarn 6.x</a>,

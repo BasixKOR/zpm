@@ -1,9 +1,12 @@
 {
+  "devDependencies": {
+    "puppeteer": "^24.42.0"
+  },
   "name": "@yarnpkg/website",
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build",
+    "build": "astro build && node --experimental-strip-types scripts/generate-og.ts",
     "preview": "astro preview",
     "record": "node --experimental-strip-types scripts/record-terminal.ts"
   },

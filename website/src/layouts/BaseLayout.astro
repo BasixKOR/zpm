@@ -16,6 +16,8 @@ interface Props {
 const { title, variant = `index`, activePage, description, canonicalPath, ogType = `website`, ogImage } = Astro.props;
 const isDocs = variant === `docs`;
 const canonicalUrl = `https://yarnpkg.com${canonicalPath ?? Astro.url.pathname}`;
+const pathname = Astro.url.pathname.replace(/\.html$/, ``).replace(/\/$/, ``) || `/index`;
+const ogImageUrl = ogImage ?? `https://yarnpkg.com/og${pathname}.png`;
 ---
 
 <!doctype html>
@@ -31,11 +33,11 @@ const canonicalUrl = `https://yarnpkg.com${canonicalPath ?? Astro.url.pathname}`
 <meta property="og:url" content={canonicalUrl} />
 <meta property="og:type" content={ogType} />
 <meta property="og:site_name" content="Yarn" />
-{ogImage && <meta property="og:image" content={ogImage} />}
+<meta property="og:image" content={ogImageUrl} />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content={title} />
 {description && <meta name="twitter:description" content={description} />}
-{ogImage && <meta name="twitter:image" content={ogImage} />}
+<meta name="twitter:image" content={ogImageUrl} />
 <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

@@ -1,8 +1,9 @@
 import {useState, useEffect, useCallback, type JSX} from 'react';
-import {BenchmarkChart} from './BenchmarkChart';
-import {BenchmarkTooltip, type HoverInfo} from './BenchmarkTooltip';
-import {BenchmarkSummary} from './BenchmarkSummary';
-import {useVersions} from './useVersions';
+
+import {BenchmarkChart}                             from './BenchmarkChart';
+import {BenchmarkSummary}                           from './BenchmarkSummary';
+import {BenchmarkTooltip, type HoverInfo}           from './BenchmarkTooltip';
+import {useVersions}                                from './useVersions';
 
 export interface BenchPoint {
   timestamp: number;
@@ -25,7 +26,6 @@ export interface Scenario {
   num: string;
   title: string;
   desc: string;
-  tag: string;
 }
 
 export interface Incident {
@@ -56,7 +56,7 @@ export function getSeriesValues(projectData: Record<string, Array<BenchPoint>>, 
 
 interface Props {
   data: Record<string, Record<string, Record<string, Array<BenchPoint>>>>;
-  seriesOrder: readonly string[];
+  seriesOrder: ReadonlyArray<string>;
   seriesMeta: Record<string, SeriesMeta>;
   projects: Array<Project>;
   scenarios: Array<Scenario>;
@@ -115,19 +115,19 @@ export function BenchmarksDashboard({data, seriesOrder, seriesMeta, projects, sc
   return (
     <>
       {/* Sticky controls */}
-      <div className="bench-sticky">
+      <div className={`bench-sticky`}>
         <div className={`bench-controls${controlsOpen ? ` open` : ``}`}>
-          <button className="controls-toggle" onClick={() => setControlsOpen(o => !o)}>
-            <span className="controls-summary">
+          <button className={`controls-toggle`} onClick={() => setControlsOpen(o => !o)}>
+            <span className={`controls-summary`}>
               Filters
-              <span className="controls-badge">{projects.find(p => p.id === selectedProject)?.name ?? `All`}</span>
+              <span className={`controls-badge`}>{projects.find(p => p.id === selectedProject)?.name ?? `All`}</span>
             </span>
-            <span className="controls-chevron" />
+            <span className={`controls-chevron`} />
           </button>
-          <div className="controls-body">
+          <div className={`controls-body`}>
             {/* Project filter */}
-            <div className="filter-bar">
-              <span className="label">Project</span>
+            <div className={`filter-bar`}>
+              <span className={`label`}>Project</span>
               {[{id: `all`, name: `All`}, ...projects].map(p => (
                 <button
                   key={p.id}
@@ -140,33 +140,33 @@ export function BenchmarksDashboard({data, seriesOrder, seriesMeta, projects, sc
             </div>
 
             {/* Series legend */}
-            <div className="legend-section">
-              <span className="label desktop-only">Series</span>
-              {seriesOrder.map((sid) => (
+            <div className={`legend-section`}>
+              <span className={`label desktop-only`}>Series</span>
+              {seriesOrder.map(sid => (
                 <span key={sid} style={{display: `contents`}}>
-                  {(sid === `npm` || sid === `classic`) && <span className="sep" />}
+                  {(sid === `npm` || sid === `classic`) && <span className={`sep`} />}
                   <button
                     className={`lg${mutedSeries[sid] ? ` muted` : ``}`}
                     style={{[`--c` as any]: SERIES_COLORS[sid]}}
                     onClick={() => toggleMute(sid)}
                   >
                     <span className={`swatch${SWATCH_STYLES[sid]?.dashed ? ` dashed` : ``}`} />
-                    <span className="name">{seriesMeta[sid].name}</span>
+                    <span className={`name`}>{seriesMeta[sid].name}</span>
                   </button>
                 </span>
               ))}
-              <span className="sep" />
-              <span className="legend-hint">Click to mute · y-axis = seconds</span>
-              <span className="sep" />
+              <span className={`sep`} />
+              <span className={`legend-hint`}>Click to mute · y-axis = seconds</span>
+              <span className={`sep`} />
               <label className={`toggle-label${versionsLoading ? ` loading` : ``}`}>
                 <input
-                  type="checkbox"
+                  type={`checkbox`}
                   checked={showVersions}
                   disabled={versionsLoading}
                   onChange={e => setShowVersions(e.target.checked)}
                 />
                 <span>Show versions</span>
-                <i className="version-spinner" />
+                <i className={`version-spinner`} />
               </label>
             </div>
           </div>
@@ -174,21 +174,20 @@ export function BenchmarksDashboard({data, seriesOrder, seriesMeta, projects, sc
       </div>
 
       {/* Benchmark grid */}
-      <div className="bench-grid" style={{[`--bench-cols` as any]: visibleProjects.length}}>
-        <div className="corner">scenario \ project</div>
+      <div className={`bench-grid`} style={{[`--bench-cols` as any]: visibleProjects.length}}>
+        <div className={`corner`}>scenario \ project</div>
         {visibleProjects.map(p => (
-          <div key={p.id} className="col-head">
-            <span className="name">{p.name}</span>
+          <div key={p.id} className={`col-head`}>
+            <span className={`name`}>{p.name}</span>
           </div>
         ))}
 
         {scenarios.map(sc => (
           <span key={sc.id} style={{display: `contents`}}>
-            <div className="row-head">
-              <div className="row-num">&sect; {sc.num} &middot; scenario</div>
+            <div className={`row-head`}>
+              <div className={`row-num`}>&sect; {sc.num} &middot; scenario</div>
               <h3>{sc.title}</h3>
               <p>{sc.desc}</p>
-              <span className="row-tag mono">{sc.tag}</span>
             </div>
             {visibleProjects.map(p => (
               <BenchmarkChart
