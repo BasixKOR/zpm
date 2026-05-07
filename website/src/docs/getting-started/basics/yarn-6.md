@@ -1,5 +1,5 @@
 ---
-category: concepts
+category: getting-started
 slug: concepts/yarn-6
 title: Yarn 6.x
 description: What's new in Yarn 6, the Rust-based rewrite of Yarn.
