@@ -14,7 +14,9 @@ Leveraging everything we learned these past six years working on Yarn and Node.j
 
 The [pull request](https://github.com/nodejs/node/pull/62239) already makes a good case for them, so in this post I want to focus on an interesting question that came up during the review: "Why don't we just use import maps?". So let's get down to it!
 
-<blockquote class="bluesky-embed" data-bluesky-uri="at://did:plc:ec64xv7n5dszeizw56yr6b5h/app.bsky.feed.post/3mj6n2pmldk2p" data-bluesky-cid="bafyreigtivhd3ngnbrel7ujzpwzbgkrpvbg7yuku4o2ehvi3gbm2lnp2sq" data-bluesky-embed-color-mode="system"><p lang="en">One of the original import map creators here 👋 This is awesome! I hope it goes it!</p>&mdash; Justin Fagnani (<a href="https://bsky.app/profile/did:plc:ec64xv7n5dszeizw56yr6b5h?ref_src=embed">@justinfagnani.com</a>) <a href="https://bsky.app/profile/did:plc:ec64xv7n5dszeizw56yr6b5h/post/3mj6n2pmldk2p?ref_src=embed">Apr 11, 2026 at 2:59 AM</a></blockquote><script async src="https://embed.bsky.app/static/embed.js" charset="utf-8"></script>
+:::bsky{handle="justinfagnani.com" displayName="Justin Fagnani" avatar="https://cdn.bsky.app/img/avatar/plain/did:plc:ec64xv7n5dszeizw56yr6b5h/bafkreif2i73jwfh77gngf3yitfvlhceke4xruijblwxcg7e2m4wxin37q4" post="3mj6n2pmldk2p" date="Apr 11, 2026" likes="4"}
+One of the original import map creators here 👋 This is awesome! I hope it goes it!
+:::
 
 ## What we're actually trying to solve
 

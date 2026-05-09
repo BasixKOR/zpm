@@ -1,6 +1,6 @@
-import {visit} from 'unist-util-visit';
-import {readFileSync} from 'fs';
+import {readFileSync}  from 'fs';
 import {createRequire} from 'module';
+import {visit}         from 'unist-util-visit';
 
 const require = createRequire(import.meta.url);
 const mermaidJs = readFileSync(require.resolve(`mermaid/dist/mermaid.min.js`), `utf-8`);
@@ -28,9 +28,9 @@ async function renderMermaid(code) {
 
     return await page.evaluate(async (code, baseId) => {
       const svgs = {};
-      for (const [key, theme] of [["dark", "dark"], ["light", "default"]]) {
-        document.body.innerHTML = "";
-        window.mermaid.initialize({startOnLoad: false, look: "handDrawn", theme, fontSize: 18});
+      for (const [key, theme] of [[`dark`, `dark`], [`light`, `default`]]) {
+        document.body.innerHTML = ``;
+        window.mermaid.initialize({startOnLoad: false, look: `handDrawn`, theme});
         const {svg} = await window.mermaid.render(baseId + key[0], code);
         svgs[key] = svg;
       }
