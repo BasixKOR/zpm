@@ -1,5 +1,5 @@
 ---
-slug: 2026-05-08-yarn-6-preview
+slug: 2026-05-08-package-maps-import-maps
 title: Package managers need more than import maps
 date: 2026-05-08
 category: Technology
