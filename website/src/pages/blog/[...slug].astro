@@ -19,7 +19,12 @@ export async function getStaticPaths() {
 }
 
 const { post, older, newer } = Astro.props;
-const { Content, remarkPluginFrontmatter } = await render(post);
+const { Content, headings, remarkPluginFrontmatter } = await render(post);
+
+const tocHeadings = headings
+  .filter(h => h.depth === 2 && h.slug !== `footnote-label`)
+  .map(h => ({ ...h, text: h.text.replace(/#$/, ``).trim() }));
+const showToc = tocHeadings.length >= 4;
 
 const wordCount = (remarkPluginFrontmatter?.wordCount as number) || post.body?.split(/\s+/).length || 0;
 const readingTime = Math.max(1, Math.ceil(wordCount / 250));
@@ -61,9 +66,20 @@ const bskyShareUrl = `https://bsky.app/intent/compose?text=${encodeURIComponent(
       />
     </header>
 
-    <div class="article-prose">
+    <div class="prose article-prose">
       <Content />
     </div>
+
+    {showToc && (
+      <nav class="toc" aria-label="Table of contents">
+        <div class="toc-label">On this page</div>
+        <ol>
+          {tocHeadings.map(h => (
+            <li><a href={`#${h.slug}`}><span>{h.text}</span></a></li>
+          ))}
+        </ol>
+      </nav>
+    )}
 
     <div class="mt-20 pt-8 border-t border-[var(--line)] flex justify-between items-center gap-4 flex-wrap text-[13px] text-[var(--fg-mute)]">
       {post.data.category && (
@@ -87,13 +103,6 @@ const bskyShareUrl = `https://bsky.app/intent/compose?text=${encodeURIComponent(
         </a>
       </div>
     </div>
-
-    <PrevNextNav
-      prev={older ? { href: `/blog/${older.data.slug}/`, label: older.data.title } : undefined}
-      next={{ href: `/blog`, label: `Back to the thread` }}
-      prevEyebrow="← Older"
-      nextEyebrow="All posts →"
-    />
 
   </article>
 </BlogLayout>

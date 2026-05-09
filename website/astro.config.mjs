@@ -4,9 +4,12 @@ import tailwindcss          from '@tailwindcss/vite';
 import {defineConfig}       from 'astro/config';
 import remarkDirective      from 'remark-directive';
 
-import rehypeDocs           from './plugins/rehype-docs.mjs';
+import rehypeDocs               from './plugins/rehype-docs.mjs';
+import rehypeFootnoteTooltips   from './plugins/rehype-footnote-tooltips.mjs';
 import remarkAutolinkFields from './plugins/remark-autolink-fields.mjs';
+import remarkBluesky        from './plugins/remark-bluesky.mjs';
 import remarkDocs           from './plugins/remark-docs.mjs';
+import remarkMermaid        from './plugins/remark-mermaid.mjs';
 
 export default defineConfig({
   site: `https://v6.yarnpkg.com`,
@@ -31,7 +34,7 @@ export default defineConfig({
   },
   markdown: {
     syntaxHighlight: false,
-    remarkPlugins: [remarkDirective, remarkDocs, remarkAutolinkFields],
-    rehypePlugins: [rehypeDocs],
+    remarkPlugins: [remarkDirective, remarkBluesky, remarkMermaid, remarkDocs, remarkAutolinkFields],
+    rehypePlugins: [rehypeDocs, rehypeFootnoteTooltips],
   },
 });

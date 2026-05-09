@@ -1,4 +1,5 @@
 /* Shared theme tokens — mirrors Yarn.html */
+html { scroll-behavior: smooth; }
 :root {
   --accent-h: 280;
   --accent: oklch(0.78 0.16 var(--accent-h));
@@ -144,6 +145,54 @@ html[data-theme="light"] {
   --pill-req-border: oklch(0.60 0.15 25 / 0.4);
   --pill-req-bg: oklch(0.92 0.06 25 / 0.5);
 }
+
+/* ─── Mermaid diagram ─── */
+.mermaid-diagram {
+  background: var(--syn-bg);
+  border: 1px solid var(--syn-border);
+  border-radius: 10px;
+  padding: 24px;
+  overflow-x: auto;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  justify-content: center;
+}
+.mermaid-diagram svg {
+  max-width: 100%;
+  height: auto;
+}
+.mermaid-light { display: none; }
+.mermaid-light, .mermaid-dark {
+  flex: auto;
+}
+html[data-theme="light"] .mermaid-dark { display: none; }
+html[data-theme="light"] .mermaid-light { display: block; }
+
+/* Heading anchor (hover reveal) — shared across docs & blog */
+.heading-wrap {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+.heading-anchor {
+  opacity: 0;
+  color: var(--fg-mute);
+  text-decoration: none;
+  font-weight: 400;
+  transition: opacity 0.15s, color 0.15s;
+  cursor: pointer;
+  user-select: none;
+  line-height: 1;
+  font-size: 0.85em;
+  border: 0;
+}
+.heading-wrap:hover .heading-anchor,
+.heading-anchor:focus {
+  opacity: 1;
+}
+.heading-anchor:hover { color: var(--accent); }
 
 body {
   font-family: 'Space Grotesk', system-ui, -apple-system, sans-serif;

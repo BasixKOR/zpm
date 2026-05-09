@@ -5,7 +5,7 @@
   "workspaces": {
     "@yarnpkg/documentation": "105cf01165fcffc02e5a354f6734895d01fbb152899e635b1d1b152a04e48c904810d457a85b09d642ca9061bf01e02dc203eabdf0c3a29ddf20036b31e43cde",
     "@yarnpkg/monorepo": "69da8dfb279601957675174872ca291310b88ff5e33fcc0060b11a3503fdef48f629515bcf7d74fbe12b83b2a84b7f0249cf8154978d15bc6a3fa3c634624f94",
-    "@yarnpkg/website": "12d6e401d8ce902b618a18af7f1c4ea379d56bc7f129ed2e319f4373d37fecf0758780133cf413f63e23a5b06a446b38aa529a45a3bc67a6cda6b492727d3ce3",
+    "@yarnpkg/website": "036a889eeccd2124745b9f3fc0260c4301759fb4110ec85c8b73c3fcdfc11ca71e11cb3421e1cf60704a105d3428803bbfdea01d57eacacdd895ed2c666d1a01",
     "@yarnpkg/zpm-constraints": "5c6a5440669d0a0244f06ebc980b86b246235da3b4da7fc5c2bbdc0bf61ef23e95d8bb9f2fdb7402d20cf0ac8461b086799a0e0e606054b85e9ac472be1dd9d2",
     "@yarnpkg/zpm-daemon-ui": "64b5d42d2f7f1113e164b3c3137385b0d72824abc41ca9e4d852261f61018f037cbe0b0d5c97d7b3529075ff8b6ceead5803590a5ff9ee3564a785732262564a",
     "acceptance-tests": "9e727eab8feee6a4383eb4abec8384decbaf30d2ee37dca7d2c8fc1e6afff399509282042cc605746ffaca0ed8f7e5b964b88327ecd50c5077d7a44b7ea4a5ae",
@@ -660,6 +660,17 @@
           "@algolia/cache-common": "4.25.2",
           "@algolia/logger-common": "4.25.2",
           "@algolia/requester-common": "4.25.2"
+        }
+      }
+    },
+    "@antfu/install-pkg@npm:^1.1.0": {
+      "checksum": "cb46f4a171eb71cc4d560656c08618201d162dc4e9ab54a8bb99ec0fb9e72d433d7822d17a6604cfc3ce0167be2827505af15f8a68d406e573132458dc2027fd",
+      "resolution": {
+        "resolution": "@antfu/install-pkg@npm:1.1.0",
+        "version": "1.1.0",
+        "dependencies": {
+          "package-manager-detector": "^1.3.0",
+          "tinyexec": "^1.0.1"
         }
       }
     },
@@ -3040,6 +3051,13 @@
         "version": "0.2.3"
       }
     },
+    "@braintree/sanitize-url@npm:^7.1.1": {
+      "checksum": "535d8616c07c2428899e3ee4915186b65d21df4267c435fff9e030dae0de2a62c9e06e02fb6db73c7d633fc5cbf7cdc845d9b97198b857eb1f08c466551d9116",
+      "resolution": {
+        "resolution": "@braintree/sanitize-url@npm:7.1.2",
+        "version": "7.1.2"
+      }
+    },
     "@builder.io/partytown@npm:^0.7.5": {
       "checksum": "e9d865f5eb77aad27a2c99ad00d92eee7ae24efdc1dbb159b560589e7e9135cf8956c3c67bba9fb7e717cae0f4705cc86b4e8f0a7dbc5034857a20b21d1471f2",
       "resolution": {
@@ -3140,6 +3158,48 @@
         "dependencies": {
           "fontkitten": "^1.0.0"
         }
+      }
+    },
+    "@chevrotain/cst-dts-gen@npm:12.0.0": {
+      "checksum": "185589ad170c7109c6386e93308e4d2ba315c6f1a216b6a2529aa78f5f8910c2fc386a77bcb271b296c9381897c07fb9d861a33a448c911323768898c39780a3",
+      "resolution": {
+        "resolution": "@chevrotain/cst-dts-gen@npm:12.0.0",
+        "version": "12.0.0",
+        "dependencies": {
+          "@chevrotain/gast": "12.0.0",
+          "@chevrotain/types": "12.0.0"
+        }
+      }
+    },
+    "@chevrotain/gast@npm:12.0.0": {
+      "checksum": "63d4375c32d0f79398b62f834a6ebb413807abfb3895067d9bc487e24bd48ceab7b866764cfcfde26ab800165bbbcbbd73f9769282b4ad298bf0758576e3fe31",
+      "resolution": {
+        "resolution": "@chevrotain/gast@npm:12.0.0",
+        "version": "12.0.0",
+        "dependencies": {
+          "@chevrotain/types": "12.0.0"
+        }
+      }
+    },
+    "@chevrotain/regexp-to-ast@npm:12.0.0, @chevrotain/regexp-to-ast@npm:~12.0.0": {
+      "checksum": "2d049f693e88900b331bd7ebc36e2499ca573dd5432ceffdd5095624b4b5920641ecd632bc30086dcf39179c69a10a3a958c1e536569a690187cae62e9b8fcd6",
+      "resolution": {
+        "resolution": "@chevrotain/regexp-to-ast@npm:12.0.0",
+        "version": "12.0.0"
+      }
+    },
+    "@chevrotain/types@npm:12.0.0": {
+      "checksum": "eb24106f431fe79dde6ebbc8357a828c3880d86309c62c7fc5c4861becc2c812fa9719c7eae1eac31dab151ba13266897bf09b6b52c4c80b0e59468e3bde31f6",
+      "resolution": {
+        "resolution": "@chevrotain/types@npm:12.0.0",
+        "version": "12.0.0"
+      }
+    },
+    "@chevrotain/utils@npm:12.0.0": {
+      "checksum": "b7468fff0ab3351c8772db6624c970a2f9d9a47751ab3767cedec2400480ed933e397e480bc5eec9802937c601c6615186e39472dae8d13bba7087b028595e06",
+      "resolution": {
+        "resolution": "@chevrotain/utils@npm:12.0.0",
+        "version": "12.0.0"
       }
     },
     "@ctrl/tinycolor@npm:^4.0.4": {
@@ -5144,11 +5204,23 @@
         }
       }
     },
-    "@iconify/types@npm:*": {
+    "@iconify/types@npm:*, @iconify/types@npm:^2.0.0": {
       "checksum": "9a411bc7e0bf59fa689305a1cd79bdd9799fe46f0394819b7826c8322a84dfcd3ad1a7761b97390984c5cb19948ec9a5eaa3d2a16bbf6398aecda566bc49cc51",
       "resolution": {
         "resolution": "@iconify/types@npm:2.0.0",
         "version": "2.0.0"
+      }
+    },
+    "@iconify/utils@npm:^3.0.2": {
+      "checksum": "be8fb2ac48b41c9b3b88d521032636f6bd5cbe096cf81771a2fbb3ca8d9d90027c257614aa13c6eae2769493de656e5951d370b8f5701e5bd8a78b5addee0820",
+      "resolution": {
+        "resolution": "@iconify/utils@npm:3.1.3",
+        "version": "3.1.3",
+        "dependencies": {
+          "@antfu/install-pkg": "^1.1.0",
+          "@iconify/types": "^2.0.0",
+          "import-meta-resolve": "^4.2.0"
+        }
       }
     },
     "@img/colour@npm:^1.0.0": {
@@ -6192,6 +6264,16 @@
         },
         "peerDependencies": {
           "preact": ">=10.0.0"
+        }
+      }
+    },
+    "@mermaid-js/parser@npm:^1.1.0": {
+      "checksum": "ef730f013fcb063857a1810e785cbb727a5f619bd906e24f2f8cd03d7c9858cfbf5482e1892d3455eb13ff36bdee3e053a673190ff2f825bcbdb28daf3503052",
+      "resolution": {
+        "resolution": "@mermaid-js/parser@npm:1.1.0",
+        "version": "1.1.0",
+        "dependencies": {
+          "langium": "^4.0.0"
         }
       }
     },
@@ -9907,11 +9989,77 @@
         }
       }
     },
-    "@types/d3-array@npm:^3.0.3": {
+    "@types/d3@npm:^7.4.3": {
+      "checksum": "146ec398a38d8dc4b8128ffb9afdfd72a837a7dd7564c2f6aaf8ff60b0ae9b535e5a06a05b3405dd4ef8d30cd4b7a436987a26eb89ee8cf08c33720840fb7fc0",
+      "resolution": {
+        "resolution": "@types/d3@npm:7.4.3",
+        "version": "7.4.3",
+        "dependencies": {
+          "@types/d3-array": "*",
+          "@types/d3-axis": "*",
+          "@types/d3-brush": "*",
+          "@types/d3-chord": "*",
+          "@types/d3-color": "*",
+          "@types/d3-contour": "*",
+          "@types/d3-delaunay": "*",
+          "@types/d3-dispatch": "*",
+          "@types/d3-drag": "*",
+          "@types/d3-dsv": "*",
+          "@types/d3-ease": "*",
+          "@types/d3-fetch": "*",
+          "@types/d3-force": "*",
+          "@types/d3-format": "*",
+          "@types/d3-geo": "*",
+          "@types/d3-hierarchy": "*",
+          "@types/d3-interpolate": "*",
+          "@types/d3-path": "*",
+          "@types/d3-polygon": "*",
+          "@types/d3-quadtree": "*",
+          "@types/d3-random": "*",
+          "@types/d3-scale": "*",
+          "@types/d3-scale-chromatic": "*",
+          "@types/d3-selection": "*",
+          "@types/d3-shape": "*",
+          "@types/d3-time": "*",
+          "@types/d3-time-format": "*",
+          "@types/d3-timer": "*",
+          "@types/d3-transition": "*",
+          "@types/d3-zoom": "*"
+        }
+      }
+    },
+    "@types/d3-array@npm:*, @types/d3-array@npm:^3.0.3": {
       "checksum": "f2dabbf314caf27d14374f4852821830013e5888f3f396873bcae1b72dd3673e98a2597886bed81ac88371bde4ecab6059fb1b34f07d1a76845e6c3cda5ecf88",
       "resolution": {
         "resolution": "@types/d3-array@npm:3.2.2",
         "version": "3.2.2"
+      }
+    },
+    "@types/d3-axis@npm:*": {
+      "checksum": "97aac6e032cd5e50681626cd9344e7ee03e00ca8daca52d0393e03e0b7c1177d4730cceb83d28372d6072967f26f683cdc91df7856051a28ad380e8aafcc2734",
+      "resolution": {
+        "resolution": "@types/d3-axis@npm:3.0.6",
+        "version": "3.0.6",
+        "dependencies": {
+          "@types/d3-selection": "*"
+        }
+      }
+    },
+    "@types/d3-brush@npm:*": {
+      "checksum": "4fc5bd78fdc831e3629157f42c8c3881b5e72ae250278456ab18b21f05ad4ca2540d846db442205ada8182b3de5a1364f0ec61f4d6144f35225731285a831086",
+      "resolution": {
+        "resolution": "@types/d3-brush@npm:3.0.6",
+        "version": "3.0.6",
+        "dependencies": {
+          "@types/d3-selection": "*"
+        }
+      }
+    },
+    "@types/d3-chord@npm:*": {
+      "checksum": "988115f353918871e69f517affe73026bfcce993cb659ce84651fdb6ccb831cf04647b92a27435f42667b5493075bbfa10683bd890ed2da0134a1fcbe0cad2da",
+      "resolution": {
+        "resolution": "@types/d3-chord@npm:3.0.6",
+        "version": "3.0.6"
       }
     },
     "@types/d3-color@npm:*": {
@@ -9921,14 +10069,97 @@
         "version": "3.1.3"
       }
     },
-    "@types/d3-ease@npm:^3.0.0": {
+    "@types/d3-contour@npm:*": {
+      "checksum": "da32c14c3f2638e44e0088acd116f17aecbdbf0d6c580049dd0c41e7a34539c9564010e57d368843a406af36872ab4df3f53f253141ac248a9cc62ddc111e32d",
+      "resolution": {
+        "resolution": "@types/d3-contour@npm:3.0.6",
+        "version": "3.0.6",
+        "dependencies": {
+          "@types/d3-array": "*",
+          "@types/geojson": "*"
+        }
+      }
+    },
+    "@types/d3-delaunay@npm:*": {
+      "checksum": "df71d23f905b410a4283ccb9b7e2481abeb772283bfd33b63f61259b2aa8bed608b65bdea5516da6222c4de1e26abc5165336332dfcd8296031de7ef73311ee3",
+      "resolution": {
+        "resolution": "@types/d3-delaunay@npm:6.0.4",
+        "version": "6.0.4"
+      }
+    },
+    "@types/d3-dispatch@npm:*": {
+      "checksum": "82fba3fba7ca2f96c8ea73eb96fb3ad965f9a5fc847c99d6d05d91c34ce69d98b779877bf02dd781331558e3aab1b494dfb158aa79e4c066f568199d2a564fd8",
+      "resolution": {
+        "resolution": "@types/d3-dispatch@npm:3.0.7",
+        "version": "3.0.7"
+      }
+    },
+    "@types/d3-drag@npm:*": {
+      "checksum": "d2efdb8ba9eade4a7445b215ad5afbbe8fbbae106366255c1a2734755760f87ea7afe91d762a92b231bde054a83fa7797b5c35559bdb5da643330b826b6bdd47",
+      "resolution": {
+        "resolution": "@types/d3-drag@npm:3.0.7",
+        "version": "3.0.7",
+        "dependencies": {
+          "@types/d3-selection": "*"
+        }
+      }
+    },
+    "@types/d3-dsv@npm:*": {
+      "checksum": "677a85cd8d332c43f50f324aacc94a5e213db2317e2f34aa1e641092d3bd088e7d3d149f422a0ed04490fabdd5accbaa6ab6e794adcedbfe8fbac37cb46910ec",
+      "resolution": {
+        "resolution": "@types/d3-dsv@npm:3.0.7",
+        "version": "3.0.7"
+      }
+    },
+    "@types/d3-ease@npm:*, @types/d3-ease@npm:^3.0.0": {
       "checksum": "96346cd96e59be56a8e4a7c0259e55f8e0b54404a6960158931368b66ba73a45bd1381a5c0cb55c1de5505062abaf5847898a3c0e26b57ab27130af677da3c08",
       "resolution": {
         "resolution": "@types/d3-ease@npm:3.0.2",
         "version": "3.0.2"
       }
     },
-    "@types/d3-interpolate@npm:^3.0.1": {
+    "@types/d3-fetch@npm:*": {
+      "checksum": "227359f257e1702cb30070afc31a851e5d8f23c81c273e751b32ab40d607575d11003dde6b61d273b3bb69b4ac2c42c143e80e8e2799deb772a3ef6f226c971a",
+      "resolution": {
+        "resolution": "@types/d3-fetch@npm:3.0.7",
+        "version": "3.0.7",
+        "dependencies": {
+          "@types/d3-dsv": "*"
+        }
+      }
+    },
+    "@types/d3-force@npm:*": {
+      "checksum": "7c1a4bdf0b758ff6d285f8a0c7a5ad7b0b6355b63d6752549bee8dc3ec7e3f1053eedd52a2db4f6280fc37b510b7ffe8dc9dcab9aac4b4c924593450438626ca",
+      "resolution": {
+        "resolution": "@types/d3-force@npm:3.0.10",
+        "version": "3.0.10"
+      }
+    },
+    "@types/d3-format@npm:*": {
+      "checksum": "38d626251c203a05088541e92f2bfa0226f3a5a3160fd1b9e0a02afbfa0c4dea0705f13b6bdf904b4dc1b51f3f795de440c033ff7b696f165748de9ab64f7e9d",
+      "resolution": {
+        "resolution": "@types/d3-format@npm:3.0.4",
+        "version": "3.0.4"
+      }
+    },
+    "@types/d3-geo@npm:*": {
+      "checksum": "a090736802e9e8f7c9ed817389d8d77a6c91395dcb180600901fb098790199854bb6431616c172ac618df21a0ba5d995c2694d3004757399e0a96dbec6b0dfc0",
+      "resolution": {
+        "resolution": "@types/d3-geo@npm:3.1.0",
+        "version": "3.1.0",
+        "dependencies": {
+          "@types/geojson": "*"
+        }
+      }
+    },
+    "@types/d3-hierarchy@npm:*": {
+      "checksum": "2e5d9a7446a72ac1b2e8fac15378e3e78484147dfcf0a5e895c33a4f5bd7182a557146de74006e592a81f2c8f2481b837ba3424f08890e08dfa4383ce290878b",
+      "resolution": {
+        "resolution": "@types/d3-hierarchy@npm:3.1.7",
+        "version": "3.1.7"
+      }
+    },
+    "@types/d3-interpolate@npm:*, @types/d3-interpolate@npm:^3.0.1": {
       "checksum": "1632daf4c2cd4e423fb31ddd552a56150373b4f8b9f2b86d9ab1841bab07b01471b9d84f1ad1c68232e28525a8b1b4d019ca2925824ee78b4e5647a71b0d7a9e",
       "resolution": {
         "resolution": "@types/d3-interpolate@npm:3.0.4",
@@ -9945,13 +10176,58 @@
         "version": "3.1.1"
       }
     },
-    "@types/d3-scale@npm:^4.0.2": {
+    "@types/d3-polygon@npm:*": {
+      "checksum": "d2d9665b5a7b15aca3d56e89c7c33f9055f2c45d86d56231b6babe62f35652216ed80a4b503fb1196fbe872aff2862c9ebc8935722dc901b7ce1ef56f99f1ea9",
+      "resolution": {
+        "resolution": "@types/d3-polygon@npm:3.0.2",
+        "version": "3.0.2"
+      }
+    },
+    "@types/d3-quadtree@npm:*": {
+      "checksum": "5f44c1efad2c0bc638eda2fc0314db79868a31cb51cd4776842204e5003f17652d265ff8e0ef970e00f0be42c8ce2a9c7b518a26ad0066fc6636840b91a6c74a",
+      "resolution": {
+        "resolution": "@types/d3-quadtree@npm:3.0.6",
+        "version": "3.0.6"
+      }
+    },
+    "@types/d3-random@npm:*": {
+      "checksum": "5b280bb5727b8673c7aec7b395d884756815c0a05e6a7e0c414b30b387654bfa318ffb139a90aca39a803012b27f967fbaee33566977cba08e5afc8b60229a18",
+      "resolution": {
+        "resolution": "@types/d3-random@npm:3.0.3",
+        "version": "3.0.3"
+      }
+    },
+    "@types/d3-scale@npm:*, @types/d3-scale@npm:^4.0.2": {
       "checksum": "78262a93ba7aff8235060c1d10d153eafbc4703ae20d30d5dca75a3b9db5b14b6a97258453571b28bf9e0dd74953e285d2f05ac8acf141c28ff53ada531ebaad",
       "resolution": {
         "resolution": "@types/d3-scale@npm:4.0.9",
         "version": "4.0.9",
         "dependencies": {
           "@types/d3-time": "*"
+        }
+      }
+    },
+    "@types/d3-scale-chromatic@npm:*": {
+      "checksum": "c14b22cd91fd66b30fe80a556b0e11de6087a1d746b477ebec7a2063fc480b854ed9756b9c267b77c375f45974c64ad4eeacc06184171b4494e98450c9f64fbc",
+      "resolution": {
+        "resolution": "@types/d3-scale-chromatic@npm:3.1.0",
+        "version": "3.1.0"
+      }
+    },
+    "@types/d3-selection@npm:*": {
+      "checksum": "f4c4cf7db058e6eda09456b024f45c8bf00559a1eb523f1e1ac0866a75d916f47e09df7aa4c81bd96f2a3b06e3f161d2be1dd8f2679c1d388c0a87a62e038fd9",
+      "resolution": {
+        "resolution": "@types/d3-selection@npm:3.0.11",
+        "version": "3.0.11"
+      }
+    },
+    "@types/d3-shape@npm:*": {
+      "checksum": "95d821a28d94ff4851a5bc74d0b742ae196ef1a3088ea5d8962cefc190ea30d36445f251d57fe1d71512e4ee77d266be61cbdd6085e15f243c0cf1fd78c34ee5",
+      "resolution": {
+        "resolution": "@types/d3-shape@npm:3.1.8",
+        "version": "3.1.8",
+        "dependencies": {
+          "@types/d3-path": "*"
         }
       }
     },
@@ -9972,11 +10248,39 @@
         "version": "3.0.4"
       }
     },
-    "@types/d3-timer@npm:^3.0.0": {
+    "@types/d3-time-format@npm:*": {
+      "checksum": "7a910f32a34f8e3fe908b6caca677e021ba57ca0cbd0b4f821d166ce6e5391bb77ead9bb38b1dcccbff2c825424aeb2e34ba2b0b0fd0ceb027df3f1254158397",
+      "resolution": {
+        "resolution": "@types/d3-time-format@npm:4.0.3",
+        "version": "4.0.3"
+      }
+    },
+    "@types/d3-timer@npm:*, @types/d3-timer@npm:^3.0.0": {
       "checksum": "425e3c3240598ec8b3fd6f114e8bf42dee618e07857a1693feedb2fe6e1c61a77567dcde6bfdeeea33cee6289b161a97548a226e22b5f7e21784a0c20094bb63",
       "resolution": {
         "resolution": "@types/d3-timer@npm:3.0.2",
         "version": "3.0.2"
+      }
+    },
+    "@types/d3-transition@npm:*": {
+      "checksum": "b8e8fd3ebd1c0b27c9dcabc9aa04b68f3862c78c17258a7a2735bc811ce8b436af93cbe4f2584050dbe0ed72241ccd78c46853488e960682661733ea0d69dea9",
+      "resolution": {
+        "resolution": "@types/d3-transition@npm:3.0.9",
+        "version": "3.0.9",
+        "dependencies": {
+          "@types/d3-selection": "*"
+        }
+      }
+    },
+    "@types/d3-zoom@npm:*": {
+      "checksum": "f30148e8cc598d97a608e05ee29614ab0a240efbd8261de8f4f042efedfbda534a5453c9585a36316fd72dc611b4930070c3b92f4141bb759969f66e008d3863",
+      "resolution": {
+        "resolution": "@types/d3-zoom@npm:3.0.8",
+        "version": "3.0.8",
+        "dependencies": {
+          "@types/d3-interpolate": "*",
+          "@types/d3-selection": "*"
+        }
       }
     },
     "@types/debug@npm:^4.0.0": {
@@ -10091,6 +10395,13 @@
         "dependencies": {
           "@types/node": "*"
         }
+      }
+    },
+    "@types/geojson@npm:*": {
+      "checksum": "ee34763a26a5282aeea50c70a993e7472b0660cf1eb3c6be837407228a798160a05fce2115a512930b6317c6649e28f17e6b197fbc2b28c836725d881b588316",
+      "resolution": {
+        "resolution": "@types/geojson@npm:7946.0.16",
+        "version": "7946.0.16"
       }
     },
     "@types/google.maps@npm:^3.55.12": {
@@ -10884,6 +11195,21 @@
       "resolution": {
         "resolution": "@ungap/structured-clone@npm:1.3.0",
         "version": "1.3.0"
+      }
+    },
+    "@upsetjs/venn.js@npm:^2.0.0": {
+      "checksum": "433f88a3424ba92005d3e1fbeead14eddc421c37d3520762812582e98d63cfb6974e1e07fce92ab692e59fbdcef88831e68a181eda4bf2ac389110bfbd8abac4",
+      "resolution": {
+        "resolution": "@upsetjs/venn.js@npm:2.0.0",
+        "version": "2.0.0",
+        "dependencies": {
+          "d3-selection": "^3.0.0",
+          "d3-transition": "^3.0.1"
+        },
+        "optionalDependencies": [
+          "d3-selection",
+          "d3-transition"
+        ]
       }
     },
     "@vercel/oidc@npm:^3.0.1": {
@@ -14054,6 +14380,33 @@
         "version": "0.0.2"
       }
     },
+    "chevrotain@npm:~12.0.0": {
+      "checksum": "bc7fcaa0e8e35d087ecf110e904a8b81694d2fca573d1a28ef56ede290a7aafe01c0c7575840d8a363fa1a5ac8ae318d3307a5c3e152d0af4eb4f6819fce8142",
+      "resolution": {
+        "resolution": "chevrotain@npm:12.0.0",
+        "version": "12.0.0",
+        "dependencies": {
+          "@chevrotain/cst-dts-gen": "12.0.0",
+          "@chevrotain/gast": "12.0.0",
+          "@chevrotain/regexp-to-ast": "12.0.0",
+          "@chevrotain/types": "12.0.0",
+          "@chevrotain/utils": "12.0.0"
+        }
+      }
+    },
+    "chevrotain-allstar@npm:~0.4.3": {
+      "checksum": "e61bed744947f03f116371760d2b5a5c5afa80afb1646a1ee330c039754a92a73dbf4004c60090c12819cc237538ca82a2f1b58e975450d07b46e78f542a9c2a",
+      "resolution": {
+        "resolution": "chevrotain-allstar@npm:0.4.3",
+        "version": "0.4.3",
+        "dependencies": {
+          "lodash-es": "^4.18.1"
+        },
+        "peerDependencies": {
+          "chevrotain": "^12.0.0"
+        }
+      }
+    },
     "chokidar@npm:^3.4.2, chokidar@npm:^3.6.0": {
       "checksum": "ee1a61b68eb710b3f9c85ad4159c02d40200bef216775ee3087d8acc2589128e6caad9e40c25212ca3df9e2956486a06c8aac530b0c7bc4f5227d47b279780e6",
       "resolution": {
@@ -14423,7 +14776,14 @@
         "version": "2.0.3"
       }
     },
-    "commander@npm:7.2.0, commander@npm:^7.2.0": {
+    "commander@npm:2, commander@npm:^2.20.0": {
+      "checksum": "1187396b7e17df4ebfe9b36bb4968a6a5930ac62241eb8c5348ef50603dd3b708bd017c673fd058aaa97df1efcd0f4794c7fd59844a3cdb2669fd5c45d908a1f",
+      "resolution": {
+        "resolution": "commander@npm:2.20.3",
+        "version": "2.20.3"
+      }
+    },
+    "commander@npm:7, commander@npm:7.2.0, commander@npm:^7.2.0": {
       "checksum": "923def72c4cb311e7d48f02f162d2c51ecc4be7b34c73e13ab5b4ab74efb8b94d1742d7815d2c3e76fcf317515ca8df698391c9a9d87df1245ca2874da3758a0",
       "resolution": {
         "resolution": "commander@npm:7.2.0",
@@ -14437,11 +14797,11 @@
         "version": "11.1.0"
       }
     },
-    "commander@npm:^2.20.0": {
-      "checksum": "1187396b7e17df4ebfe9b36bb4968a6a5930ac62241eb8c5348ef50603dd3b708bd017c673fd058aaa97df1efcd0f4794c7fd59844a3cdb2669fd5c45d908a1f",
+    "commander@npm:^8.3.0": {
+      "checksum": "36f5920bd3bef577f3e2af3b64261a98df2c154ff3fe8c697a3eaa58b9665b0e3b570ec0c72afd71c5174310af29e236b97c1bb42eb6822a12df210a310c47d8",
       "resolution": {
-        "resolution": "commander@npm:2.20.3",
-        "version": "2.20.3"
+        "resolution": "commander@npm:8.3.0",
+        "version": "8.3.0"
       }
     },
     "comment-json@npm:^2.2.0": {
@@ -14712,6 +15072,26 @@
         "dependencies": {
           "object-assign": "^4",
           "vary": "^1"
+        }
+      }
+    },
+    "cose-base@npm:^1.0.0": {
+      "checksum": "04aea582b312c46b14ffe43d88f428b5e8d4969cadb8831807bc06443425b10d645fd4178fd6dfae47142e8716c47b1f8c6b8ee38a677106613820fd4d3b6b6e",
+      "resolution": {
+        "resolution": "cose-base@npm:1.0.3",
+        "version": "1.0.3",
+        "dependencies": {
+          "layout-base": "^1.0.0"
+        }
+      }
+    },
+    "cose-base@npm:^2.2.0": {
+      "checksum": "8791c1693a887bfc031ac6c487eabdbfbe33a466684c6820210664014f84fc99c77c729a327da3d941b8c85550f408195b6eb7d9de894436ca021446f13ac7ba",
+      "resolution": {
+        "resolution": "cose-base@npm:2.2.0",
+        "version": "2.2.0",
+        "dependencies": {
+          "layout-base": "^2.0.0"
         }
       }
     },
@@ -15110,6 +15490,39 @@
         "version": "3.2.3"
       }
     },
+    "cytoscape@npm:^3.33.1": {
+      "checksum": "041bc6dfa7db816c7016ae8298ca45e28fe1c910075fef335455d479960f283ea219e1d7f7cdb27d0a74a94d98d70acce0017d34fc4759428fbcbd00fc1a397f",
+      "resolution": {
+        "resolution": "cytoscape@npm:3.33.3",
+        "version": "3.33.3"
+      }
+    },
+    "cytoscape-cose-bilkent@npm:^4.1.0": {
+      "checksum": "9893120292721acca45fb552555f23ff849893bb94f7306f21c66ad6573da84e8ae74091341532e2a7f2786f527a92fa6bf8b293aa988214f9150debcae3fab8",
+      "resolution": {
+        "resolution": "cytoscape-cose-bilkent@npm:4.1.0",
+        "version": "4.1.0",
+        "dependencies": {
+          "cose-base": "^1.0.0"
+        },
+        "peerDependencies": {
+          "cytoscape": "^3.2.0"
+        }
+      }
+    },
+    "cytoscape-fcose@npm:^2.2.0": {
+      "checksum": "f9124afde64d702b487a1bafd7686e5e2c9289e2f0926a14e17fc7fd9e6deb56599c663bf316a390ae5d9a18767f89bffb5e80488d77d119f71a916ad3b4dfc9",
+      "resolution": {
+        "resolution": "cytoscape-fcose@npm:2.2.0",
+        "version": "2.2.0",
+        "dependencies": {
+          "cose-base": "^2.2.0"
+        },
+        "peerDependencies": {
+          "cytoscape": "^3.2.0"
+        }
+      }
+    },
     "d@npm:1, d@npm:^1.0.1, d@npm:^1.0.2": {
       "checksum": "514c375c78132e985175ca82a6d5cb2e95e62bbc372baba73bbd2ffc109315b10497b2b75d39fa233ac63743b55c3251538aa8290059fabb8930db1da31a1b6c",
       "resolution": {
@@ -15121,7 +15534,53 @@
         }
       }
     },
-    "d3-array@npm:2, d3-array@npm:2 - 3, d3-array@npm:2.10.0 - 3": {
+    "d3@npm:^7.9.0": {
+      "checksum": "6a3a7fe6d3b98ab5ecdd7308c181540c3e8207c525b1f2b07810f0e8f64b2490631810d079292f560ce77d6b06ad570855209849fae4f4b4ffa28203ffdc7be6",
+      "resolution": {
+        "resolution": "d3@npm:7.9.0",
+        "version": "7.9.0",
+        "dependencies": {
+          "d3-array": "3",
+          "d3-axis": "3",
+          "d3-brush": "3",
+          "d3-chord": "3",
+          "d3-color": "3",
+          "d3-contour": "4",
+          "d3-delaunay": "6",
+          "d3-dispatch": "3",
+          "d3-drag": "3",
+          "d3-dsv": "3",
+          "d3-ease": "3",
+          "d3-fetch": "3",
+          "d3-force": "3",
+          "d3-format": "3",
+          "d3-geo": "3",
+          "d3-hierarchy": "3",
+          "d3-interpolate": "3",
+          "d3-path": "3",
+          "d3-polygon": "3",
+          "d3-quadtree": "3",
+          "d3-random": "3",
+          "d3-scale": "4",
+          "d3-scale-chromatic": "3",
+          "d3-selection": "3",
+          "d3-shape": "3",
+          "d3-time": "3",
+          "d3-time-format": "4",
+          "d3-timer": "3",
+          "d3-transition": "3",
+          "d3-zoom": "3"
+        }
+      }
+    },
+    "d3-array@npm:1 - 2": {
+      "checksum": "9880bb7aaf85815f7458a59b080ec43439018f4cd6ff7837fb7f78a6076b25f160e47de9adca6b899d2b1901f7566d5abff3403aedace3652c9ec836835c356a",
+      "resolution": {
+        "resolution": "d3-array@npm:1.2.4",
+        "version": "1.2.4"
+      }
+    },
+    "d3-array@npm:2, d3-array@npm:2 - 3, d3-array@npm:2.10.0 - 3, d3-array@npm:2.5.0 - 3": {
       "checksum": "6f3a73b8f74cc8d34188419a8f1a31cddeaffc45ad4db329a0ed0f5d86397d5d632bbba3200e7d3ede21b6e1a7c98e7b844c21d18e9acdff31c658b1e1f83435",
       "resolution": {
         "resolution": "d3-array@npm:2.12.1",
@@ -15131,7 +15590,7 @@
         }
       }
     },
-    "d3-array@npm:^3.1.6": {
+    "d3-array@npm:3, d3-array@npm:^3.1.6, d3-array@npm:^3.2.0": {
       "checksum": "f44a2de372fc4c0179d3ad4dd54507269983717e0e40a8e5b9ce7f9fd456ba2b98a05103ffcfb4196d7e3722a2602bb9d026c4a1b4556719283b3f766d5fc3de",
       "resolution": {
         "resolution": "d3-array@npm:3.2.4",
@@ -15141,7 +15600,38 @@
         }
       }
     },
-    "d3-color@npm:1 - 2": {
+    "d3-axis@npm:3": {
+      "checksum": "30380491c8efce1e382393e01becdabe543c1e9522513c068ce0abeed2b2293375d1245067b8c9827adfb59fdb6ebb609a7651a79335e2f568e96e7308f017d2",
+      "resolution": {
+        "resolution": "d3-axis@npm:3.0.0",
+        "version": "3.0.0"
+      }
+    },
+    "d3-brush@npm:3": {
+      "checksum": "a095e3628e4a1477ae4efdeddd69f245f903f8d242e19ae4ccba4bbb8e9d7c774bea00de27239d276bb96d170f89eefce2ddd26c401b4273e271697f0b9f137c",
+      "resolution": {
+        "resolution": "d3-brush@npm:3.0.0",
+        "version": "3.0.0",
+        "dependencies": {
+          "d3-dispatch": "1 - 3",
+          "d3-drag": "2 - 3",
+          "d3-interpolate": "1 - 3",
+          "d3-selection": "3",
+          "d3-transition": "3"
+        }
+      }
+    },
+    "d3-chord@npm:3": {
+      "checksum": "da8369b700346800725cbf1c85777cbb393480b090df0c7b277f6124495be459748fc9c0eb5dff3809367565b7e33cccdf5f58f53e60e6fb5965946bd4114604",
+      "resolution": {
+        "resolution": "d3-chord@npm:3.0.1",
+        "version": "3.0.1",
+        "dependencies": {
+          "d3-path": "1 - 3"
+        }
+      }
+    },
+    "d3-color@npm:1, d3-color@npm:1 - 2": {
       "checksum": "337ad7117940c45337b550f29f2f0632a4b985e39f3801d399ebf1198ed4bd313bd264a9295864087258f34339cef5860670c7d38b8d78a9cf7c9aa4bf2e159f",
       "resolution": {
         "resolution": "d3-color@npm:1.4.1",
@@ -15155,11 +15645,141 @@
         "version": "2.0.0"
       }
     },
-    "d3-ease@npm:^3.0.1": {
+    "d3-color@npm:3": {
+      "checksum": "7176552af629fcc589e2d7b01b637e478bb4509b5be3abfb95ce018b6ec77d932181880e1e98fd7401113de2caada0f9967b358aacb27456b19e6e9821028567",
+      "resolution": {
+        "resolution": "d3-color@npm:3.1.0",
+        "version": "3.1.0"
+      }
+    },
+    "d3-contour@npm:4": {
+      "checksum": "e4540f3fbe8a53196169b49b84fb6a257e1dabb14087b0e19ef3a05f5f5ceabf9b131d5d1b6d799d261a6d91171ae94c01b59fe499cea8c27b79fe80ebb5c9c6",
+      "resolution": {
+        "resolution": "d3-contour@npm:4.0.2",
+        "version": "4.0.2",
+        "dependencies": {
+          "d3-array": "^3.2.0"
+        }
+      }
+    },
+    "d3-delaunay@npm:6": {
+      "checksum": "0d94494a4bf7e5a2f8405bcbdd95a5ec68dd72ddb80dc5f10914cc858044b11005ba7825a57b697d8d69f77c8b977f12bcccc730827ed3160a20e1bfb0bf2586",
+      "resolution": {
+        "resolution": "d3-delaunay@npm:6.0.4",
+        "version": "6.0.4",
+        "dependencies": {
+          "delaunator": "5"
+        }
+      }
+    },
+    "d3-dispatch@npm:1 - 2": {
+      "checksum": "26b865ecdda84b360ca11a379f2b354048f5603a69350f9784450ad2d4bcb09704ffccac45a15d0b100754b232110878c31745b15f7119db38c09a1db9cadb9c",
+      "resolution": {
+        "resolution": "d3-dispatch@npm:1.0.6",
+        "version": "1.0.6"
+      }
+    },
+    "d3-dispatch@npm:1 - 3": {
+      "checksum": "d840c07a7ef7a46c2308ae51e3c0092bfe00a24f808cbfdc0fbbafd8d818282d61eada960ae7f2076e326c9304826dd5ac9ac17c5e892237f66367e46aef1e1d",
+      "resolution": {
+        "resolution": "d3-dispatch@npm:2.0.0",
+        "version": "2.0.0"
+      }
+    },
+    "d3-dispatch@npm:3": {
+      "checksum": "49ece1d1f587354d34b8c51f52d929c14b8fdd2b4094f2ef466faa4a4e8e94afc38ffed437c07e3220a887f7da99e065d3970ab82cefc16fb54b2d7a8a32d6fd",
+      "resolution": {
+        "resolution": "d3-dispatch@npm:3.0.1",
+        "version": "3.0.1"
+      }
+    },
+    "d3-drag@npm:2 - 3": {
+      "checksum": "51bc1e9f9808264afa025d7044ef26ed4346bd613f3b35b78c3b263fb471914b2783cc62719711887470bae03c068dbeb6262a5b0e30053e66ba4f4eff908eaf",
+      "resolution": {
+        "resolution": "d3-drag@npm:2.0.0",
+        "version": "2.0.0",
+        "dependencies": {
+          "d3-dispatch": "1 - 2",
+          "d3-selection": "2"
+        }
+      }
+    },
+    "d3-drag@npm:3": {
+      "checksum": "3f9164d82f97fc14fd4f9f73c0cf70e7881ff6fc03a0b9f844710c818925429585a5c44ef115641b908df13314581e29b89aed8fef18ccffbc0f603f61ed1a55",
+      "resolution": {
+        "resolution": "d3-drag@npm:3.0.0",
+        "version": "3.0.0",
+        "dependencies": {
+          "d3-dispatch": "1 - 3",
+          "d3-selection": "3"
+        }
+      }
+    },
+    "d3-dsv@npm:1 - 3": {
+      "checksum": "ff8fa5308bf743b407bc4d4c716117892cdb99d242f634603cf802cc27af97826d873c44a2bde45bda7a31c6271fd3209212cc98dd185aebb693a2f0f4493dd2",
+      "resolution": {
+        "resolution": "d3-dsv@npm:2.0.0",
+        "version": "2.0.0",
+        "dependencies": {
+          "commander": "2",
+          "iconv-lite": "0.4",
+          "rw": "1"
+        }
+      }
+    },
+    "d3-dsv@npm:3": {
+      "checksum": "cafc6b70071b74145a92d683fe0ae64979de7627d9b87adb6df76028abe3b8aa44e0d098fe89efee3865c868f1bf2ad4fc03efaf2eba9ac807dd39e0750d7072",
+      "resolution": {
+        "resolution": "d3-dsv@npm:3.0.1",
+        "version": "3.0.1",
+        "dependencies": {
+          "commander": "7",
+          "iconv-lite": "0.6",
+          "rw": "1"
+        }
+      }
+    },
+    "d3-ease@npm:1 - 2": {
+      "checksum": "fd1332bd097af6efa9f101936567e0187a8d949badb83dc09220cef32de62cf86eec25c88ae621d5e51b4b202bb34f9eac1e089db690103c874f7bbbe612f1a3",
+      "resolution": {
+        "resolution": "d3-ease@npm:1.0.7",
+        "version": "1.0.7"
+      }
+    },
+    "d3-ease@npm:1 - 3": {
+      "checksum": "91d09d809c6dd8ea4f2241ad313bc23f5b0b0d758f47c719d435e7166d961ce2623cb882aa8eb5161ec0c944805c10afaef66e67011d42e658c33e8fef14a909",
+      "resolution": {
+        "resolution": "d3-ease@npm:2.0.0",
+        "version": "2.0.0"
+      }
+    },
+    "d3-ease@npm:3, d3-ease@npm:^3.0.1": {
       "checksum": "aba348cf089ab1cd7205b55169cc0cc8c15391ad335b1f62da2cd09930affcdb56cfdac403d228c872c1469c6849d5ab10207965bb3a8138e39f1d6a3d76cd45",
       "resolution": {
         "resolution": "d3-ease@npm:3.0.1",
         "version": "3.0.1"
+      }
+    },
+    "d3-fetch@npm:3": {
+      "checksum": "db35009adfd1213bd4aef88e7d83fcf0bb15f9ecba07fe44e20ede9cee89adb8992d4d8dd970584d28024ac9a8932ccc47e7b1d0508cb94a863e0f7f1aa72639",
+      "resolution": {
+        "resolution": "d3-fetch@npm:3.0.1",
+        "version": "3.0.1",
+        "dependencies": {
+          "d3-dsv": "1 - 3"
+        }
+      }
+    },
+    "d3-force@npm:3": {
+      "checksum": "9c963eba79d51b4405b5570cd6295d7e1979096882632afae942ccf1d97b3d01a448558e5f3b5e5b7b774b9ff568c663130174c432b290295bf655a2bd0501e7",
+      "resolution": {
+        "resolution": "d3-force@npm:3.0.0",
+        "version": "3.0.0",
+        "dependencies": {
+          "d3-dispatch": "1 - 3",
+          "d3-quadtree": "1 - 3",
+          "d3-timer": "1 - 3"
+        }
       }
     },
     "d3-format@npm:1 - 3": {
@@ -15169,7 +15789,41 @@
         "version": "2.0.0"
       }
     },
-    "d3-interpolate@npm:1.2.0 - 3": {
+    "d3-format@npm:3": {
+      "checksum": "d7ab106ff6c24d15dbebd0229c8356f878721b7c3e291f7b026a99d98661dde0d8ba2284456e72e3dc943f0492182b6dad4b8e4372cc2f5b902e7832135e9768",
+      "resolution": {
+        "resolution": "d3-format@npm:3.1.2",
+        "version": "3.1.2"
+      }
+    },
+    "d3-geo@npm:3": {
+      "checksum": "a8f51308f1b6ebe784af4b3fb01738568c991d751dca94158e3b10117074ad029b6669e3e31f609d60c044d6d813d682436e38378b34b19e1a7509c829d7017a",
+      "resolution": {
+        "resolution": "d3-geo@npm:3.1.1",
+        "version": "3.1.1",
+        "dependencies": {
+          "d3-array": "2.5.0 - 3"
+        }
+      }
+    },
+    "d3-hierarchy@npm:3": {
+      "checksum": "9406bc960e6d5ed440f084e8cdd89c87ea6725be40c6ae7af8fd61a5f1157030ff177be25f19591fce3c6d028a44cfd3122cb8f0351c9db1b3830df6f9085279",
+      "resolution": {
+        "resolution": "d3-hierarchy@npm:3.1.2",
+        "version": "3.1.2"
+      }
+    },
+    "d3-interpolate@npm:1 - 2": {
+      "checksum": "289bc18e581fc558d6c10a878df73ed6a1ba91d431aedea43fc23d7480944040b7e8b54252598e061ccab3d224ccf63dc019af3509c4096ad83373689c4dd29c",
+      "resolution": {
+        "resolution": "d3-interpolate@npm:1.4.0",
+        "version": "1.4.0",
+        "dependencies": {
+          "d3-color": "1"
+        }
+      }
+    },
+    "d3-interpolate@npm:1 - 3, d3-interpolate@npm:1.2.0 - 3": {
       "checksum": "d790085506bc89dd7764d08cbe527c5eed9227a4f33b989b38182219015b1617a87fbb89f0a306afa43f2ee1d79a2f0ec53928eb34b2114a3d3706c69b04d4eb",
       "resolution": {
         "resolution": "d3-interpolate@npm:2.0.1",
@@ -15179,7 +15833,7 @@
         }
       }
     },
-    "d3-interpolate@npm:^3.0.1": {
+    "d3-interpolate@npm:3, d3-interpolate@npm:^3.0.1": {
       "checksum": "8064ce84464a9417c00aadfa46ec0874f25193ab26cf76df08002e94394c6b52493c16437958263150e19c8021bf835d9101db9b82aa1a1d72418bfbf3474132",
       "resolution": {
         "resolution": "d3-interpolate@npm:3.0.1",
@@ -15189,14 +15843,67 @@
         }
       }
     },
-    "d3-path@npm:^3.1.0": {
+    "d3-path@npm:1": {
+      "checksum": "c867409ed1621f495d4c219d575248204a7d51028c55c404425d3a78baf9e3c6909ff6fec20b17360ec9c7908a13effbd7a27c4e1451fb406dd70f446d92c223",
+      "resolution": {
+        "resolution": "d3-path@npm:1.0.9",
+        "version": "1.0.9"
+      }
+    },
+    "d3-path@npm:1 - 3": {
+      "checksum": "d42d0d6bb1eb1aa4e96169278111bacce719525bee668dae108a0457c37f5708f1c0a88aa881404a0fbe8c82af6520bf23e59ccdac4a1ca4573e239f517aec61",
+      "resolution": {
+        "resolution": "d3-path@npm:2.0.0",
+        "version": "2.0.0"
+      }
+    },
+    "d3-path@npm:3, d3-path@npm:^3.1.0": {
       "checksum": "1802fd8c14b1d7b60f3e462eb7fc661b819233245b6cdc120f22e0911cf5788c7cad106ad87d4e48b8d98eaf3849ba6fd28d807d965fd0c1bd2fb16c74ae2351",
       "resolution": {
         "resolution": "d3-path@npm:3.1.0",
         "version": "3.1.0"
       }
     },
-    "d3-scale@npm:^4.0.2": {
+    "d3-polygon@npm:3": {
+      "checksum": "5487c8376bcb003ab7ab3dfc0cee8431c5f23a9593a8260e108b720fb06ef9bdcb172b3df7d23f082e9e8e4be13feaa9642a2d53b826ef1202abf496e19d4b8a",
+      "resolution": {
+        "resolution": "d3-polygon@npm:3.0.1",
+        "version": "3.0.1"
+      }
+    },
+    "d3-quadtree@npm:1 - 3": {
+      "checksum": "9b0cdedeb8f7d27ba38cddfbe997ba0eb532877a19d0211bb2a0f310e458e0db750f84c0c4df6487f6f21c7c1b41fb718796adbc40a2b99cb11076b4df97e510",
+      "resolution": {
+        "resolution": "d3-quadtree@npm:2.0.0",
+        "version": "2.0.0"
+      }
+    },
+    "d3-quadtree@npm:3": {
+      "checksum": "4ef6cef42c4844968f8859ee2931f1614561f12ef52c944421028c489bdfec17fe9e35e2547982e87b4287bde7d179ccdd5c908cba0f4b4568ce781f74d5e107",
+      "resolution": {
+        "resolution": "d3-quadtree@npm:3.0.1",
+        "version": "3.0.1"
+      }
+    },
+    "d3-random@npm:3": {
+      "checksum": "2683ca087b784831ceec5ee8768367c8e74d930b36ca5ef6c5239a5d48d0d9b5b99d76fbda972cde66acc2ded5372796db974b01b398b749b958da850f271aea",
+      "resolution": {
+        "resolution": "d3-random@npm:3.0.1",
+        "version": "3.0.1"
+      }
+    },
+    "d3-sankey@npm:^0.12.3": {
+      "checksum": "ee15e73af344cf5505cb75245644921fa3b2c8ff599725f77a9e121b6ca571669e14a247f736ce945996c21f4993e049f6d46e156904ea7c42622e7129825951",
+      "resolution": {
+        "resolution": "d3-sankey@npm:0.12.3",
+        "version": "0.12.3",
+        "dependencies": {
+          "d3-array": "1 - 2",
+          "d3-shape": "^1.2.0"
+        }
+      }
+    },
+    "d3-scale@npm:4, d3-scale@npm:^4.0.2": {
       "checksum": "34c233e70ddebe0a61c140bc93667f7cec23edef5fbe9ac788f05d86e7140c94e927ff41acbfae412868a41943e3f43afd1881df30529e74b9edc7e60c23b119",
       "resolution": {
         "resolution": "d3-scale@npm:4.0.2",
@@ -15210,13 +15917,48 @@
         }
       }
     },
-    "d3-shape@npm:^3.1.0": {
+    "d3-scale-chromatic@npm:3": {
+      "checksum": "142b269abd96d62112c27edac138c0eb8d1a5e477bb78f056db64b7ac201165b84d47f59cf11114ca426f36c47dab6e792c8a0a26d53176bfe0ad7dcfd90d628",
+      "resolution": {
+        "resolution": "d3-scale-chromatic@npm:3.1.0",
+        "version": "3.1.0",
+        "dependencies": {
+          "d3-color": "1 - 3",
+          "d3-interpolate": "1 - 3"
+        }
+      }
+    },
+    "d3-selection@npm:2, d3-selection@npm:2 - 3": {
+      "checksum": "4abe936c65e40e6dfaa1d3642305df62a5071df0ab6eaa66eca5b6ed7629822c74a01e772ac98f3ba7937b68dfe1199bc30b2b205ea763993c74ed95ea6417ba",
+      "resolution": {
+        "resolution": "d3-selection@npm:2.0.0",
+        "version": "2.0.0"
+      }
+    },
+    "d3-selection@npm:3, d3-selection@npm:^3.0.0": {
+      "checksum": "3888e2c62384c341a16c9ad6a787015a960cc90683f16cfe5d9e5184a922db9f4fa52cd037c11a6ad33568aa6dc6b970dd192bbd2fceaeefbf091d0997fa1968",
+      "resolution": {
+        "resolution": "d3-selection@npm:3.0.0",
+        "version": "3.0.0"
+      }
+    },
+    "d3-shape@npm:3, d3-shape@npm:^3.1.0": {
       "checksum": "aef53736ac71bc3f314132344ece01260835d646b6533eee8d60391d1b5fcf857da2efa9f5a1e3668d05a68631352d25f061d8d0850b8c08bda0f9bc26f32daa",
       "resolution": {
         "resolution": "d3-shape@npm:3.2.0",
         "version": "3.2.0",
         "dependencies": {
           "d3-path": "^3.1.0"
+        }
+      }
+    },
+    "d3-shape@npm:^1.2.0": {
+      "checksum": "f19c47d2171811c56594a929de037ada63b86f75696efda554a189198d4c0dcefff0762ed1c0c608f8c53fe2262b95b566621600687ea1c012ac98a496c7a7c2",
+      "resolution": {
+        "resolution": "d3-shape@npm:1.3.7",
+        "version": "1.3.7",
+        "dependencies": {
+          "d3-path": "1"
         }
       }
     },
@@ -15227,7 +15969,7 @@
         "version": "1.1.0"
       }
     },
-    "d3-time@npm:2.1.1 - 3": {
+    "d3-time@npm:1 - 3, d3-time@npm:2.1.1 - 3": {
       "checksum": "10720d8e17f4bd628bf760d76fe69c219d52515b91adfe4e77d5b8aed983b0eca5399e2ba888a5aa592fd8e8fe98ef2252738b883f7217dd803a9ad15e1f0cbc",
       "resolution": {
         "resolution": "d3-time@npm:2.1.1",
@@ -15237,7 +15979,7 @@
         }
       }
     },
-    "d3-time@npm:^3.0.0": {
+    "d3-time@npm:3, d3-time@npm:^3.0.0": {
       "checksum": "fd4a4cb4ad32479db63339fa67e988d119712326ac04e5b48a824fdbbed993e0add3b319d3a54ff8dc0039a37c6fafcf327f65a8db9ca22dab440e20be090ad0",
       "resolution": {
         "resolution": "d3-time@npm:3.1.0",
@@ -15257,11 +15999,94 @@
         }
       }
     },
-    "d3-timer@npm:^3.0.1": {
+    "d3-time-format@npm:4": {
+      "checksum": "a460033c8ca4bf1015a9515d6e2d5976ee30ced683454115a7f085f01981bea92b862528416325e784fe869baa9082b4fe1496ec19e525837fba643c4472d587",
+      "resolution": {
+        "resolution": "d3-time-format@npm:4.1.0",
+        "version": "4.1.0",
+        "dependencies": {
+          "d3-time": "1 - 3"
+        }
+      }
+    },
+    "d3-timer@npm:1 - 2": {
+      "checksum": "19d386149a3e0b9bc0681999cc21a737998f86286e3f6a958a9ede54824701396db2bbd0eb8415755d70dd1e6b0fd0fe62afa036b91d529232549b3c5a34223c",
+      "resolution": {
+        "resolution": "d3-timer@npm:1.0.10",
+        "version": "1.0.10"
+      }
+    },
+    "d3-timer@npm:1 - 3": {
+      "checksum": "a82abb9b373a0212a05bf646ce99344ef4903df699a75f847f4a6ccef1ba9a54c618a3f6d1cdea02a1dfa882eb801b8735da5db3dec2d19cfa0de5d44ce8f891",
+      "resolution": {
+        "resolution": "d3-timer@npm:2.0.0",
+        "version": "2.0.0"
+      }
+    },
+    "d3-timer@npm:3, d3-timer@npm:^3.0.1": {
       "checksum": "bbadfea24cd7f75ee138a39ec719cc3e706507b00a1cc3ceef2dc9045c666b120436b90171f88d0b76c30d773905db2fa61a0ca271680e98707560c5bc30e692",
       "resolution": {
         "resolution": "d3-timer@npm:3.0.1",
         "version": "3.0.1"
+      }
+    },
+    "d3-transition@npm:2 - 3": {
+      "checksum": "214d2d32061fb82c7c44e9c23796a7c247dd2a3734a9107a1bd93ee0d5a2aece7ac29b425e9f85e4ea183de624b8150860f4bc78ac602a77e49a5de8e7493564",
+      "resolution": {
+        "resolution": "d3-transition@npm:2.0.0",
+        "version": "2.0.0",
+        "dependencies": {
+          "d3-color": "1 - 2",
+          "d3-dispatch": "1 - 2",
+          "d3-ease": "1 - 2",
+          "d3-interpolate": "1 - 2",
+          "d3-timer": "1 - 2"
+        },
+        "peerDependencies": {
+          "d3-selection": "2"
+        }
+      }
+    },
+    "d3-transition@npm:3, d3-transition@npm:^3.0.1": {
+      "checksum": "7bcbf2ba323801e9feb9e53d6692252f5d8d92092d8132faf5ab6794e8b554c8c5d48ed1db0ad90691f8fab844b3665404eb5fde100d9f9430445490b92afb87",
+      "resolution": {
+        "resolution": "d3-transition@npm:3.0.1",
+        "version": "3.0.1",
+        "dependencies": {
+          "d3-color": "1 - 3",
+          "d3-dispatch": "1 - 3",
+          "d3-ease": "1 - 3",
+          "d3-interpolate": "1 - 3",
+          "d3-timer": "1 - 3"
+        },
+        "peerDependencies": {
+          "d3-selection": "2 - 3"
+        }
+      }
+    },
+    "d3-zoom@npm:3": {
+      "checksum": "df7ef80597c285e492371a8b7e183da79ec64f183d2ff15e03c07242de5db0087af785b319154cbf297b99b37292a038b6f8c2b5016847bc0927f2a3e1af47c8",
+      "resolution": {
+        "resolution": "d3-zoom@npm:3.0.0",
+        "version": "3.0.0",
+        "dependencies": {
+          "d3-dispatch": "1 - 3",
+          "d3-drag": "2 - 3",
+          "d3-interpolate": "1 - 3",
+          "d3-selection": "2 - 3",
+          "d3-transition": "2 - 3"
+        }
+      }
+    },
+    "dagre-d3-es@npm:7.0.14": {
+      "checksum": "3b4265e3300326e978180f40ad47e67e936058474ca767eb0f4900ce09abb1000f8b5c8343db08e2b870bbe4353e2c974cc98ddb91713c9c1ff7b3c9856e00ac",
+      "resolution": {
+        "resolution": "dagre-d3-es@npm:7.0.14",
+        "version": "7.0.14",
+        "dependencies": {
+          "d3": "^7.9.0",
+          "lodash-es": "^4.17.21"
+        }
       }
     },
     "damerau-levenshtein@npm:^1.0.8": {
@@ -15329,6 +16154,13 @@
       "resolution": {
         "resolution": "dayjs@npm:1.11.18",
         "version": "1.11.18"
+      }
+    },
+    "dayjs@npm:^1.11.19": {
+      "checksum": "aab8a93f6fc9804275753d2717138b764bd28dff3773681295b94ebefd8a6eae631f3a74e739a9c8f84c7bd3e6ce91280ad2469f2c8b7454f23e1c99ba4b1d4f",
+      "resolution": {
+        "resolution": "dayjs@npm:1.11.20",
+        "version": "1.11.20"
       }
     },
     "debug@npm:2.6.9, debug@npm:^2.6.0": {
@@ -15516,6 +16348,16 @@
           "ast-types": "^0.13.4",
           "escodegen": "^2.1.0",
           "esprima": "^4.0.1"
+        }
+      }
+    },
+    "delaunator@npm:5": {
+      "checksum": "bb97ffb16e1276a26073238d0ddf6ae23193a95362f71e94ed1ee226c7666a06d716bd74c805d00a02197b525ab93a3646e1c7698d4f4495bb3af90931356ce3",
+      "resolution": {
+        "resolution": "delaunator@npm:5.1.0",
+        "version": "5.1.0",
+        "dependencies": {
+          "robust-predicates": "^3.0.2"
         }
       }
     },
@@ -15790,6 +16632,19 @@
       "resolution": {
         "resolution": "dompurify@npm:3.2.7",
         "version": "3.2.7",
+        "dependencies": {
+          "@types/trusted-types": "^2.0.7"
+        },
+        "optionalDependencies": [
+          "@types/trusted-types"
+        ]
+      }
+    },
+    "dompurify@npm:^3.3.1": {
+      "checksum": "cedbb9a0e1a6436d5db899cf52f764a6ace82444a862067cb74052d7497490e72c1c5e2743df44de319fb92abb1501ed2e2208bfa4e9eb75b8b0437f06e1221b",
+      "resolution": {
+        "resolution": "dompurify@npm:3.4.2",
+        "version": "3.4.2",
         "dependencies": {
           "@types/trusted-types": "^2.0.7"
         },
@@ -18987,6 +19842,13 @@
         }
       }
     },
+    "hachure-fill@npm:^0.5.2": {
+      "checksum": "ff7f239169a8c562a028d562dbdc7fcf42ac081d5cd7c62861a13d6c5f1d0334d7f2391d1fcacc715ea04e2b92bb8603e63daec92ccc5f996e92e5706191d6b6",
+      "resolution": {
+        "resolution": "hachure-fill@npm:0.5.2",
+        "version": "0.5.2"
+      }
+    },
     "has-bigints@npm:^1.0.2": {
       "checksum": "ed0924e0a07bd3fb74de2fc91486fafc5d01e0add61693bc1bcacd5fef3489aeb56670a5febcb91abd84be5d80f403699b18ab42997757d4ef36d9c1add53508",
       "resolution": {
@@ -19609,7 +20471,7 @@
         }
       }
     },
-    "iconv-lite@npm:0.4.24, iconv-lite@npm:^0.4.24, iconv-lite@npm:~0.4.24": {
+    "iconv-lite@npm:0.4, iconv-lite@npm:0.4.24, iconv-lite@npm:^0.4.24, iconv-lite@npm:~0.4.24": {
       "checksum": "7b71e88778e5cb6e6d4b1ab1bea7055b9ca5e2ddd3718bd7fe4900958e5a8656e5cebaa9078d08daf044c7adb9865e2f5e61691a6f15536beb46d5862967efd7",
       "resolution": {
         "resolution": "iconv-lite@npm:0.4.24",
@@ -19619,7 +20481,7 @@
         }
       }
     },
-    "iconv-lite@npm:^0.6.2": {
+    "iconv-lite@npm:0.6, iconv-lite@npm:^0.6.2": {
       "checksum": "a651b107f597a2305d7ef001af60ea9cb61832ef24596ed0b25af9a956eacd60492375aec610f4992e202494d2c08c9277f20bafa83a381aed75c6e03aea9325",
       "resolution": {
         "resolution": "iconv-lite@npm:0.6.3",
@@ -21367,6 +22229,16 @@
         }
       }
     },
+    "katex@npm:^0.16.25": {
+      "checksum": "c96d6de775a0a35609b53046e05326c50d2a97422d166200c79dbecc86c30a18dd48059fb92bd5548744d26c33ff9ed532a3fbf51cb3f0ee1947622045c747b6",
+      "resolution": {
+        "resolution": "katex@npm:0.16.45",
+        "version": "0.16.45",
+        "dependencies": {
+          "commander": "^8.3.0"
+        }
+      }
+    },
     "keyv@npm:^4.0.0, keyv@npm:^4.5.3, keyv@npm:^4.5.4": {
       "checksum": "fdd95543a18ee3d4edd56cd9ba1dd612d69ed84aa36dcec8d4099fe355fe8c44e6b76e419c6753a7e14e34d6bc8e6a48b5571e383fd670ae74c57d6c4fecd997",
       "resolution": {
@@ -21375,6 +22247,13 @@
         "dependencies": {
           "json-buffer": "3.0.1"
         }
+      }
+    },
+    "khroma@npm:^2.1.0": {
+      "checksum": "184baba494f35b3648392071b25bf08e7935ee745e94e7d675b95642e2145b7a57e5126f1bff19f28af8d098df18d26673665b33137d68e4e0889794cb863437",
+      "resolution": {
+        "resolution": "khroma@npm:2.1.0",
+        "version": "2.1.0"
       }
     },
     "kind-of@npm:^6.0.2": {
@@ -21412,6 +22291,21 @@
         "version": "1.8.0"
       }
     },
+    "langium@npm:^4.0.0": {
+      "checksum": "6ccb76bbf3577c52e8b8252bcf09969827e7d985e1beb362f46df32dc6f2c9315071a523e571c81fc529764da1ef97a22f15938004be6a1b3a35c36bb29e92c5",
+      "resolution": {
+        "resolution": "langium@npm:4.2.3",
+        "version": "4.2.3",
+        "dependencies": {
+          "@chevrotain/regexp-to-ast": "~12.0.0",
+          "chevrotain": "~12.0.0",
+          "chevrotain-allstar": "~0.4.3",
+          "vscode-languageserver": "~9.0.1",
+          "vscode-languageserver-textdocument": "~1.0.11",
+          "vscode-uri": "~3.1.0"
+        }
+      }
+    },
     "language-subtag-registry@npm:^0.3.20": {
       "checksum": "8c4b00af58cbf23506389b0c2d45cb367dc6444e5b58f28dcecf204114d1c775bdcd23392110b78bfa0f3711c765a60c4e6e4d93dc338bb3ed99179d2007bf40",
       "resolution": {
@@ -21437,6 +22331,20 @@
         "dependencies": {
           "package-json": "^8.1.0"
         }
+      }
+    },
+    "layout-base@npm:^1.0.0": {
+      "checksum": "73e0079f260af3973681aefd129bb5b64d61aa94cf3366f340458cd6ccc867d42715922fbdad9e51ed5c7a83d28f8bfa4744fd39437db2f0f1c276a86ccb92c4",
+      "resolution": {
+        "resolution": "layout-base@npm:1.0.2",
+        "version": "1.0.2"
+      }
+    },
+    "layout-base@npm:^2.0.0": {
+      "checksum": "1aab8874f0dfb0a89ba65ff7fb6df2092995efed538c53c2ddc114800966a936cc847224daa7ec4703a5627e1ca4002e805ecc11fe9a8d016ce05476ced592fc",
+      "resolution": {
+        "resolution": "layout-base@npm:2.0.1",
+        "version": "2.0.1"
       }
     },
     "leven@npm:^3.1.0": {
@@ -22010,6 +22918,13 @@
       "resolution": {
         "resolution": "lodash@npm:4.17.21",
         "version": "4.17.21"
+      }
+    },
+    "lodash-es@npm:^4.17.21, lodash-es@npm:^4.17.23, lodash-es@npm:^4.18.1": {
+      "checksum": "91ef9399fab82e3f28692e8210b38e1ebb2b825003e278a36e8dd2f5b04f8dce30a448cc60dcbe3157fe0211a1a0af4994e6a7c5ead77c68d254c49dc33f4ead",
+      "resolution": {
+        "resolution": "lodash-es@npm:4.18.1",
+        "version": "4.18.1"
       }
     },
     "lodash.clonedeep@npm:4.5.0": {
@@ -22741,6 +23656,36 @@
       "resolution": {
         "resolution": "merge2@npm:1.4.1",
         "version": "1.4.1"
+      }
+    },
+    "mermaid@npm:^11.0.0": {
+      "checksum": "4d440b86a5d457d226e4c31c755384c82db628965f75a082121437923eeea3ebff34e15e9b2a92af0deababc6cbb5a875dbcedcf1b2fa53f6f0d39439287bf9e",
+      "resolution": {
+        "resolution": "mermaid@npm:11.14.0",
+        "version": "11.14.0",
+        "dependencies": {
+          "@braintree/sanitize-url": "^7.1.1",
+          "@iconify/utils": "^3.0.2",
+          "@mermaid-js/parser": "^1.1.0",
+          "@types/d3": "^7.4.3",
+          "@upsetjs/venn.js": "^2.0.0",
+          "cytoscape": "^3.33.1",
+          "cytoscape-cose-bilkent": "^4.1.0",
+          "cytoscape-fcose": "^2.2.0",
+          "d3": "^7.9.0",
+          "d3-sankey": "^0.12.3",
+          "dagre-d3-es": "7.0.14",
+          "dayjs": "^1.11.19",
+          "dompurify": "^3.3.1",
+          "katex": "^0.16.25",
+          "khroma": "^2.1.0",
+          "lodash-es": "^4.17.23",
+          "marked": "^16.3.0",
+          "roughjs": "^4.6.6",
+          "stylis": "^4.3.6",
+          "ts-dedent": "^2.2.0",
+          "uuid": "^11.1.0"
+        }
       }
     },
     "meshoptimizer@npm:~0.22.0": {
@@ -24695,6 +25640,13 @@
         }
       }
     },
+    "path-data-parser@npm:0.1.0, path-data-parser@npm:^0.1.0": {
+      "checksum": "2cdd0330126edededb4163620b6e30fb8c626df63c21cced6a0d54c200b2d865c7adc5df9a36615256957cbe4595a1d62ee1443f4cbadcbbd755c188bb933940",
+      "resolution": {
+        "resolution": "path-data-parser@npm:0.1.0",
+        "version": "0.1.0"
+      }
+    },
     "path-exists@npm:^3.0.0": {
       "checksum": "d73aa3a4ca1e84df59adafdddc8cbe5317d2a4411954f2ed76f50aaef87ae0da42bc0991109843211d8e76fec24702dbafd9651251219b83a9377a71a80041a7",
       "resolution": {
@@ -24891,6 +25843,24 @@
       "resolution": {
         "resolution": "platform@npm:1.3.6",
         "version": "1.3.6"
+      }
+    },
+    "points-on-curve@npm:0.2.0, points-on-curve@npm:^0.2.0": {
+      "checksum": "2958b14a40ced7adc9522192ba25c0d9690bc974ed980126df457fff0a2d574b3c1ba2caa98f3c592d60295257486de5ca9f9e5c418f41c8ba32bed7d280d09e",
+      "resolution": {
+        "resolution": "points-on-curve@npm:0.2.0",
+        "version": "0.2.0"
+      }
+    },
+    "points-on-path@npm:^0.2.1": {
+      "checksum": "29bca90fba5714e0b1d42ad0f0e4d67c2d69f20f608741e5a4935291ec6d9631b453aa74697a34c35c31877e4159b106782046559d7a8b6ab773e958b90852dd",
+      "resolution": {
+        "resolution": "points-on-path@npm:0.2.1",
+        "version": "0.2.1",
+        "dependencies": {
+          "path-data-parser": "0.1.0",
+          "points-on-curve": "0.2.0"
+        }
       }
     },
     "possible-typed-array-names@npm:^1.0.0": {
@@ -27021,6 +27991,13 @@
         }
       }
     },
+    "robust-predicates@npm:^3.0.2": {
+      "checksum": "17161d16dbd7839d87982e375a3c165a934dbddf5d7c1c8caaeb0c202687cbfe8a1a7712a07b9c1dcf60f4d924f2ecf48640facbacc9c6e97fb4002694a4bf55",
+      "resolution": {
+        "resolution": "robust-predicates@npm:3.0.3",
+        "version": "3.0.3"
+      }
+    },
     "rolldown@npm:1.0.0-rc.16": {
       "checksum": "b739a53190251e063c081e0d18039b1c834b362bbcbbeaa566d244942181cd4662c4f316cc32d3fae2dee9c3689fe2e029c150d0cd6d0f43c78d1c28c0aa8430",
       "resolution": {
@@ -27122,6 +28099,19 @@
         ]
       }
     },
+    "roughjs@npm:^4.6.6": {
+      "checksum": "d1b3b11c5354a816f93f7ddb639f13460a921ad93a4741235d1e858bf64386acda6ccf67df5bde3e876e40488e6272914c782792f1d0c038214aa7f692be5bb4",
+      "resolution": {
+        "resolution": "roughjs@npm:4.6.6",
+        "version": "4.6.6",
+        "dependencies": {
+          "hachure-fill": "^0.5.2",
+          "path-data-parser": "^0.1.0",
+          "points-on-curve": "^0.2.0",
+          "points-on-path": "^0.2.1"
+        }
+      }
+    },
     "run-async@npm:^2.4.0": {
       "checksum": "54ea88ef9c641f4e7a3555294bf7379d68d180c96a5616476869115b0c5493b02d00d8dde9aabc7453ab12ebc904801c0efb5b6697cd0fe701ccdf305bc8a4cb",
       "resolution": {
@@ -27137,6 +28127,13 @@
         "dependencies": {
           "queue-microtask": "^1.2.2"
         }
+      }
+    },
+    "rw@npm:1": {
+      "checksum": "869b97e27256ecbb4f5a0cec1368e34195e4f2f03cf4008de5c6d35e676444bec798547c3221abf4860972a4452adf6c17c8da39886d701d8c54cec40f2cac98",
+      "resolution": {
+        "resolution": "rw@npm:1.3.3",
+        "version": "1.3.3"
       }
     },
     "rxjs@npm:^6.6.0": {
@@ -28535,6 +29532,13 @@
         }
       }
     },
+    "stylis@npm:^4.3.6": {
+      "checksum": "7f19420020311cbe64ad9e7de4a9bad4f577010e939c96c89019112d2aad1799082af875cc5328ffa5c3c023d2ca35e896ff957cd7df63a2c8611fc3f9474f12",
+      "resolution": {
+        "resolution": "stylis@npm:4.4.0",
+        "version": "4.4.0"
+      }
+    },
     "super-resolve@npm:^1.0.0": {
       "checksum": "acbdf7eb889f87c6821508a10b867a595610c85bcb89ca3cdb79ee00a2f828653dd36f24fdd6b4849b0d6ebab397b53f4d1a5295b497230633a326b6945d6b07",
       "resolution": {
@@ -29002,6 +30006,13 @@
         "version": "0.3.2"
       }
     },
+    "tinyexec@npm:^1.0.1": {
+      "checksum": "1e09c4df2e9da64382604d666805467ecf97c56147704e669c107ba75d66dbc004709565c2d8f03ee2405db7ddc9bfd21d9f34458ef0860f079b44680da71a45",
+      "resolution": {
+        "resolution": "tinyexec@npm:1.1.2",
+        "version": "1.1.2"
+      }
+    },
     "tinyexec@npm:^1.0.2": {
       "checksum": "0fc6ffa26c871260b39d0d47220fd11a437b06bfa89984b17740625369fdb09bdd5876b1489639587845777e1f8745c12afc2580cf35c592867aedbd5b8eab1c",
       "resolution": {
@@ -29162,6 +30173,13 @@
         "peerDependencies": {
           "typescript": ">=4.8.4"
         }
+      }
+    },
+    "ts-dedent@npm:^2.2.0": {
+      "checksum": "a4c0c5db2049d7314bd1a1421b0d94553b6f505ce346b09cf73241680eb3d2a645aa00745093326e766eb6285719d90821bac89ba758e4f38e76b3200b193577",
+      "resolution": {
+        "resolution": "ts-dedent@npm:2.2.0",
+        "version": "2.2.0"
       }
     },
     "tsconfck@npm:^3.1.6": {
@@ -30073,6 +31091,13 @@
         "version": "1.0.1"
       }
     },
+    "uuid@npm:^11.1.0": {
+      "checksum": "d96d6304e050d361ac6f58bd68b35e1ee30058bb3567141b07a5a2ab89eafa970f9789b627095c44ada5f6a9e83e916de7d78db672a0c3c3e6672edc2c6342c5",
+      "resolution": {
+        "resolution": "uuid@npm:11.1.1",
+        "version": "11.1.1"
+      }
+    },
     "uuid@npm:^8.3.2": {
       "checksum": "2340963a8de47dc7e94a9efcf06d8b9ad6d0d1780c184e3dff8f0707e998d1f7e126bde0a8098c61d8b6834f57a2cda1485732f8d41208cc114fc9b1e45167d6",
       "resolution": {
@@ -30439,6 +31464,55 @@
         "optionalPeerDependencies": [
           "vite"
         ]
+      }
+    },
+    "vscode-jsonrpc@npm:8.2.0": {
+      "checksum": "c31dd1dac948e14805b806700bb48ff71dfa7544356ed9e37d38f02ab152b14a20c0c15df033d8abb207fce33b300b1cc31a170bc190aac9055fbca38b909361",
+      "resolution": {
+        "resolution": "vscode-jsonrpc@npm:8.2.0",
+        "version": "8.2.0"
+      }
+    },
+    "vscode-languageserver@npm:~9.0.1": {
+      "checksum": "7fa6da55108a318cdce57f5ba9f6cfe6ccd10dcd32e1a3196eeab77902e97224c07a02027d3df380c15f30434f872c279fe873497a1163acea2a2e9759085736",
+      "resolution": {
+        "resolution": "vscode-languageserver@npm:9.0.1",
+        "version": "9.0.1",
+        "dependencies": {
+          "vscode-languageserver-protocol": "3.17.5"
+        }
+      }
+    },
+    "vscode-languageserver-protocol@npm:3.17.5": {
+      "checksum": "6b849cc064f01853ffd7d576b65619e60f456d6145c3f901758e55cf2a8c72099fcbeb3f02f4080788aff0ec4f142e36ae008b19b1708627c2a5b96d661fb5cb",
+      "resolution": {
+        "resolution": "vscode-languageserver-protocol@npm:3.17.5",
+        "version": "3.17.5",
+        "dependencies": {
+          "vscode-jsonrpc": "8.2.0",
+          "vscode-languageserver-types": "3.17.5"
+        }
+      }
+    },
+    "vscode-languageserver-textdocument@npm:~1.0.11": {
+      "checksum": "b241518f34058b538df1d390bb0499abc158e9387b75ddb1c5860562308212227a0737d04b7075941ddf9236fe0419c66474238a91960bbf4e18931a341a40a7",
+      "resolution": {
+        "resolution": "vscode-languageserver-textdocument@npm:1.0.12",
+        "version": "1.0.12"
+      }
+    },
+    "vscode-languageserver-types@npm:3.17.5": {
+      "checksum": "be6d064db11ce9ff13dcc9c5023c7da491a049c197a0de89092c83c8921b08b5383c2b1aa1e50e8f47d6b58b112a5cc0585f908d4b43a2e5b15f3e95394f8991",
+      "resolution": {
+        "resolution": "vscode-languageserver-types@npm:3.17.5",
+        "version": "3.17.5"
+      }
+    },
+    "vscode-uri@npm:~3.1.0": {
+      "checksum": "766a56f503bc520baa3466c9ca62d9e3a231e34af78727723ad13d86be7c3c34f6a55ade6a85b515c59dfe640a19d4cf69d0bfcd3bac483a9fecc44a0fb55899",
+      "resolution": {
+        "resolution": "vscode-uri@npm:3.1.0",
+        "version": "3.1.0"
       }
     },
     "walker@npm:^1.0.8": {

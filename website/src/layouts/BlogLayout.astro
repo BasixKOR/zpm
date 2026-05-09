@@ -1,6 +1,7 @@
 ---
 import BaseLayout from './BaseLayout.astro';
 import '../styles/theme.css';
+import '../styles/docs.css';
 import '../styles/blog.css';
 
 interface Props {
@@ -13,17 +14,6 @@ const { title, description } = Astro.props;
 
 <BaseLayout title={title} variant="docs" activePage="blog" description={description}>
   <slot />
-
-  <footer class="border-t border-[var(--line)] mt-16 py-10">
-    <div class="max-w-[1400px] mx-auto px-7 flex items-center justify-between flex-wrap gap-4 text-[13px] text-[var(--fg-mute)]">
-      <div>&copy; 2026 The Yarn Authors &middot; <a class="text-[var(--fg-dim)] hover:text-[var(--fg)] no-underline" href="https://github.com/yarnpkg/zpm/blob/main/LICENSE">BSD-2-Clause</a></div>
-      <div class="flex gap-5">
-        <a class="text-[var(--fg-dim)] hover:text-[var(--fg)] no-underline" href="https://bsky.app/profile/yarnpkg.dev">BlueSky</a>
-        <a class="text-[var(--fg-dim)] hover:text-[var(--fg)] no-underline" href="https://github.com/yarnpkg/zpm">GitHub</a>
-        <a class="text-[var(--fg-dim)] hover:text-[var(--fg)] no-underline" href="https://discord.gg/yarnpkg">Discord</a>
-      </div>
-    </div>
-  </footer>
 
   <script is:inline src="/docs/docs.js"></script>
   <script is:inline src="/blog/blog.js"></script>

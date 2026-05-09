@@ -106,31 +106,6 @@
   font-weight: 500;
 }
 
-/* Heading anchor (hover reveal) */
-.heading-wrap {
-  position: relative;
-  display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
-}
-.heading-anchor {
-  opacity: 0;
-  color: var(--fg-mute);
-  text-decoration: none;
-  font-weight: 400;
-  transition: opacity 0.15s, color 0.15s;
-  cursor: pointer;
-  user-select: none;
-  line-height: 1;
-  font-size: 0.85em;
-  border: 0;
-}
-.heading-wrap:hover .heading-anchor,
-.heading-anchor:focus {
-  opacity: 1;
-}
-.heading-anchor:hover { color: var(--accent); }
-
 /* Toast */
 .toast {
   position: fixed;
