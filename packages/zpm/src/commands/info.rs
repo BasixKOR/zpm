@@ -463,8 +463,43 @@ impl Info {
     }
 
     fn get_filter(&self) -> Result<impl Fn(&Locator) -> bool, Error> {
+        let parsed_patterns = self.patterns.iter()
+            .map(|matcher| {
+                let raw = matcher.to_file_string();
+                if let Some(at_idx) = raw.find('@') {
+                    let (ident_part, rest) = raw.split_at(at_idx);
+                    if rest.starts_with("@npm:") || rest.starts_with("@workspace:")
+                        || rest.starts_with("@file:") || rest.starts_with("@portal:")
+                        || rest.starts_with("@link:") || rest.starts_with("@patch:")
+                        || rest.starts_with("@exec:") || rest.starts_with("@git+")
+                        || rest.starts_with("@github:") || rest.starts_with("@http:")
+                        || rest.starts_with("@https:") || rest.starts_with("@jsr:")
+                    {
+                        let reference = rest[1..].to_string();
+                        if !ident_part.is_empty() {
+                            return (Some(IdentGlob::new(ident_part).unwrap_or_else(|_| matcher.clone())), Some(reference));
+                        }
+                    }
+                }
+
+                (Some(matcher.clone()), None)
+            })
+            .collect::<Vec<_>>();
+
         Ok(move |locator: &Locator| {
-            self.patterns.is_empty() || self.patterns.iter().any(|matcher| matcher.check(&locator.ident))
+            if parsed_patterns.is_empty() {
+                return true;
+            }
+
+            parsed_patterns.iter().any(|(ident_glob, reference)| {
+                let ident_match = ident_glob.as_ref()
+                    .map_or(true, |g| g.check(&locator.ident));
+
+                let reference_match = reference.as_ref()
+                    .map_or(true, |r| locator.reference.to_file_string() == *r);
+
+                ident_match && reference_match
+            })
         })
     }
 
