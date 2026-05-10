@@ -1017,7 +1017,7 @@ exports[`Commands constraints test (various field types / workspace_field w/ obj
   "stdout": "➤ Those errors can all be fixed by running yarn constraints --fix
 
 └─ foo@workspace:.
-   └─ ⚙ Missing field _repository; expected { "directory": ".", "type": "git", "url": "ssh://git@github.com/yarnpkg/berry.git" }
+   └─ ⚙ Missing field _repository; expected { "type": "git", "url": "ssh://git@github.com/yarnpkg/berry.git", "directory": "." }
 ",
 }
 `;
