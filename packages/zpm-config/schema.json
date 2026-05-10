@@ -396,6 +396,11 @@
       "description": "Whether to use deferred versioning by default when running the `yarn version` family of commands",
       "default": false
     },
+    "preferInteractive": {
+      "type": "boolean",
+      "description": "Whether to use interactive prompts by default when running yarn commands",
+      "default": false
+    },
     "preferReuse": {
       "type": "boolean",
       "description": "Whether to prefer reusing dependencies from the lockfile when running `yarn add`",

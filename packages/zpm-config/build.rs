@@ -491,6 +491,23 @@ impl Generator {
             writeln!(writer, "    }}").unwrap();
             writeln!(writer, "}}").unwrap();
         }
+
+        // Helper to enumerate top-level settings on the root struct.
+        if let Some(fields) = self.structs.get(&self.root_name) {
+            writeln!(writer).unwrap();
+            writeln!(writer, "impl {} {{", self.root_name).unwrap();
+            writeln!(writer, "    pub fn setting_names() -> Vec<&'static str> {{").unwrap();
+            writeln!(writer, "        vec![").unwrap();
+
+            for field in fields {
+                let name = &field.name;
+                writeln!(writer, "            \"{name}\",").unwrap();
+            }
+
+            writeln!(writer, "        ]").unwrap();
+            writeln!(writer, "    }}").unwrap();
+            writeln!(writer, "}}").unwrap();
+        }
     }
 }
 
