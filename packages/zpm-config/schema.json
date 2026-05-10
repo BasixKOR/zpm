@@ -118,6 +118,11 @@
       "description": "Whether to enforce using unsafe HTTP requests over HTTPS",
       "default": false
     },
+    "cacheFolder": {
+      "type": "zpm_utils::Path",
+      "description": "The folder where the cache files for the active install will be stored",
+      "default": "crate::compute_cache_folder(context)"
+    },
     "globalFolder": {
       "type": "zpm_utils::Path",
       "description": "The folder where the global cache will be stored",
