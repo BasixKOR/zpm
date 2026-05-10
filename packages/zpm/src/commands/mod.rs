@@ -71,6 +71,7 @@ pub enum YarnCli {
     SyncFs(debug::sync_fs::SyncFs),
 
     Audit(npm::audit::Audit),
+    NpmInfo(npm::info::Info),
     Login(npm::login::Login),
     LogoutAll(npm::logout_all::LogoutAll),
     Logout(npm::logout::Logout),
