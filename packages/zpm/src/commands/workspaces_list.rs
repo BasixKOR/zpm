@@ -157,7 +157,7 @@ impl WorkspacesList {
         let mut project
             = Project::new(None).await?;
 
-        if self.verbose || (self.recursive && self.since.is_some()) {
+        if self.recursive && self.since.is_some() {
             project
                 .lazy_install().await?;
         }
@@ -196,7 +196,7 @@ impl WorkspacesList {
                     workspace_dependencies: Option<Vec<&'a Path>>,
 
                     #[serde(skip_serializing_if = "Option::is_none")]
-                    mismatched_workspace_dependencies: Option<Vec<&'a str>>,
+                    mismatched_workspace_dependencies: Option<Vec<String>>,
 
                     #[serde(skip_serializing_if = "Option::is_none")]
                     tree_hash: Option<String>,
@@ -206,31 +206,41 @@ impl WorkspacesList {
                 let mut mismatched_workspace_dependencies = None;
 
                 if self.verbose {
-                    let install_state = project.install_state.as_ref()
-                        .expect("Expected the install state to have been retrieved earlier");
+                    let mut matched_paths = Vec::new();
+                    let mut mismatched_strs = Vec::new();
 
-                    let workspace_resolution = install_state.resolution_tree.locator_resolutions.get(&workspace.locator())
-                        .expect("Expected the workspace to be in the resolution tree");
+                    let all_deps = workspace.manifest.remote.dependencies.iter()
+                        .chain(workspace.manifest.remote.optional_dependencies.iter())
+                        .chain(workspace.manifest.dev_dependencies.iter());
 
-                    // TODO: Deprecate this field; we can't run the command if the workspaces
-                    // are mismatched anyway, since the install will fail.
-                    mismatched_workspace_dependencies = Some(vec![]);
+                    for (ident, descriptor) in all_deps {
+                        let Ok(target_workspace) = project.workspace_by_ident(ident) else {
+                            continue;
+                        };
 
-                    workspace_dependencies = Some(workspace_resolution.dependencies.values()
-                        .filter_map(|dependency_descriptor| {
-                            let dependency_locator = install_state.resolution_tree.descriptor_to_locator.get(dependency_descriptor)
-                                .expect("Expected the descriptor to be in the resolution tree");
+                        let target_version = target_workspace.manifest.remote.version.as_ref();
 
-                            let Reference::WorkspaceIdent(locator_params) = &dependency_locator.reference else {
-                                return None;
-                            };
+                        let matches = match &descriptor.range {
+                            zpm_primitives::Range::WorkspaceMagic(_) => true,
+                            zpm_primitives::Range::WorkspacePath(_) => true,
+                            zpm_primitives::Range::AnonymousSemver(params) => {
+                                target_version.map_or(true, |v| params.range.check(v))
+                            },
+                            zpm_primitives::Range::RegistrySemver(params) => {
+                                target_version.map_or(true, |v| params.range.check(v))
+                            },
+                            _ => false,
+                        };
 
-                            let workspace = project
-                                .workspace_by_ident(&locator_params.ident)
-                                .expect("Expected the workspace to be in the project");
+                        if matches {
+                            matched_paths.push(&target_workspace.rel_path);
+                        } else {
+                            mismatched_strs.push(format!("{}@{}", ident.to_file_string(), descriptor.range.to_file_string()));
+                        }
+                    }
 
-                            Some(&workspace.rel_path)
-                        }).collect::<Vec<_>>());
+                    workspace_dependencies = Some(matched_paths);
+                    mismatched_workspace_dependencies = Some(mismatched_strs);
                 }
 
                 let tree_hash = if self.tree_hash {
