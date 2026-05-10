@@ -352,7 +352,7 @@ pub enum Error {
     #[error("The active package is not a workspace")]
     ActivePackageNotWorkspace,
 
-    #[error("Script not found ({0})")]
+    #[error("Usage Error: Couldn't find a script named \"{0}\"")]
     ScriptNotFound(String),
 
     #[error("Global script not found ({0})")]
