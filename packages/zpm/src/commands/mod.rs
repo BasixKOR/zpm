@@ -137,6 +137,11 @@ pub async fn run_default(args: Option<Vec<String>>) -> ExitCode {
     } = extract_bin_meta(args);
 
     if let Some(cwd) = cwd {
+        if !cwd.fs_exists() {
+            cwd.fs_create_dir_all()
+                .expect("Failed to create the requested working directory");
+        }
+
         cwd.sys_set_current_dir()
             .expect("Failed to set current directory");
     }

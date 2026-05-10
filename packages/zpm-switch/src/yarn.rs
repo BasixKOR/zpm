@@ -145,7 +145,21 @@ pub fn extract_bin_meta(args: Option<Vec<String>>) -> BinMeta {
             .collect::<Vec<_>>()
     });
 
-    if let Some(first_arg) = args.first() {
+    while let Some(first_arg) = args.first() {
+        if first_arg == "--cwd" && args.len() >= 2 {
+            let raw = args[1].clone();
+            cwd = Some(Path::current_dir().unwrap().with_join_str(&raw));
+            args.drain(0..2);
+            continue;
+        }
+
+        if let Some(rest) = first_arg.strip_prefix("--cwd=") {
+            let raw = rest.to_string();
+            cwd = Some(Path::current_dir().unwrap().with_join_str(&raw));
+            args.remove(0);
+            continue;
+        }
+
         let explicit_path
             = ExplicitPath::from_str(first_arg);
 
@@ -153,6 +167,8 @@ pub fn extract_bin_meta(args: Option<Vec<String>>) -> BinMeta {
             cwd = Some(Path::current_dir().unwrap().with_join(&explicit_path.raw_path.path));
             args.remove(0);
         }
+
+        break;
     }
 
     let version
