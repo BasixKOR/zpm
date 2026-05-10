@@ -457,7 +457,7 @@ pub enum Error {
     #[error("Invalid mode in patch file ({0})")]
     InvalidModeInPatchFile(u32),
 
-    #[error("No changes found in this patch file")]
+    #[error("Unable to parse patch file: No changes found")]
     EmptyPatchFile,
 
     #[error("Missing rename target in patch file")]
