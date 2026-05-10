@@ -8,7 +8,7 @@ use zpm_utils::{FromFileString, ToFileString, ToHumanString};
 
 use crate::{
     algolia::query_algolia,
-    descriptor_loose::{self, LooseDescriptor},
+    descriptor_loose::{self, DescriptorLooseDescriptor, LooseDescriptor},
     error::Error,
     install::InstallContext,
     project::{self, InstallMode}
@@ -104,6 +104,13 @@ async fn expand_with_types<'a>(install_context: &InstallContext<'a>, _resolve_op
         let Some((descriptor, request)) = candidate_requests.remove(&ident) else {
             continue;
         };
+
+        // Skip the @types entry if the registry can't actually resolve it: the
+        // user shouldn't see a hard failure just because we tried to be helpful.
+        let loose = LooseDescriptor::Descriptor(DescriptorLooseDescriptor { descriptor: descriptor.clone() });
+        if loose.resolve(install_context, _resolve_options).await.is_err() {
+            continue;
+        }
 
         type_requests.push((descriptor, request));
     }
