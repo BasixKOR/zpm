@@ -1,6 +1,7 @@
 use clipanion::cli;
 use zpm_macro_enum::zpm_enum;
-use zpm_utils::ToHumanString;
+use zpm_primitives::Range;
+use zpm_utils::{ToFileString, ToHumanString};
 
 use crate::{error::Error, project, versioning::{ExactReleaseStrategy, ReleaseStrategy, Versioning}};
 
@@ -129,6 +130,32 @@ impl Version {
 
         println!("Bumped from {} to {}", current_version.to_print_string(), new_version.to_print_string());
 
+        report_non_upgradeable_dependents(&project, &active_workspace.name);
+
         Ok(())
+    }
+}
+
+fn report_non_upgradeable_dependents(project: &project::Project, bumped_ident: &zpm_primitives::Ident) {
+    for workspace in project.workspaces.iter() {
+        let deps = workspace.manifest.remote.dependencies.iter()
+            .chain(workspace.manifest.remote.optional_dependencies.iter())
+            .chain(workspace.manifest.dev_dependencies.iter());
+
+        for (dep_ident, descriptor) in deps {
+            if dep_ident != bumped_ident {
+                continue;
+            }
+
+            if let Range::WorkspaceMagic(params) = &descriptor.range {
+                if matches!(params.magic, zpm_semver::RangeKind::Exact) {
+                    println!(
+                        "Couldn't auto-upgrade range {} (in {})",
+                        params.magic.to_file_string(),
+                        workspace.locator_path().to_print_string(),
+                    );
+                }
+            }
+        }
     }
 }
