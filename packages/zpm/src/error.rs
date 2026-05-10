@@ -514,6 +514,9 @@ pub enum Error {
     #[error("Declining a version bump is only allowed when using the `--deferred` flag or when `preferDeferredVersions` is enabled")]
     VersionDeclineNotAllowed,
 
+    #[error("Cache cleanup is disabled (the `enableCacheClean` setting is `false`)")]
+    CacheCleanDisabled,
+
     #[error("Cannot use {0} as a version bump strategy when using the `--deferred` flag or when `preferDeferredVersions` is enabled and `--immediate` isn't set")]
     InvalidDeferredVersionBump(String),
 
