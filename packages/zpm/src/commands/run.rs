@@ -1,5 +1,7 @@
 use std::{os::unix::process::ExitStatusExt, process::ExitStatus};
 
+use indexmap::IndexMap;
+use zpm_parsers::JsonDocument;
 use zpm_utils::Path;
 use clipanion::cli;
 
@@ -60,13 +62,52 @@ pub struct Run {
     require: Option<String>,
 
     /// Name of the script or binary to run
-    name: String,
+    name: Option<String>,
 
     /// Arguments to pass to the script or binary
     args: Vec<String>,
 }
 
+#[derive(serde::Deserialize)]
+struct ScriptsManifest {
+    #[serde(default)]
+    scripts: IndexMap<String, String>,
+}
+
 impl Run {
+    fn list_scripts(&self, project: &project::Project, json: bool) -> Result<(), Error> {
+        let active_workspace = project.active_workspace()?;
+        let manifest_path = active_workspace.manifest_path();
+
+        let manifest_text = manifest_path
+            .fs_read_text()
+            .unwrap_or_default();
+
+        let manifest: ScriptsManifest = JsonDocument::hydrate_from_str(&manifest_text)
+            .unwrap_or_else(|_| ScriptsManifest { scripts: IndexMap::new() });
+
+        if json {
+            for (name, script) in &manifest.scripts {
+                let entry = serde_json::json!({"name": name, "script": script});
+                println!("{}", serde_json::to_string(&entry).unwrap());
+            }
+
+            return Ok(());
+        }
+
+        let max_name_len = manifest.scripts.keys()
+            .map(|k| k.len())
+            .max()
+            .unwrap_or(0);
+
+        for (name, script) in &manifest.scripts {
+            let padding = " ".repeat(max_name_len.saturating_sub(name.len()));
+            println!("{}{}   '{}'", name, padding, script);
+        }
+
+        Ok(())
+    }
+
     pub async fn execute(&self) -> Result<ExitStatus, Error> {
         let mut project
             = project::Project::new(None).await?;
@@ -77,6 +118,17 @@ impl Run {
         if self.top_level {
             project.package_cwd = Path::new();
         }
+
+        let (name, json_listing) = match self.name.as_deref() {
+            None if self.args.iter().any(|a| a == "--json") => (None, true),
+            None => (None, false),
+            Some(name) => (Some(name), false),
+        };
+
+        let Some(name) = name else {
+            self.list_scripts(&project, json_listing)?;
+            return Ok(ExitStatus::from_raw(0));
+        };
 
         let get_node_args = || {
             let mut node_args = Vec::new();
@@ -111,7 +163,7 @@ impl Run {
 
         let execute_binary = async |error_script_not_found: bool| {
             let maybe_binary
-                = project.find_binary(&self.name);
+                = project.find_binary(name);
 
             if let Ok(binary) = maybe_binary {
                 Ok(ScriptEnvironment::new()?
@@ -142,7 +194,7 @@ impl Run {
             return execute_binary(false).await;
         }
 
-        match project.find_script(&self.name) {
+        match project.find_script(name) {
             Ok((locator, script)) => {
                 let node_args = get_node_args();
 
@@ -154,7 +206,7 @@ impl Run {
                 Ok(ScriptEnvironment::new()?
                     .with_project(&project)
                     .with_package(&project, &locator)?
-                    .with_env_variable("npm_lifecycle_event", &self.name)
+                    .with_env_variable("npm_lifecycle_event", name)
                     .enable_shell_forwarding()
                     .enable_signal_delegation()
                     .run_script(&script, &self.args)
@@ -163,9 +215,9 @@ impl Run {
             },
 
             Err(Error::ScriptNotFound(_)) | Err(Error::GlobalScriptNotFound(_)) => {
-                if task_run::task_exists(&project, &self.name) {
+                if task_run::task_exists(&project, name) {
                     let task_run_silent_dependencies
-                        = TaskRunSilentDependencies::new(&self.cli_environment, self.name.clone(), self.args.clone());
+                        = TaskRunSilentDependencies::new(&self.cli_environment, name.to_string(), self.args.clone());
 
                     return task_run_silent_dependencies.execute().await;
                 }
