@@ -4,7 +4,7 @@ use clipanion::cli;
 use indexmap::IndexMap;
 use itertools::Itertools;
 use zpm_primitives::{Descriptor, Ident, IdentGlob, Locator, Range, Reference, RegistryReference, RegistrySemverRange, ShorthandReference};
-use zpm_utils::{tree, AbstractValue};
+use zpm_utils::{tree, AbstractValue, ToFileString};
 
 use crate::{error::Error, project::{InstallMode, Project, RunInstallOptions}};
 
@@ -117,6 +117,23 @@ impl Dedupe {
             = project.install_state.as_ref()
                 .ok_or(Error::InstallStateNotFound)?;
 
+        if self.json {
+            for (descriptor, locator) in enforced_resolutions {
+                let old_resolution
+                    = &install_state.descriptor_to_locator[descriptor];
+
+                let entry = serde_json::json!({
+                    "descriptor": descriptor.to_file_string(),
+                    "currentResolution": old_resolution.to_file_string(),
+                    "updatedResolution": locator.to_file_string(),
+                });
+
+                println!("{}", serde_json::to_string(&entry).unwrap());
+            }
+
+            return Ok(());
+        }
+
         let mut children
             = vec![];
 
@@ -154,14 +171,12 @@ impl Dedupe {
 
         let render
             = tree::TreeRenderer::new()
-                .render(&root_node, self.json);
+                .render(&root_node, false);
 
         print!("{}", render);
 
-        if !self.json {
-            println!();
-            println!("{} {} can be deduped using the highest strategy", enforced_resolutions.len(), if enforced_resolutions.len() == 1 {"package"} else {"packages"});
-        }
+        println!();
+        println!("{} {} can be deduped using the highest strategy", enforced_resolutions.len(), if enforced_resolutions.len() == 1 {"package"} else {"packages"});
 
         Ok(())
     }
