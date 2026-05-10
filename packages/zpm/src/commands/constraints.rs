@@ -79,8 +79,7 @@ impl Constraints {
             }
 
             let should_break = false
-                || output.all_workspace_operations.is_empty()
-                || output.all_workspace_errors.is_empty()
+                || (output.all_workspace_operations.is_empty() && output.all_workspace_errors.is_empty())
                 || loop_idx == max_loops;
 
             if should_break {

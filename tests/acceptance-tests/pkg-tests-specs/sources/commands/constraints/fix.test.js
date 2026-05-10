@@ -15,13 +15,7 @@ describe(`Commands`, () => {
         };
       `);
 
-      await run(`constraints`, `--fix`, {
-        execArgv: [
-          `--require`, require.resolve(`@yarnpkg/monorepo/.pnp.cjs`),
-          `--require`, require.resolve(`@yarnpkg/monorepo/scripts/setup-ts-execution`),
-          `--require`, require.resolve(`@yarnpkg/monorepo/scripts/detect-unsafe-writes.ts`),
-        ],
-      });
+      await run(`constraints`, `--fix`);
 
       await expect(xfs.readJsonPromise(ppath.join(path, Filename.manifest))).resolves.toMatchObject({
         foo: `xxxxxxxxxx`,
