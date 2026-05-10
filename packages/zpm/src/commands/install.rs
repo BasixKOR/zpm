@@ -64,6 +64,14 @@ pub struct Install {
     /// Hide any output but errors
     #[cli::option("--silent", default = false)]
     silent: bool,
+
+    /// Verbosely print the output of the build steps of your dependencies
+    #[cli::option("--inline-builds", default = false)]
+    inline_builds: bool,
+
+    /// Format the output as a NDJSON stream
+    #[cli::option("--json", default = false)]
+    _json: bool,
 }
 
 impl Install {

@@ -23,6 +23,12 @@ pub async fn current_report() -> RwLockReadGuard<'static, Option<StreamReport>> 
     REPORT.read().await
 }
 
+/// Synchronously try to obtain the active report; used when we're already in
+/// a Tokio context but can't easily await (e.g. inside non-async helpers).
+pub fn try_current_report() -> Option<RwLockReadGuard<'static, Option<StreamReport>>> {
+    REPORT.try_read().ok()
+}
+
 pub async fn async_section<F: Future>(name: &str, f: F) -> F::Output {
     current_report().await.as_ref().map(|r| {
         r.push_section(name.to_string());

@@ -3,7 +3,7 @@ use std::{collections::{BTreeMap, BTreeSet}, fs::Permissions, os::unix::fs::Perm
 use zpm_formats::iter_ext::IterExt;
 use zpm_parsers::JsonDocument;
 use zpm_primitives::{Descriptor, FilterDescriptor, Locator, Reference};
-use zpm_utils::{Path, PathError, System};
+use zpm_utils::{Path, PathError, System, ToHumanString};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
@@ -195,9 +195,29 @@ pub fn get_package_internal_info(project: &Project, install: &Install, dependenc
     // We don't take into account `is_compatible` here, as it may change
     // depending on the system and we don't want the paths encoded in the
     // .pnp.cjs file to change depending on the system.
+    let has_build_commands = package_flags.build_commands.len() > 0;
+    let scripts_allowed_by_meta = package_meta.built.unwrap_or(project.config.settings.enable_scripts.value);
     let should_build_if_compatible
-        = package_flags.build_commands.len() > 0
-            && (locator.reference.is_workspace_reference() || package_meta.built.unwrap_or(project.config.settings.enable_scripts.value));
+        = has_build_commands
+            && (locator.reference.is_workspace_reference() || scripts_allowed_by_meta);
+
+    if has_build_commands && !locator.reference.is_workspace_reference() && !scripts_allowed_by_meta {
+        if let Some(report_guard) = crate::report::try_current_report() {
+            if let Some(report) = report_guard.as_ref() {
+                if package_meta.built == Some(false) {
+                    report.info(format!(
+                        "[YN0005] {} lists build scripts, but its build has been explicitly disabled through configuration.",
+                        locator.to_print_string(),
+                    ));
+                } else {
+                    report.warn(format!(
+                        "[YN0004] {} lists build scripts, but its build has been explicitly disabled through configuration.",
+                        locator.to_print_string(),
+                    ));
+                }
+            }
+        }
+    }
 
     // Optional dependencies baked by zip archives are always extracted,
     // as we have no way to know whether they would be extracted if we
