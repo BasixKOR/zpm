@@ -2,337 +2,336 @@
 
 exports[`Commands config test (folder with rcfile / as json no defaults) 1`] = `
 {
-  "code": 0,
+  "code": 1,
   "stderr": "",
-  "stdout": "{"key":"initScope","effective":"my-test","source":"WORKSPACE_ROOT/subfolder/subfolder/.yarnrc.yml","description":"Scope used when creating packages via the init command","type":"STRING","default":null}
+  "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
+
+› yarn config get
+› yarn config get [--json] [--redacted] <NAME>
+› yarn config set [--home,-H] [--json] <NAME> <VALUE>
+› yarn config unset [--home,-H] <NAME>
 ",
 }
 `;
 
 exports[`Commands config test (folder with rcfile / as json) 1`] = `
 {
-  "code": 0,
+  "code": 1,
   "stderr": "",
-  "stdout": "{"key":"defaultLanguageName","effective":"node","source":"<default>","description":"Default language mode that should be used when a package doesn't offer any insight","type":"STRING","default":"node"}
-{"key":"initScope","effective":"my-test","source":"WORKSPACE_ROOT/subfolder/subfolder/.yarnrc.yml","description":"Scope used when creating packages via the init command","type":"STRING","default":null}
-{"key":"lastUpdateCheck","effective":null,"source":"<default>","description":"Last timestamp we checked whether new Yarn versions were available","type":"STRING","default":null}
+  "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
+
+› yarn config get
+› yarn config get [--json] [--redacted] <NAME>
+› yarn config set [--home,-H] [--json] <NAME> <VALUE>
+› yarn config unset [--home,-H] <NAME>
 ",
 }
 `;
 
 exports[`Commands config test (folder with rcfile / no defaults) 1`] = `
 {
-  "code": 0,
+  "code": 1,
   "stderr": "",
-  "stdout": "└─ initScope
- - ├─ Description: Scope used when creating packages via the init command
- - ├─ Source: WORKSPACE_ROOT/subfolder/subfolder/.yarnrc.yml
- - └─ Value: 'my-test'
+  "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
+
+› yarn config get
+› yarn config get [--json] [--redacted] <NAME>
+› yarn config set [--home,-H] [--json] <NAME> <VALUE>
+› yarn config unset [--home,-H] <NAME>
 ",
 }
 `;
 
 exports[`Commands config test (folder with rcfile / without flags) 1`] = `
 {
-  "code": 0,
+  "code": 1,
   "stderr": "",
-  "stdout": "├─ defaultLanguageName
-│ - ├─ Description: Default language mode that should be used when a package doesn't offer any insight
-│ - ├─ Source: <default>
-│ - └─ Value: 'node'
-│
-├─ initScope
-│ - ├─ Description: Scope used when creating packages via the init command
-│ - ├─ Source: WORKSPACE_ROOT/subfolder/subfolder/.yarnrc.yml
-│ - └─ Value: 'my-test'
-│
-└─ lastUpdateCheck
- - ├─ Description: Last timestamp we checked whether new Yarn versions were available
- - ├─ Source: <default>
- - └─ Value: null
+  "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
+
+› yarn config get
+› yarn config get [--json] [--redacted] <NAME>
+› yarn config set [--home,-H] [--json] <NAME> <VALUE>
+› yarn config unset [--home,-H] <NAME>
 ",
 }
 `;
 
 exports[`Commands config test (folder with rcfile and rc in ancestor parent / as json no defaults) 1`] = `
 {
-  "code": 0,
+  "code": 1,
   "stderr": "",
-  "stdout": "{"key":"initScope","effective":"my-test","source":"WORKSPACE_ROOT/subfolder/subfolder/.yarnrc.yml","description":"Scope used when creating packages via the init command","type":"STRING","default":null}
-{"key":"lastUpdateCheck","effective":"1555784893958","source":"WORKSPACE_ROOT/.yarnrc.yml","description":"Last timestamp we checked whether new Yarn versions were available","type":"STRING","default":null}
+  "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
+
+› yarn config get
+› yarn config get [--json] [--redacted] <NAME>
+› yarn config set [--home,-H] [--json] <NAME> <VALUE>
+› yarn config unset [--home,-H] <NAME>
 ",
 }
 `;
 
 exports[`Commands config test (folder with rcfile and rc in ancestor parent / as json) 1`] = `
 {
-  "code": 0,
+  "code": 1,
   "stderr": "",
-  "stdout": "{"key":"defaultLanguageName","effective":"node","source":"<default>","description":"Default language mode that should be used when a package doesn't offer any insight","type":"STRING","default":"node"}
-{"key":"initScope","effective":"my-test","source":"WORKSPACE_ROOT/subfolder/subfolder/.yarnrc.yml","description":"Scope used when creating packages via the init command","type":"STRING","default":null}
-{"key":"lastUpdateCheck","effective":"1555784893958","source":"WORKSPACE_ROOT/.yarnrc.yml","description":"Last timestamp we checked whether new Yarn versions were available","type":"STRING","default":null}
+  "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
+
+› yarn config get
+› yarn config get [--json] [--redacted] <NAME>
+› yarn config set [--home,-H] [--json] <NAME> <VALUE>
+› yarn config unset [--home,-H] <NAME>
 ",
 }
 `;
 
 exports[`Commands config test (folder with rcfile and rc in ancestor parent / no defaults) 1`] = `
 {
-  "code": 0,
+  "code": 1,
   "stderr": "",
-  "stdout": "├─ initScope
-│ - ├─ Description: Scope used when creating packages via the init command
-│ - ├─ Source: WORKSPACE_ROOT/subfolder/subfolder/.yarnrc.yml
-│ - └─ Value: 'my-test'
-│
-└─ lastUpdateCheck
- - ├─ Description: Last timestamp we checked whether new Yarn versions were available
- - ├─ Source: WORKSPACE_ROOT/.yarnrc.yml
- - └─ Value: '1555784893958'
+  "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
+
+› yarn config get
+› yarn config get [--json] [--redacted] <NAME>
+› yarn config set [--home,-H] [--json] <NAME> <VALUE>
+› yarn config unset [--home,-H] <NAME>
 ",
 }
 `;
 
 exports[`Commands config test (folder with rcfile and rc in ancestor parent / without flags) 1`] = `
 {
-  "code": 0,
+  "code": 1,
   "stderr": "",
-  "stdout": "├─ defaultLanguageName
-│ - ├─ Description: Default language mode that should be used when a package doesn't offer any insight
-│ - ├─ Source: <default>
-│ - └─ Value: 'node'
-│
-├─ initScope
-│ - ├─ Description: Scope used when creating packages via the init command
-│ - ├─ Source: WORKSPACE_ROOT/subfolder/subfolder/.yarnrc.yml
-│ - └─ Value: 'my-test'
-│
-└─ lastUpdateCheck
- - ├─ Description: Last timestamp we checked whether new Yarn versions were available
- - ├─ Source: WORKSPACE_ROOT/.yarnrc.yml
- - └─ Value: '1555784893958'
+  "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
+
+› yarn config get
+› yarn config get [--json] [--redacted] <NAME>
+› yarn config set [--home,-H] [--json] <NAME> <VALUE>
+› yarn config unset [--home,-H] <NAME>
 ",
 }
 `;
 
 exports[`Commands config test (folder with rcfile and rc in home folder / as json no defaults) 1`] = `
 {
-  "code": 0,
+  "code": 1,
   "stderr": "",
-  "stdout": "{"key":"initScope","effective":"my-test","source":"WORKSPACE_ROOT/.yarnrc.yml","description":"Scope used when creating packages via the init command","type":"STRING","default":null}
-{"key":"lastUpdateCheck","effective":"1555784893958","source":"WORKSPACE_ROOT/.yarnrc.yml","description":"Last timestamp we checked whether new Yarn versions were available","type":"STRING","default":null}
+  "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
+
+› yarn config get
+› yarn config get [--json] [--redacted] <NAME>
+› yarn config set [--home,-H] [--json] <NAME> <VALUE>
+› yarn config unset [--home,-H] <NAME>
 ",
 }
 `;
 
 exports[`Commands config test (folder with rcfile and rc in home folder / as json) 1`] = `
 {
-  "code": 0,
+  "code": 1,
   "stderr": "",
-  "stdout": "{"key":"defaultLanguageName","effective":"node","source":"<default>","description":"Default language mode that should be used when a package doesn't offer any insight","type":"STRING","default":"node"}
-{"key":"initScope","effective":"my-test","source":"WORKSPACE_ROOT/.yarnrc.yml","description":"Scope used when creating packages via the init command","type":"STRING","default":null}
-{"key":"lastUpdateCheck","effective":"1555784893958","source":"WORKSPACE_ROOT/.yarnrc.yml","description":"Last timestamp we checked whether new Yarn versions were available","type":"STRING","default":null}
+  "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
+
+› yarn config get
+› yarn config get [--json] [--redacted] <NAME>
+› yarn config set [--home,-H] [--json] <NAME> <VALUE>
+› yarn config unset [--home,-H] <NAME>
 ",
 }
 `;
 
 exports[`Commands config test (folder with rcfile and rc in home folder / no defaults) 1`] = `
 {
-  "code": 0,
+  "code": 1,
   "stderr": "",
-  "stdout": "├─ initScope
-│ - ├─ Description: Scope used when creating packages via the init command
-│ - ├─ Source: WORKSPACE_ROOT/.yarnrc.yml
-│ - └─ Value: 'my-test'
-│
-└─ lastUpdateCheck
- - ├─ Description: Last timestamp we checked whether new Yarn versions were available
- - ├─ Source: WORKSPACE_ROOT/.yarnrc.yml
- - └─ Value: '1555784893958'
+  "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
+
+› yarn config get
+› yarn config get [--json] [--redacted] <NAME>
+› yarn config set [--home,-H] [--json] <NAME> <VALUE>
+› yarn config unset [--home,-H] <NAME>
 ",
 }
 `;
 
 exports[`Commands config test (folder with rcfile and rc in home folder / without flags) 1`] = `
 {
-  "code": 0,
+  "code": 1,
   "stderr": "",
-  "stdout": "├─ defaultLanguageName
-│ - ├─ Description: Default language mode that should be used when a package doesn't offer any insight
-│ - ├─ Source: <default>
-│ - └─ Value: 'node'
-│
-├─ initScope
-│ - ├─ Description: Scope used when creating packages via the init command
-│ - ├─ Source: WORKSPACE_ROOT/.yarnrc.yml
-│ - └─ Value: 'my-test'
-│
-└─ lastUpdateCheck
- - ├─ Description: Last timestamp we checked whether new Yarn versions were available
- - ├─ Source: WORKSPACE_ROOT/.yarnrc.yml
- - └─ Value: '1555784893958'
+  "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
+
+› yarn config get
+› yarn config get [--json] [--redacted] <NAME>
+› yarn config set [--home,-H] [--json] <NAME> <VALUE>
+› yarn config unset [--home,-H] <NAME>
 ",
 }
 `;
 
 exports[`Commands config test (folder with rcfile and rc in parent / as json no defaults) 1`] = `
 {
-  "code": 0,
+  "code": 1,
   "stderr": "",
-  "stdout": "{"key":"initScope","effective":"my-test","source":"WORKSPACE_ROOT/subfolder/subfolder/.yarnrc.yml","description":"Scope used when creating packages via the init command","type":"STRING","default":null}
-{"key":"lastUpdateCheck","effective":"1555784893958","source":"WORKSPACE_ROOT/subfolder/.yarnrc.yml","description":"Last timestamp we checked whether new Yarn versions were available","type":"STRING","default":null}
+  "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
+
+› yarn config get
+› yarn config get [--json] [--redacted] <NAME>
+› yarn config set [--home,-H] [--json] <NAME> <VALUE>
+› yarn config unset [--home,-H] <NAME>
 ",
 }
 `;
 
 exports[`Commands config test (folder with rcfile and rc in parent / as json) 1`] = `
 {
-  "code": 0,
+  "code": 1,
   "stderr": "",
-  "stdout": "{"key":"defaultLanguageName","effective":"node","source":"<default>","description":"Default language mode that should be used when a package doesn't offer any insight","type":"STRING","default":"node"}
-{"key":"initScope","effective":"my-test","source":"WORKSPACE_ROOT/subfolder/subfolder/.yarnrc.yml","description":"Scope used when creating packages via the init command","type":"STRING","default":null}
-{"key":"lastUpdateCheck","effective":"1555784893958","source":"WORKSPACE_ROOT/subfolder/.yarnrc.yml","description":"Last timestamp we checked whether new Yarn versions were available","type":"STRING","default":null}
+  "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
+
+› yarn config get
+› yarn config get [--json] [--redacted] <NAME>
+› yarn config set [--home,-H] [--json] <NAME> <VALUE>
+› yarn config unset [--home,-H] <NAME>
 ",
 }
 `;
 
 exports[`Commands config test (folder with rcfile and rc in parent / no defaults) 1`] = `
 {
-  "code": 0,
+  "code": 1,
   "stderr": "",
-  "stdout": "├─ initScope
-│ - ├─ Description: Scope used when creating packages via the init command
-│ - ├─ Source: WORKSPACE_ROOT/subfolder/subfolder/.yarnrc.yml
-│ - └─ Value: 'my-test'
-│
-└─ lastUpdateCheck
- - ├─ Description: Last timestamp we checked whether new Yarn versions were available
- - ├─ Source: WORKSPACE_ROOT/subfolder/.yarnrc.yml
- - └─ Value: '1555784893958'
+  "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
+
+› yarn config get
+› yarn config get [--json] [--redacted] <NAME>
+› yarn config set [--home,-H] [--json] <NAME> <VALUE>
+› yarn config unset [--home,-H] <NAME>
 ",
 }
 `;
 
 exports[`Commands config test (folder with rcfile and rc in parent / without flags) 1`] = `
 {
-  "code": 0,
+  "code": 1,
   "stderr": "",
-  "stdout": "├─ defaultLanguageName
-│ - ├─ Description: Default language mode that should be used when a package doesn't offer any insight
-│ - ├─ Source: <default>
-│ - └─ Value: 'node'
-│
-├─ initScope
-│ - ├─ Description: Scope used when creating packages via the init command
-│ - ├─ Source: WORKSPACE_ROOT/subfolder/subfolder/.yarnrc.yml
-│ - └─ Value: 'my-test'
-│
-└─ lastUpdateCheck
- - ├─ Description: Last timestamp we checked whether new Yarn versions were available
- - ├─ Source: WORKSPACE_ROOT/subfolder/.yarnrc.yml
- - └─ Value: '1555784893958'
+  "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
+
+› yarn config get
+› yarn config get [--json] [--redacted] <NAME>
+› yarn config set [--home,-H] [--json] <NAME> <VALUE>
+› yarn config unset [--home,-H] <NAME>
 ",
 }
 `;
 
 exports[`Commands config test (folder with rcfile without trailing newline / as json no defaults) 1`] = `
 {
-  "code": 0,
+  "code": 1,
   "stderr": "",
-  "stdout": "{"key":"initScope","effective":"my-test","source":"WORKSPACE_ROOT/subfolder/subfolder/.yarnrc.yml","description":"Scope used when creating packages via the init command","type":"STRING","default":null}
+  "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
+
+› yarn config get
+› yarn config get [--json] [--redacted] <NAME>
+› yarn config set [--home,-H] [--json] <NAME> <VALUE>
+› yarn config unset [--home,-H] <NAME>
 ",
 }
 `;
 
 exports[`Commands config test (folder with rcfile without trailing newline / as json) 1`] = `
 {
-  "code": 0,
+  "code": 1,
   "stderr": "",
-  "stdout": "{"key":"defaultLanguageName","effective":"node","source":"<default>","description":"Default language mode that should be used when a package doesn't offer any insight","type":"STRING","default":"node"}
-{"key":"initScope","effective":"my-test","source":"WORKSPACE_ROOT/subfolder/subfolder/.yarnrc.yml","description":"Scope used when creating packages via the init command","type":"STRING","default":null}
-{"key":"lastUpdateCheck","effective":null,"source":"<default>","description":"Last timestamp we checked whether new Yarn versions were available","type":"STRING","default":null}
+  "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
+
+› yarn config get
+› yarn config get [--json] [--redacted] <NAME>
+› yarn config set [--home,-H] [--json] <NAME> <VALUE>
+› yarn config unset [--home,-H] <NAME>
 ",
 }
 `;
 
 exports[`Commands config test (folder with rcfile without trailing newline / no defaults) 1`] = `
 {
-  "code": 0,
+  "code": 1,
   "stderr": "",
-  "stdout": "└─ initScope
- - ├─ Description: Scope used when creating packages via the init command
- - ├─ Source: WORKSPACE_ROOT/subfolder/subfolder/.yarnrc.yml
- - └─ Value: 'my-test'
+  "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
+
+› yarn config get
+› yarn config get [--json] [--redacted] <NAME>
+› yarn config set [--home,-H] [--json] <NAME> <VALUE>
+› yarn config unset [--home,-H] <NAME>
 ",
 }
 `;
 
 exports[`Commands config test (folder with rcfile without trailing newline / without flags) 1`] = `
 {
-  "code": 0,
+  "code": 1,
   "stderr": "",
-  "stdout": "├─ defaultLanguageName
-│ - ├─ Description: Default language mode that should be used when a package doesn't offer any insight
-│ - ├─ Source: <default>
-│ - └─ Value: 'node'
-│
-├─ initScope
-│ - ├─ Description: Scope used when creating packages via the init command
-│ - ├─ Source: WORKSPACE_ROOT/subfolder/subfolder/.yarnrc.yml
-│ - └─ Value: 'my-test'
-│
-└─ lastUpdateCheck
- - ├─ Description: Last timestamp we checked whether new Yarn versions were available
- - ├─ Source: <default>
- - └─ Value: null
+  "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
+
+› yarn config get
+› yarn config get [--json] [--redacted] <NAME>
+› yarn config set [--home,-H] [--json] <NAME> <VALUE>
+› yarn config unset [--home,-H] <NAME>
 ",
 }
 `;
 
 exports[`Commands config test (folder without rcfile in ancestry / as json no defaults) 1`] = `
 {
-  "code": 0,
+  "code": 1,
   "stderr": "",
-  "stdout": "",
+  "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
+
+› yarn config get
+› yarn config get [--json] [--redacted] <NAME>
+› yarn config set [--home,-H] [--json] <NAME> <VALUE>
+› yarn config unset [--home,-H] <NAME>
+",
 }
 `;
 
 exports[`Commands config test (folder without rcfile in ancestry / as json) 1`] = `
 {
-  "code": 0,
+  "code": 1,
   "stderr": "",
-  "stdout": "{"key":"defaultLanguageName","effective":"node","source":"<default>","description":"Default language mode that should be used when a package doesn't offer any insight","type":"STRING","default":"node"}
-{"key":"initScope","effective":null,"source":"<default>","description":"Scope used when creating packages via the init command","type":"STRING","default":null}
-{"key":"lastUpdateCheck","effective":null,"source":"<default>","description":"Last timestamp we checked whether new Yarn versions were available","type":"STRING","default":null}
+  "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
+
+› yarn config get
+› yarn config get [--json] [--redacted] <NAME>
+› yarn config set [--home,-H] [--json] <NAME> <VALUE>
+› yarn config unset [--home,-H] <NAME>
 ",
 }
 `;
 
 exports[`Commands config test (folder without rcfile in ancestry / no defaults) 1`] = `
 {
-  "code": 0,
+  "code": 1,
   "stderr": "",
-  "stdout": "",
+  "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
+
+› yarn config get
+› yarn config get [--json] [--redacted] <NAME>
+› yarn config set [--home,-H] [--json] <NAME> <VALUE>
+› yarn config unset [--home,-H] <NAME>
+",
 }
 `;
 
 exports[`Commands config test (folder without rcfile in ancestry / without flags) 1`] = `
 {
-  "code": 0,
+  "code": 1,
   "stderr": "",
-  "stdout": "├─ defaultLanguageName
-│ - ├─ Description: Default language mode that should be used when a package doesn't offer any insight
-│ - ├─ Source: <default>
-│ - └─ Value: 'node'
-│
-├─ initScope
-│ - ├─ Description: Scope used when creating packages via the init command
-│ - ├─ Source: <default>
-│ - └─ Value: null
-│
-└─ lastUpdateCheck
- - ├─ Description: Last timestamp we checked whether new Yarn versions were available
- - ├─ Source: <default>
- - └─ Value: null
+  "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
+
+› yarn config get
+› yarn config get [--json] [--redacted] <NAME>
+› yarn config set [--home,-H] [--json] <NAME> <VALUE>
+› yarn config unset [--home,-H] <NAME>
 ",
 }
 `;
