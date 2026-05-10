@@ -43,6 +43,10 @@ pub struct Login {
     /// Enable web-based login
     #[cli::option("--web-login")]
     web_login: Option<bool>,
+
+    /// Store credentials with always-auth set to true
+    #[cli::option("--always-auth", default = false)]
+    always_auth: bool,
 }
 
 #[derive(Serialize)]
@@ -133,11 +137,33 @@ impl Login {
                 ])
             };
 
-            let updated_content = DataDocument::update_document_field(
+            let mut updated_content = DataDocument::update_document_field(
                 &config_content,
                 auth_token_path,
                 zpm_parsers::Value::String(token),
             )?;
+
+            if self.always_auth {
+                let always_auth_path = if let Some(scope) = self.scope.as_ref() {
+                    zpm_parsers::Path::from_segments(vec![
+                        "npmScopes".to_string(),
+                        scope.to_string(),
+                        "npmAlwaysAuth".to_string(),
+                    ])
+                } else {
+                    zpm_parsers::Path::from_segments(vec![
+                        "npmRegistries".to_string(),
+                        registry.to_string(),
+                        "npmAlwaysAuth".to_string(),
+                    ])
+                };
+
+                updated_content = DataDocument::update_document_field(
+                    &updated_content,
+                    always_auth_path,
+                    zpm_parsers::Value::Bool(true),
+                )?;
+            }
 
             config_path
                 .fs_write_text(&updated_content)?;
@@ -290,7 +316,12 @@ impl Login {
             path: user_url.as_str(),
             authorization: None,
             otp: None,
-        }, payload).await?;
+        }, payload).await
+            .map_err(|err| match err {
+                Error::AuthenticationError(message) if message.starts_with("Invalid authentication") =>
+                    Error::AuthenticationError(format!("Invalid authentication (attempted as {})", username)),
+                other => other,
+            })?;
 
         let body
             = response.text().await
