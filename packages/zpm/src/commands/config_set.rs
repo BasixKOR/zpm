@@ -74,8 +74,13 @@ impl ConfigSet {
 
             zpm_parsers::Value::from(&json_value)
         } else {
-            config.hydrate(&segments, &self.value)?;
-            zpm_parsers::Value::String(self.value.clone())
+            let abstract_value = config.hydrate(&segments, &self.value)?;
+            let json_repr = abstract_value.export(true);
+
+            match JsonDocument::hydrate_from_str::<RawJsonOwnedValue>(&json_repr) {
+                Ok(parsed) => zpm_parsers::Value::from(&parsed),
+                Err(_) => zpm_parsers::Value::String(self.value.clone()),
+            }
         };
 
         let document

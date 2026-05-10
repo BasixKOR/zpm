@@ -293,6 +293,13 @@ impl Generator {
                 let type_
                     = &field.type_;
 
+                for alias in &field.aliases {
+                    let alias_camel_case
+                        = alias.to_case(Case::Camel);
+
+                    writeln!(writer, "        #[serde(alias = \"{alias_camel_case}\")]").unwrap();
+                }
+
                 writeln!(writer, "        #[serde(default)] pub {lc_snake_name}: Partial<{}>,", type_.to_intermediate_type_string()).unwrap();
             }
 
