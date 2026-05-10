@@ -175,6 +175,9 @@ pub enum Error {
         value: i64,
     },
 
+    #[error("Some workspaces have been modified but their version hasn't been bumped:\n{0}")]
+    VersionCheckFailed(String),
+
     #[error("Invalid descriptor ({0})")]
     InvalidDescriptor(String),
 

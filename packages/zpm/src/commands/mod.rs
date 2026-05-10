@@ -78,6 +78,7 @@ pub enum YarnCli {
     Whoami(npm::whoami::Whoami),
 
     VersionApply(version::apply::VersionApply),
+    VersionCheck(version::check::VersionCheck),
     Version(version::immediate::Version),
     VersionDeferred(version::deferred::VersionDeferred),
 
