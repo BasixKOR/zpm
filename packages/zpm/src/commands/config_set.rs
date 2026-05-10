@@ -68,6 +68,8 @@ impl ConfigSet {
             (project.config, path)
         };
 
+        set_redacted(false);
+
         let value = if self.json {
             let json_value: RawJsonOwnedValue
                 = JsonDocument::hydrate_from_str(&self.value)?;
