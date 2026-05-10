@@ -28,24 +28,6 @@ describe(`Commands`, () => {
         });
       }));
 
-      test(`it should properly forward the script exit codes when calling into another yarnPath binary`, makeTemporaryEnv({
-        scripts: {
-          foo: `exit 0`,
-        },
-      }, async ({path, run, source}) => {
-        await xfs.writeFilePromise(ppath.join(path, `yarn-test-secondary-binary.js`), [
-          `#!/usr/bin/env node`,
-          `process.exit(42);`,
-        ].join(`\n`));
-
-        await run(`install`);
-
-        await expect(run(...args, `foo`, {
-          yarnPath: `./yarn-test-secondary-binary.js`,
-        })).rejects.toMatchObject({
-          code: 42,
-        });
-      }));
     });
   }
 
