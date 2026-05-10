@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use clipanion::cli;
 use zpm_parsers::{Document, JsonDocument, Value};
-use zpm_primitives::Ident;
+use zpm_primitives::{Ident, IdentGlob};
 use zpm_semver::RangeKind;
 use zpm_utils::ToFileString;
 
@@ -69,6 +69,10 @@ pub struct Up {
     #[cli::option("-C,--caret", default = false)]
     caret: bool,
 
+    /// Resolve again ALL resolutions for those packages
+    #[cli::option("-R,--recursive", default = false)]
+    recursive: bool,
+
     // ---
 
     /// Change what artifacts this install will generate
@@ -83,6 +87,10 @@ pub struct Up {
 
 impl Up {
     pub async fn execute(&self) -> Result<(), Error> {
+        if self.recursive {
+            return self.execute_recursive().await;
+        }
+
         let project
             = Project::new(None).await?;
 
@@ -165,6 +173,33 @@ impl Up {
         project.run_install(RunInstallOptions {
             mode: self.mode,
             enforced_resolutions,
+            ..Default::default()
+        }).await?;
+
+        Ok(())
+    }
+
+    async fn execute_recursive(&self) -> Result<(), Error> {
+        use zpm_utils::ToFileString;
+
+        let patterns = self.descriptors.iter()
+            .map(|descriptor| IdentGlob::new(&descriptor.to_file_string()))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let mut project = Project::new(None).await?;
+
+        let lockfile = project.lockfile()?;
+
+        let enforced_resolutions = lockfile.resolutions.keys()
+            .filter(|descriptor| {
+                patterns.iter().any(|pattern| pattern.check(&descriptor.ident))
+            })
+            .map(|descriptor| (descriptor.clone(), None))
+            .collect();
+
+        project.run_install(RunInstallOptions {
+            enforced_resolutions,
+            mode: self.mode,
             ..Default::default()
         }).await?;
 
