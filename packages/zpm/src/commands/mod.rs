@@ -14,6 +14,7 @@ mod config;
 mod config_get;
 mod config_set;
 mod config_unset;
+mod create;
 mod daemon;
 mod constraints;
 mod dedupe;
@@ -95,6 +96,7 @@ pub enum YarnCli {
     ConfigSet(config_set::ConfigSet),
     ConfigUnset(config_unset::ConfigUnset),
     Constraints(constraints::Constraints),
+    Create(create::Create),
     Dedupe(dedupe::Dedupe),
     DlxWithPackages(dlx::DlxWithPackages),
     Dlx(dlx::Dlx),
