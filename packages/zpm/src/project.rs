@@ -398,7 +398,14 @@ impl Project {
             = JsonDocument::to_string_pretty(lockfile)?;
 
         if self.config.settings.enable_immutable_installs.value {
-            lockfile_path.fs_expect(contents, false)?;
+            if !lockfile_path.fs_exists() {
+                return Err(Error::ImmutableLockfile);
+            }
+
+            let current = lockfile_path.fs_read_text()?;
+            if current != contents {
+                return Err(Error::ImmutableLockfile);
+            }
         } else {
             lockfile_path.fs_change(contents, false)?;
         }
