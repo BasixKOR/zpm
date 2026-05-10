@@ -789,6 +789,14 @@ impl<'a> InstallManager<'a> {
 
         if let Some(project) = self.context.project {
             http_npm::ensure_metadata_cache_dir(&project.config.settings.global_folder.value);
+
+            for workspace in &project.workspaces {
+                for legacy_key in &workspace.manifest.resolutions.legacy_glob_keys {
+                    if let Some(report) = current_report().await.as_ref() {
+                        report.warn(format!("[YN0057] Legacy glob syntax found in resolutions ({legacy_key}); the leading **/ prefix is no longer needed."));
+                    }
+                }
+            }
         }
 
         // --- Island resolution ---

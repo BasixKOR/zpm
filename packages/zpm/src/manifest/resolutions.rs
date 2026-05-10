@@ -114,6 +114,7 @@ use std::collections::BTreeMap;
 pub struct ResolutionsField {
     pub entries: Vec<(ResolutionSelector, Range)>,
     pub by_ident: BTreeMap<Ident, Vec<(ResolutionSelector, Range)>>,
+    pub legacy_glob_keys: Vec<String>,
 }
 
 impl ResolutionsField {
@@ -121,6 +122,7 @@ impl ResolutionsField {
         Self {
             entries: Vec::new(),
             by_ident: BTreeMap::new(),
+            legacy_glob_keys: Vec::new(),
         }
     }
 
@@ -186,7 +188,13 @@ impl<'de> Visitor<'de> for ResolutionsFieldVisitor {
         let mut field = ResolutionsField::new();
 
         while let Some(key) = map.next_key::<String>()? {
-            let selector = ResolutionSelector::from_file_string(&key)
+            let (effective_key, legacy_form) = if let Some(stripped) = key.strip_prefix("**/") {
+                (stripped.to_string(), Some(key.clone()))
+            } else {
+                (key.clone(), None)
+            };
+
+            let selector = ResolutionSelector::from_file_string(&effective_key)
                 .map_err(|_| de::Error::custom("invalid resolution selector"))?;
 
             let value_str: String = map.next_value()?;
@@ -208,6 +216,10 @@ impl<'de> Visitor<'de> for ResolutionsFieldVisitor {
 
             if !is_valid_resolution_descriptor {
                 return Err(de::Error::custom("the range must be an anonymous semver range"));
+            }
+
+            if let Some(legacy) = legacy_form {
+                field.legacy_glob_keys.push(legacy);
             }
 
             field.add_entry(selector, range);
