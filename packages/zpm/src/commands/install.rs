@@ -50,7 +50,7 @@ pub struct Install {
     #[cli::option("--immutable-cache")]
     immutable_cache: Option<bool>,
 
-    #[cli::option("--check-checksums", default = false)]
+    #[cli::option("--check-checksums,--check-cache", default = false)]
     check_checksums: bool,
 
     /// Refresh the package metadata stored in the lockfile
