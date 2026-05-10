@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+npm install -g pnpm
+
 mkdir -p packages/pkg-a
 
 cat > package.json <<'JSON'
@@ -28,7 +30,7 @@ cat > packages/pkg-a/package.json <<'JSON'
 }
 JSON
 
-pnpm install
+pnpm install --ignore-scripts
 
 # Capture the versions pnpm resolved (normalized to name@version)
 pnpm ls -r --json --depth=Infinity \
