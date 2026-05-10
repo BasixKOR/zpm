@@ -140,6 +140,7 @@ pub fn entries_to_disk<'a>(entries: &[Entry<'a>], base: &Path) -> Result<(), Err
 }
 
 pub fn entries_from_folder<'a>(path: &Path) -> Result<Vec<Entry<'a>>, Error> {
+    let base = path.clone();
     let mut entries = vec![];
     let mut process_queue = vec![path.clone()];
 
@@ -148,22 +149,22 @@ pub fn entries_from_folder<'a>(path: &Path) -> Result<Vec<Entry<'a>>, Error> {
 
         for entry in listing {
             let entry = entry?;
-            let path = Path::try_from(entry.path())?;
+            let entry_path = Path::try_from(entry.path())?;
 
-            if path.fs_is_dir() {
-                process_queue.push(path);
+            if entry_path.fs_is_dir() {
+                process_queue.push(entry_path);
                 continue;
             }
 
-            let name = Path::try_from(entry.file_name().into_string()?)?;
-            let data = path.fs_read()?;
-            let metadata = path.fs_metadata()?;
+            let rel_path = entry_path.relative_to(&base);
+            let data = entry_path.fs_read()?;
+            let metadata = entry_path.fs_metadata()?;
 
             let is_exec = metadata.permissions().mode() & 0o111 != 0;
             let mode = if is_exec { 0o755 } else { 0o644 };
 
             entries.push(Entry {
-                name,
+                name: rel_path,
                 mode,
                 crc: 0,
                 data: Cow::Owned(data),
