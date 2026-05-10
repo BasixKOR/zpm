@@ -2,6 +2,8 @@ use clipanion::cli;
 use zpm_parsers::{Document, JsonDocument, Value};
 use zpm_primitives::Ident;
 use zpm_utils::{IoResultExt, Path, ToFileString};
+use serde::Deserialize;
+use std::collections::BTreeMap;
 
 use crate::{
     commands::dlx,
@@ -167,6 +169,53 @@ pub struct InitParams {
     version: String,
 }
 
+#[derive(Deserialize)]
+struct YarnRcInit {
+    #[serde(default, rename = "initFields")]
+    init_fields: BTreeMap<String, serde_json::Value>,
+}
+
+fn apply_init_fields(document: &mut JsonDocument, init_cwd: &Path) -> Result<(), Error> {
+    let rc_filename = std::env::var("YARN_RC_FILENAME")
+        .unwrap_or_else(|_| ".yarnrc.yml".to_string());
+
+    let mut current: Option<Path> = Some(init_cwd.clone());
+    while let Some(dir) = current {
+        let rc_path = dir.with_join_str(&rc_filename);
+        if rc_path.fs_exists() {
+            if let Ok(text) = rc_path.fs_read_text() {
+                if let Ok(parsed) = zpm_parsers::YamlDocument::hydrate_from_str::<YarnRcInit>(&text) {
+                    for (key, value) in parsed.init_fields {
+                        let parser_value = json_to_parser_value(&value);
+                        document.set_path(
+                            &zpm_parsers::Path::from_segments(vec![key]),
+                            parser_value,
+                        )?;
+                    }
+                    return Ok(());
+                }
+            }
+        }
+        current = dir.dirname();
+    }
+    Ok(())
+}
+
+fn json_to_parser_value(value: &serde_json::Value) -> Value {
+    match value {
+        serde_json::Value::Null => Value::Null,
+        serde_json::Value::Bool(b) => Value::Bool(*b),
+        serde_json::Value::Number(n) => Value::Number(n.to_string()),
+        serde_json::Value::String(s) => Value::String(s.clone()),
+        serde_json::Value::Array(items) => Value::Array(items.iter().map(json_to_parser_value).collect()),
+        serde_json::Value::Object(entries) => Value::Object(
+            entries.iter()
+                .map(|(k, v)| (k.clone(), json_to_parser_value(v)))
+                .collect(),
+        ),
+    }
+}
+
 pub async fn init_project(init_cwd: &Path, params: InitParams) -> Result<Project, Error> {
     let existing_project
         = Project::find_closest_project(init_cwd.clone()).ok();
@@ -202,6 +251,8 @@ pub async fn init_project(init_cwd: &Path, params: InitParams) -> Result<Project
         &zpm_parsers::Path::from_segments(vec!["packageManager".to_string()]),
         Value::String(format!("yarn@{}", params.version)),
     )?;
+
+    apply_init_fields(&mut document, init_cwd)?;
 
     if let Some(private) = params.private {
         let private_field = match private {
