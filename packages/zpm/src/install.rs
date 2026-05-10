@@ -1,13 +1,13 @@
-use std::{collections::{BTreeMap, BTreeSet}, sync::{Arc, LazyLock}};
+use std::{collections::{BTreeMap, BTreeSet, HashMap}, sync::{Arc, LazyLock}};
 
 use chrono::{DateTime, Utc};
 use futures::future::{BoxFuture, FutureExt};
 use futures::stream::{FuturesUnordered, StreamExt};
 use itertools::Itertools;
-use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use zpm_config::PackageExtension;
 use zpm_primitives::{Descriptor, GitRange, Ident, Locator, PatchRange, PeerRange, Range, Reference, RegistrySemverRange, RegistryTagRange, SemverDescriptor, SemverPeerRange, WorkspaceIdentRange};
-use zpm_utils::{Hash64, Hash64Writer, IoResultExt, Path, System, ToHumanString, UrlEncoded};
+use zpm_utils::{Hash64, Hash64Writer, IoResultExt, Path, System, ToHumanString, UrlEncoded, scc_tarjan_pearce};
 use rkyv::Archive;
 use serde::{Deserialize, Serialize};
 use zpm_utils::{FromFileString, ToFileString};
@@ -635,20 +635,40 @@ pub struct InstallResult {
 
 impl Install {
     pub async fn link_and_build(mut self, project: &mut Project) -> Result<InstallResult, Error> {
+        let graph = build_locator_graph(
+            &self.install_state.normalized_resolutions,
+            &self.install_state.descriptor_to_locator,
+        );
+
+        let workspace_locators: Vec<(Ident, Locator)> = project.workspaces.iter()
+            .map(|w| (w.name.clone(), w.locator()))
+            .collect();
+
         if self.skip_link_step {
+            self.lockfile.workspaces
+                = compute_workspace_hashes(&graph, &workspace_locators);
+
             project.attach_install_state(self.install_state)?;
 
             if !self.skip_lockfile_update {
                 project.write_lockfile(&self.lockfile)?;
             }
         } else {
-            self.install_state.last_installed_at = project.last_modified_at.as_nanos();
+            self.install_state.last_installed_at
+                = project.last_modified_at.as_nanos();
+
+            let hash_handle = tokio::task::spawn_blocking(move || {
+                compute_workspace_hashes(&graph, &workspace_locators)
+            });
 
             let link_future
-                = linker::link_project(project, &mut self);
+                = linker::link_project(project, &self);
 
             let link_result
                 = async_section("Linking the project", link_future).await?;
+
+            self.lockfile.workspaces
+                = hash_handle.await?;
 
             for (location, locator) in &link_result.packages_by_location {
                 self.install_state.locations_by_package.insert(locator.clone(), location.clone());
@@ -1019,17 +1039,7 @@ impl<'a> InstallManager<'a> {
                 .run();
         }
 
-        let project
-            = self.context.project
-                .expect("The project is required to compute workspace hashes");
-
         self.result.lockfile.resolutions = self.result.install_state.descriptor_to_locator.clone();
-
-        self.result.lockfile.workspaces = project.workspaces.par_iter()
-            .map(|workspace| (workspace.name.clone(), self.compute_workspace_hash(&workspace.locator())))
-            .collect::<BTreeMap<_, _>>();
-
-        self.result.lockfile_changed = self.result.lockfile != self.initial_lockfile;
 
         self.result.skip_build = self.context.mode == Some(InstallMode::SkipBuild);
 
@@ -1084,44 +1094,138 @@ impl<'a> InstallManager<'a> {
         Ok(())
     }
 
-    fn compute_workspace_hash(&self, root_locator: &Locator) -> Hash64 {
-        let mut hash_writer
-            = Hash64Writer::new();
+}
 
-        let mut visited
-            = BTreeSet::new();
+fn dep_locators<'a>(
+    locator: &Locator,
+    resolutions: &'a BTreeMap<Locator, Resolution>,
+    d2l: &'a BTreeMap<Descriptor, Locator>,
+) -> Vec<&'a Locator> {
+    let Some(resolution) = resolutions.get(locator) else {
+        return Vec::new();
+    };
 
-        let mut queue
-            = vec![root_locator.clone()];
+    resolution.dependencies.values()
+        .filter_map(|desc| d2l.get(desc))
+        .chain(resolution.variants.iter().filter_map(|desc| d2l.get(desc)))
+        .collect()
+}
 
-        while let Some(locator) = queue.pop() {
-            if !visited.insert(locator.clone()) {
-                continue;
-            }
+fn compute_workspace_hashes(
+    graph: &BTreeMap<Locator, BTreeSet<Locator>>,
+    workspace_locators: &[(Ident, Locator)],
+) -> BTreeMap<Ident, Hash64> {
+    let cache
+        = compute_all_locator_hashes(graph);
+
+    workspace_locators.iter()
+        .map(|(name, locator)| {
+            let hash = cache.get(locator)
+                .cloned()
+                .unwrap_or_else(|| Hash64::from_data(locator.to_file_string()));
+
+            (name.clone(), hash)
+        })
+        .collect()
+}
+
+fn build_locator_graph(
+    resolutions: &BTreeMap<Locator, Resolution>,
+    descriptor_to_locator: &BTreeMap<Descriptor, Locator>,
+) -> BTreeMap<Locator, BTreeSet<Locator>> {
+    resolutions.keys()
+        .map(|locator| {
+            let deps
+                = dep_locators(locator, resolutions, descriptor_to_locator)
+                    .into_iter()
+                    .cloned()
+                    .collect();
+            (locator.clone(), deps)
+        })
+        .collect()
+}
+
+fn compute_all_locator_hashes(
+    graph: &BTreeMap<Locator, BTreeSet<Locator>>,
+) -> HashMap<Locator, Hash64> {
+    let sccs
+        = scc_tarjan_pearce(graph);
+
+    let mut cache: HashMap<Locator, Hash64>
+        = HashMap::with_capacity(graph.len());
+
+    for scc in &sccs {
+        if scc.len() == 1 {
+            let locator = &scc[0];
+
+            let mut hash_writer
+                = Hash64Writer::new();
 
             hash_writer.update(locator.to_file_string());
 
-            if let Some(resolution) = self.result.install_state.normalized_resolutions.get(&locator) {
-                for dependency_descriptor in resolution.dependencies.values() {
-                    if let Some(dep_locator) = self.result.install_state.descriptor_to_locator.get(dependency_descriptor) {
-                        if !visited.contains(dep_locator) {
-                            queue.push(dep_locator.clone());
-                        }
-                    }
-                }
+            let mut child_hashes
+                = graph.get(locator)
+                    .into_iter()
+                    .flat_map(|deps| deps.iter())
+                    .filter_map(|dep| cache.get(dep))
+                    .collect_vec();
 
-                for variant_descriptor in &resolution.variants {
-                    if let Some(variant_locator) = self.result.install_state.descriptor_to_locator.get(variant_descriptor) {
-                        if !visited.contains(variant_locator) {
-                            queue.push(variant_locator.clone());
+            child_hashes.sort();
+            for h in child_hashes {
+                hash_writer.update(h.to_file_string());
+            }
+
+            cache.insert(locator.clone(), hash_writer.finalize());
+        } else {
+            let scc_set: BTreeSet<_>
+                = scc.iter()
+                    .collect();
+
+            let mut member_strings
+                = scc.iter()
+                    .map(|l| l.to_file_string())
+                    .collect_vec();
+
+            member_strings.sort();
+
+            let mut external_hashes
+                = Vec::new();
+
+            for locator in scc {
+                if let Some(deps) = graph.get(locator) {
+                    for dep in deps {
+                        if !scc_set.contains(dep) {
+                            if let Some(h) = cache.get(dep) {
+                                external_hashes.push(h);
+                            }
                         }
                     }
                 }
             }
-        }
 
-        hash_writer.finalize()
+            external_hashes.sort();
+            external_hashes.dedup();
+
+            let mut hash_writer
+                = Hash64Writer::new();
+
+            for s in &member_strings {
+                hash_writer.update(s);
+            }
+            for h in external_hashes {
+                hash_writer.update(h.to_file_string());
+            }
+
+            let scc_hash
+                = hash_writer.finalize();
+
+            for locator in scc {
+                cache.insert(locator.clone(), scc_hash.clone());
+            }
+        }
     }
+
+    cache
 }
 
 fn normalize_resolution(context: &InstallContext<'_>, descriptor: &mut Descriptor, resolution: &Resolution, apply_overrides: bool) -> Result<(), Error> {
