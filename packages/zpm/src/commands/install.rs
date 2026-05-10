@@ -71,6 +71,24 @@ impl Install {
         let mut project
             = project::Project::new(None).await?;
 
+        if !project.package_cwd.is_empty() {
+            let cwd_manifest_path = project
+                .project_cwd
+                .with_join(&project.package_cwd)
+                .with_join_str(project::MANIFEST_NAME);
+
+            if cwd_manifest_path.fs_exists() && project.try_workspace_by_rel_path(&project.package_cwd)?.is_none() {
+                let nearest = project
+                    .project_cwd
+                    .with_join(&project.package_cwd);
+
+                return Err(Error::PackageDirectoryNotInProject {
+                    nearest_path: nearest,
+                    project_path: project.project_cwd.clone(),
+                });
+            }
+        }
+
         if self.mode == Some(InstallMode::UpdateLockfile) && (self.immutable == Some(true) || self.immutable_cache == Some(true)) {
             return Err(Error::ImmutableWithUpdateLockfile);
         }

@@ -178,6 +178,12 @@ pub enum Error {
     #[error("Some workspaces have been modified but their version hasn't been bumped:\n{0}")]
     VersionCheckFailed(String),
 
+    #[error("The nearest package directory ({}) doesn't seem to be part of the project declared in {}.", nearest_path.to_print_string(), project_path.to_print_string())]
+    PackageDirectoryNotInProject {
+        nearest_path: Path,
+        project_path: Path,
+    },
+
     #[error("Invalid descriptor ({0})")]
     InvalidDescriptor(String),
 
