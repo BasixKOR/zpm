@@ -24,6 +24,8 @@ pub struct LinkResult {
 }
 
 pub async fn link_project<'a>(project: &'a Project, install: &'a Install) -> Result<LinkResult, Error> {
+    cleanup_inactive_linker_artifacts(project)?;
+
     let mut result = match project.config.settings.node_linker.value {
         NodeLinker::NodeModules
             => nm::link_project_nm(project, install).await?,
@@ -53,4 +55,23 @@ pub async fn link_project<'a>(project: &'a Project, install: &'a Install) -> Res
     }
 
     Ok(result)
+}
+
+fn cleanup_inactive_linker_artifacts(project: &Project) -> Result<(), Error> {
+    let active = project.config.settings.node_linker.value;
+
+    if active != NodeLinker::Pnp {
+        for path in [
+            project.pnp_path(),
+            project.pnp_data_path(),
+            project.pnp_loader_path(),
+            project.unplugged_path(),
+        ] {
+            if path.fs_exists() {
+                path.fs_rm()?;
+            }
+        }
+    }
+
+    Ok(())
 }

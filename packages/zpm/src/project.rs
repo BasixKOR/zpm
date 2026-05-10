@@ -245,7 +245,7 @@ impl Project {
     }
 
     pub fn unplugged_path(&self) -> Path {
-        self.ignore_path().with_join_str("unplugged")
+        self.project_cwd.with_join_str(".yarn/unplugged")
     }
 
     pub fn install_state_path(&self) -> Path {
