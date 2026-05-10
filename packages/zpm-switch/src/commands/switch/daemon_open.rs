@@ -20,7 +20,7 @@ use crate::{
 #[cli::category("Daemon management")]
 #[derive(Debug)]
 pub struct DaemonOpenCommand {
-    #[cli::option("--open")]
+    #[cli::option("--open,--start")]
     open: bool,
 }
 
@@ -49,7 +49,8 @@ impl DaemonOpenCommand {
             if daemons::is_process_alive(existing.pid) {
                 let token = existing.auth_token.as_deref();
                 if self.check_daemon_ready(existing.port, token).await.is_ok() {
-                    println!("{}", build_ws_url(existing.port, token));
+                    println!("Daemon already running for project {}", detected_root.to_file_string());
+                    println!("PID: {}", existing.pid);
                     return Ok(());
                 }
 
@@ -146,7 +147,10 @@ impl DaemonOpenCommand {
             return Err(e);
         }
 
-        println!("{}", build_ws_url(port, Some(&auth_token)));
+        println!("Started daemon for project {}", detected_root.to_file_string());
+        println!("PID: {}", pid);
+        println!("Port: {}", port);
+        println!("URL: {}", build_ws_url(port, Some(&auth_token)));
 
         Ok(())
     }
