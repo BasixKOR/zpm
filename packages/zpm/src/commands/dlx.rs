@@ -132,8 +132,34 @@ pub async fn setup_project() -> Result<Project, Error> {
         .fs_write_text("{}\n")?;
     temp_dir.with_join_str("yarn.lock")
         .fs_write_text("{}\n")?;
+
+    let mut rc_value: serde_json::Value = serde_json::json!({
+        "enableGlobalCache": false,
+    });
+
+    let calling_cwd = Path::current_dir()?;
+    let calling_rc = calling_cwd.with_join_str(".yarnrc.yml");
+    if let Ok(calling_rc_content) = calling_rc.fs_read_text() {
+        if let Ok(mut parsed) = zpm_parsers::YamlDocument::hydrate_from_str::<serde_json::Value>(&calling_rc_content) {
+            // Drop ephemeral-unfriendly keys whose targets aren't in the dlx
+            // project (would trigger spurious YN0068 warnings).
+            if let Some(map) = parsed.as_object_mut() {
+                map.remove("packageExtensions");
+                map.remove("plugins");
+            }
+
+            if let serde_json::Value::Object(entries) = parsed {
+                if let serde_json::Value::Object(target) = &mut rc_value {
+                    for (key, value) in entries {
+                        target.insert(key, value);
+                    }
+                }
+            }
+        }
+    }
+
     temp_dir.with_join_str(".yarnrc.yml")
-        .fs_write_text("enableGlobalCache: false\n")?;
+        .fs_write_text(serde_yaml::to_string(&rc_value).unwrap_or_else(|_| "enableGlobalCache: false\n".to_string()))?;
 
     let project
         = Project::new(Some(temp_dir)).await?;
