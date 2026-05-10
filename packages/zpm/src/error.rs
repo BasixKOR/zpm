@@ -334,7 +334,7 @@ pub enum Error {
     #[error("Constraints configuration file not found")]
     ConstraintsConfigNotFound,
 
-    #[error("Automatic constraints check failed; run {} to obtain details", DataType::Code.colorize("yarn constraints"))]
+    #[error("Constraint check failed; run {} for more details", DataType::Code.colorize("yarn constraints"))]
     AutoConstraintsError,
 
     #[error("Install state file not found; please run an install operation first")]
