@@ -2,19 +2,32 @@
 
 Items to discuss with the maintainer about how to proceed.
 
-## `config get cacheFolder` (Commands config get > it should print native paths)
+## `yarn --version` should print the active workspace version
 
-The test `commands/config/get.test.js > it should print native paths` calls
-`yarn config get cacheFolder --no-redacted`. Berry exposed `cacheFolder` as a
-top-level configuration key (defaulting to `./.yarn/cache`), but in zpm the
-cache directory is computed from `globalFolder` (when `enableGlobalCache` is
-true) or from `localCacheFolderName` inside `.yarn/`. There is no stored
-`cacheFolder` setting.
+`commands/_entry.test.ts` expects `yarn --version` (and `-v`) to emit the
+version of the active workspace's package.json (defaulting to `0.0.0`
+when the manifest doesn't set one). Today zpm's `--version` emits the
+binary's own Cargo version with a `-local` suffix (e.g.
+`6.0.0-rc.18.local`).
 
-Should we expose `cacheFolder` as a virtual / computed setting accessible via
-`config get`, or update the test to use `globalFolder` (or another existing
-key)? The user instructed not to modify tests, so the suggested path is to add
-a computed getter for `cacheFolder` that resolves to `preferred_cache_path()`.
+This is the legacy Yarn 1 behavior. Should we restore it for parity, or
+leave the binary-version semantics? The latter feels more useful in
+practice but breaks 2 tests.
+
+## `constraints.pro` Prolog support
+
+Several test files (`commands/constraints/fix.test.js`,
+`commands/constraints/query.test.js`, `commands/constraints/source.test.js`,
+and the `constraints` snapshot suite) write `constraints.pro` files and
+rely on the Prolog-based constraints engine that shipped with Yarn 1/2.
+zpm only ships a TypeScript-based constraints runtime that loads
+`yarn.config.{ts,mjs,cjs}`, so the command exits with
+`Constraints configuration file not found`.
+
+This accounts for ~9 fix tests and several snapshot tests. Should we drop
+those tests, or implement a Prolog adapter that delegates to the legacy
+runtime? Berry's tooling suggests Prolog support is being phased out, so
+removing the tests seems most likely.
 
 ## `set version`: yarnPath / --yarn-path / --no-yarn-path / --only-if-needed / `self`
 
