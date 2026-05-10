@@ -283,6 +283,9 @@ pub enum Error {
     #[error("Incompatible options: {}", .0.join(", "))]
     IncompatibleOptions(Vec<String>),
 
+    #[error("--immutable and --immutable-cache cannot be used with --mode=update-lockfile")]
+    ImmutableWithUpdateLockfile,
+
     #[error("Repository clone failed")]
     RepositoryCloneFailed(String),
 

@@ -71,12 +71,8 @@ impl Install {
         let mut project
             = project::Project::new(None).await?;
 
-        if self.mode == Some(InstallMode::UpdateLockfile) && self.immutable == Some(true) {
-            return Err(Error::IncompatibleOptions(vec!["--immutable".to_string(), "--mode=update-lockfile".to_string()]));
-        }
-
-        if self.mode == Some(InstallMode::UpdateLockfile) && self.immutable_cache == Some(true) {
-            return Err(Error::IncompatibleOptions(vec!["--immutable-cache".to_string(), "--mode=update-lockfile".to_string()]));
+        if self.mode == Some(InstallMode::UpdateLockfile) && (self.immutable == Some(true) || self.immutable_cache == Some(true)) {
+            return Err(Error::ImmutableWithUpdateLockfile);
         }
 
         if self.immutable == Some(true) {
