@@ -6,7 +6,7 @@ exports[`Commands config test (folder with rcfile / as json no defaults) 1`] = `
   "stderr": "",
   "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
 
-› yarn config get
+› yarn config get [--json] [--no-redacted]
 › yarn config get [--json] [--redacted] <NAME>
 › yarn config set [--home,-H] [--json] <NAME> <VALUE>
 › yarn config unset [--home,-H] <NAME>
@@ -20,7 +20,7 @@ exports[`Commands config test (folder with rcfile / as json) 1`] = `
   "stderr": "",
   "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
 
-› yarn config get
+› yarn config get [--json] [--no-redacted]
 › yarn config get [--json] [--redacted] <NAME>
 › yarn config set [--home,-H] [--json] <NAME> <VALUE>
 › yarn config unset [--home,-H] <NAME>
@@ -34,7 +34,7 @@ exports[`Commands config test (folder with rcfile / no defaults) 1`] = `
   "stderr": "",
   "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
 
-› yarn config get
+› yarn config get [--json] [--no-redacted]
 › yarn config get [--json] [--redacted] <NAME>
 › yarn config set [--home,-H] [--json] <NAME> <VALUE>
 › yarn config unset [--home,-H] <NAME>
@@ -48,7 +48,7 @@ exports[`Commands config test (folder with rcfile / without flags) 1`] = `
   "stderr": "",
   "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
 
-› yarn config get
+› yarn config get [--json] [--no-redacted]
 › yarn config get [--json] [--redacted] <NAME>
 › yarn config set [--home,-H] [--json] <NAME> <VALUE>
 › yarn config unset [--home,-H] <NAME>
@@ -62,7 +62,7 @@ exports[`Commands config test (folder with rcfile and rc in ancestor parent / as
   "stderr": "",
   "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
 
-› yarn config get
+› yarn config get [--json] [--no-redacted]
 › yarn config get [--json] [--redacted] <NAME>
 › yarn config set [--home,-H] [--json] <NAME> <VALUE>
 › yarn config unset [--home,-H] <NAME>
@@ -76,7 +76,7 @@ exports[`Commands config test (folder with rcfile and rc in ancestor parent / as
   "stderr": "",
   "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
 
-› yarn config get
+› yarn config get [--json] [--no-redacted]
 › yarn config get [--json] [--redacted] <NAME>
 › yarn config set [--home,-H] [--json] <NAME> <VALUE>
 › yarn config unset [--home,-H] <NAME>
@@ -90,7 +90,7 @@ exports[`Commands config test (folder with rcfile and rc in ancestor parent / no
   "stderr": "",
   "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
 
-› yarn config get
+› yarn config get [--json] [--no-redacted]
 › yarn config get [--json] [--redacted] <NAME>
 › yarn config set [--home,-H] [--json] <NAME> <VALUE>
 › yarn config unset [--home,-H] <NAME>
@@ -104,7 +104,7 @@ exports[`Commands config test (folder with rcfile and rc in ancestor parent / wi
   "stderr": "",
   "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
 
-› yarn config get
+› yarn config get [--json] [--no-redacted]
 › yarn config get [--json] [--redacted] <NAME>
 › yarn config set [--home,-H] [--json] <NAME> <VALUE>
 › yarn config unset [--home,-H] <NAME>
@@ -118,7 +118,7 @@ exports[`Commands config test (folder with rcfile and rc in home folder / as jso
   "stderr": "",
   "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
 
-› yarn config get
+› yarn config get [--json] [--no-redacted]
 › yarn config get [--json] [--redacted] <NAME>
 › yarn config set [--home,-H] [--json] <NAME> <VALUE>
 › yarn config unset [--home,-H] <NAME>
@@ -132,7 +132,7 @@ exports[`Commands config test (folder with rcfile and rc in home folder / as jso
   "stderr": "",
   "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
 
-› yarn config get
+› yarn config get [--json] [--no-redacted]
 › yarn config get [--json] [--redacted] <NAME>
 › yarn config set [--home,-H] [--json] <NAME> <VALUE>
 › yarn config unset [--home,-H] <NAME>
@@ -146,7 +146,7 @@ exports[`Commands config test (folder with rcfile and rc in home folder / no def
   "stderr": "",
   "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
 
-› yarn config get
+› yarn config get [--json] [--no-redacted]
 › yarn config get [--json] [--redacted] <NAME>
 › yarn config set [--home,-H] [--json] <NAME> <VALUE>
 › yarn config unset [--home,-H] <NAME>
@@ -160,7 +160,7 @@ exports[`Commands config test (folder with rcfile and rc in home folder / withou
   "stderr": "",
   "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
 
-› yarn config get
+› yarn config get [--json] [--no-redacted]
 › yarn config get [--json] [--redacted] <NAME>
 › yarn config set [--home,-H] [--json] <NAME> <VALUE>
 › yarn config unset [--home,-H] <NAME>
@@ -174,7 +174,7 @@ exports[`Commands config test (folder with rcfile and rc in parent / as json no 
   "stderr": "",
   "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
 
-› yarn config get
+› yarn config get [--json] [--no-redacted]
 › yarn config get [--json] [--redacted] <NAME>
 › yarn config set [--home,-H] [--json] <NAME> <VALUE>
 › yarn config unset [--home,-H] <NAME>
@@ -188,7 +188,7 @@ exports[`Commands config test (folder with rcfile and rc in parent / as json) 1`
   "stderr": "",
   "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
 
-› yarn config get
+› yarn config get [--json] [--no-redacted]
 › yarn config get [--json] [--redacted] <NAME>
 › yarn config set [--home,-H] [--json] <NAME> <VALUE>
 › yarn config unset [--home,-H] <NAME>
@@ -202,7 +202,7 @@ exports[`Commands config test (folder with rcfile and rc in parent / no defaults
   "stderr": "",
   "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
 
-› yarn config get
+› yarn config get [--json] [--no-redacted]
 › yarn config get [--json] [--redacted] <NAME>
 › yarn config set [--home,-H] [--json] <NAME> <VALUE>
 › yarn config unset [--home,-H] <NAME>
@@ -216,7 +216,7 @@ exports[`Commands config test (folder with rcfile and rc in parent / without fla
   "stderr": "",
   "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
 
-› yarn config get
+› yarn config get [--json] [--no-redacted]
 › yarn config get [--json] [--redacted] <NAME>
 › yarn config set [--home,-H] [--json] <NAME> <VALUE>
 › yarn config unset [--home,-H] <NAME>
@@ -230,7 +230,7 @@ exports[`Commands config test (folder with rcfile without trailing newline / as 
   "stderr": "",
   "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
 
-› yarn config get
+› yarn config get [--json] [--no-redacted]
 › yarn config get [--json] [--redacted] <NAME>
 › yarn config set [--home,-H] [--json] <NAME> <VALUE>
 › yarn config unset [--home,-H] <NAME>
@@ -244,7 +244,7 @@ exports[`Commands config test (folder with rcfile without trailing newline / as 
   "stderr": "",
   "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
 
-› yarn config get
+› yarn config get [--json] [--no-redacted]
 › yarn config get [--json] [--redacted] <NAME>
 › yarn config set [--home,-H] [--json] <NAME> <VALUE>
 › yarn config unset [--home,-H] <NAME>
@@ -258,7 +258,7 @@ exports[`Commands config test (folder with rcfile without trailing newline / no 
   "stderr": "",
   "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
 
-› yarn config get
+› yarn config get [--json] [--no-redacted]
 › yarn config get [--json] [--redacted] <NAME>
 › yarn config set [--home,-H] [--json] <NAME> <VALUE>
 › yarn config unset [--home,-H] <NAME>
@@ -272,7 +272,7 @@ exports[`Commands config test (folder with rcfile without trailing newline / wit
   "stderr": "",
   "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
 
-› yarn config get
+› yarn config get [--json] [--no-redacted]
 › yarn config get [--json] [--redacted] <NAME>
 › yarn config set [--home,-H] [--json] <NAME> <VALUE>
 › yarn config unset [--home,-H] <NAME>
@@ -286,7 +286,7 @@ exports[`Commands config test (folder without rcfile in ancestry / as json no de
   "stderr": "",
   "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
 
-› yarn config get
+› yarn config get [--json] [--no-redacted]
 › yarn config get [--json] [--redacted] <NAME>
 › yarn config set [--home,-H] [--json] <NAME> <VALUE>
 › yarn config unset [--home,-H] <NAME>
@@ -300,7 +300,7 @@ exports[`Commands config test (folder without rcfile in ancestry / as json) 1`] 
   "stderr": "",
   "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
 
-› yarn config get
+› yarn config get [--json] [--no-redacted]
 › yarn config get [--json] [--redacted] <NAME>
 › yarn config set [--home,-H] [--json] <NAME> <VALUE>
 › yarn config unset [--home,-H] <NAME>
@@ -314,7 +314,7 @@ exports[`Commands config test (folder without rcfile in ancestry / no defaults) 
   "stderr": "",
   "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
 
-› yarn config get
+› yarn config get [--json] [--no-redacted]
 › yarn config get [--json] [--redacted] <NAME>
 › yarn config set [--home,-H] [--json] <NAME> <VALUE>
 › yarn config unset [--home,-H] <NAME>
@@ -328,7 +328,7 @@ exports[`Commands config test (folder without rcfile in ancestry / without flags
   "stderr": "",
   "stdout": "Error: The provided arguments don't match any known syntax; use \`--help\` to get a list of possible options
 
-› yarn config get
+› yarn config get [--json] [--no-redacted]
 › yarn config get [--json] [--redacted] <NAME>
 › yarn config set [--home,-H] [--json] <NAME> <VALUE>
 › yarn config unset [--home,-H] <NAME>
