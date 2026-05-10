@@ -112,6 +112,16 @@ pub struct WorkspacesForeach {
 
 impl WorkspacesForeach {
     pub async fn execute(&self) -> Result<ExitCode, Error> {
+        if let Limit::Fixed(params) = &self.jobs {
+            if params.limit < 1 {
+                return Err(Error::InvalidOptionMin {
+                    option: "jobs".to_string(),
+                    min: 1,
+                    value: params.limit as i64,
+                });
+            }
+        }
+
         let mut project
             = Project::new(None).await?;
 

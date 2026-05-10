@@ -168,6 +168,13 @@ pub enum Error {
     #[error("Package manifest failed to parse ({}): {}", .0.to_print_string(), .1)]
     ManifestParseError(Path, Arc<dyn std::error::Error + Send + Sync>),
 
+    #[error("Invalid value for --{option}: expected to be at least {min} (got {value})")]
+    InvalidOptionMin {
+        option: String,
+        min: i64,
+        value: i64,
+    },
+
     #[error("Invalid descriptor ({0})")]
     InvalidDescriptor(String),
 
