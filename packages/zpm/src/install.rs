@@ -634,7 +634,50 @@ pub struct InstallResult {
 }
 
 impl Install {
+    async fn report_missing_peer_dependencies(&self) {
+        let report_guard = current_report().await;
+        let Some(report) = report_guard.as_ref() else {
+            return;
+        };
+
+        let tree = &self.install_state.resolution_tree;
+        let mut warned: BTreeSet<(Locator, Ident)> = BTreeSet::new();
+
+        for (virtual_locator, resolution) in &tree.locator_resolutions {
+            if resolution.missing_peer_dependencies.is_empty() {
+                continue;
+            }
+
+            let parent_locator = virtual_locator.physical_locator();
+
+            for peer in &resolution.missing_peer_dependencies {
+                if resolution.optional_peer_dependencies.contains(peer) {
+                    continue;
+                }
+
+                // Auto-injected @types peer deps shouldn't trigger warnings
+                // when missing — they're an implementation detail.
+                if peer.scope() == Some("@types") {
+                    continue;
+                }
+
+                let key = (parent_locator.clone(), peer.clone());
+                if !warned.insert(key) {
+                    continue;
+                }
+
+                report.warn(format!(
+                    "[YN0002] {} doesn't provide {} (a peer dependency requested by it)",
+                    parent_locator.to_print_string(),
+                    peer.to_print_string(),
+                ));
+            }
+        }
+    }
+
     pub async fn link_and_build(mut self, project: &mut Project) -> Result<InstallResult, Error> {
+        self.report_missing_peer_dependencies().await;
+
         let graph = build_locator_graph(
             &self.install_state.normalized_resolutions,
             &self.install_state.descriptor_to_locator,
