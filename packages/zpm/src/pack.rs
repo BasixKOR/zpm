@@ -634,7 +634,7 @@ pub fn pack_list(project: &Project, workspace: &Workspace, manifest: &Manifest) 
 
     if let Some(browser) = &manifest.browser {
         for import_path in browser.paths() {
-            glob_ignore.add(&Path::new(), &format!("!/{}", import_path.to_file_string()))?;
+            glob_ignore.add(&Path::new(), &format!("!/{}", import_path))?;
         }
     }
 

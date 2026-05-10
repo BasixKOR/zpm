@@ -21,20 +21,23 @@ pub enum BrowserField {
 }
 
 impl BrowserField {
-    pub fn paths(&self) -> impl Iterator<Item = &Path> {
+    pub fn paths(&self) -> impl Iterator<Item = String> {
         match self {
             BrowserField::String(path)
-                => vec![path].into_iter(),
+                => vec![path.path.as_str().to_string()].into_iter(),
 
             BrowserField::Map(map)
-                => map.values()
-                    .filter_map(|entry| match entry {
-                        BrowserFieldEntry::Path(path) => Some(path),
-                        _ => None,
+                => map.iter()
+                    .flat_map(|(key, entry)| {
+                        let mut paths = vec![key.clone()];
+                        if let BrowserFieldEntry::Path(path) = entry {
+                            paths.push(path.path.as_str().to_string());
+                        }
+                        paths
                     })
                     .collect::<Vec<_>>()
                     .into_iter(),
-        }.map(|p| &p.path)
+        }
     }
 }
 
