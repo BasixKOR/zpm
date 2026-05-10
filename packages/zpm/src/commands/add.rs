@@ -59,9 +59,13 @@ async fn expand_with_types<'a>(install_context: &InstallContext<'a>, _resolve_op
         };
 
         for workspace in &project.workspaces {
-            if !workspace.manifest.iter_hard_dependencies().any(|dependency| dependency.descriptor.ident == descriptor.ident) {
+            let existing_target_dep
+                = workspace.manifest.iter_hard_dependencies()
+                    .find(|dependency| dependency.descriptor.ident == descriptor.ident);
+
+            let Some(existing_target_dep) = existing_target_dep else {
                 continue;
-            }
+            };
 
             let matching_type_dependency
                 = workspace.manifest.iter_hard_dependencies()
@@ -71,8 +75,19 @@ async fn expand_with_types<'a>(install_context: &InstallContext<'a>, _resolve_op
                 continue;
             };
 
-            type_requests.push((matching_type_dependency.descriptor.clone(), type_request));
-            continue 'request_loop;
+            // Only reuse the existing @types entry when the underlying package
+            // hasn't changed major version. Otherwise the existing entry is
+            // stale and we need to fall through to regenerate it.
+            let majors_match = existing_target_dep.descriptor.range.to_semver_range()
+                .and_then(|range| range.range_min().map(|v| v.major))
+                .zip(descriptor.range.to_semver_range().and_then(|range| range.range_min().map(|v| v.major)))
+                .map(|(existing_major, new_major)| existing_major == new_major)
+                .unwrap_or(false);
+
+            if majors_match {
+                type_requests.push((matching_type_dependency.descriptor.clone(), type_request));
+                continue 'request_loop;
+            }
         }
 
         // We only want to check for types if the dependency is a semver range or a tag, since other things may not map to DefinitelyTyped
