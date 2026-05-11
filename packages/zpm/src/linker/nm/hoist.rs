@@ -249,7 +249,11 @@ impl<'a> WorkTree<'a> {
             = node.dependencies.clone()
                 .into_iter()
                 .filter(|(_, dependency)| peer_dependencies.map_or(true, |peers| !peers.contains_key(&dependency.ident)))
-                .filter(|(_, dependency)| !parent_chain.contains(&dependency))
+                // Don't recurse into a non-workspace dep that's already in our
+                // parent chain — that's a true cycle and would loop forever.
+                // Workspace deps are fine because we'll soon convert them into
+                // terminal Link nodes that don't expand further.
+                .filter(|(_, dependency)| !parent_chain.contains(&dependency) || dependency.reference.is_workspace_reference())
                 .map(|(ident, dependency)| (ident, convert_workspace_to_link(self.project, dependency)))
                 .map(|(ident, dependency)| (ident, self.create_node(dependency, Some(node_idx), true)))
                 .collect::<BTreeMap<_, _>>();
