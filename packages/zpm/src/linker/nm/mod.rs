@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use zpm_primitives::{FilterDescriptor, Ident, Locator, Reference};
+use zpm_primitives::{VersionFilter, Ident, Locator, Reference};
 use zpm_sync::{SyncItem, SyncTemplate, SyncTree};
 use zpm_utils::{FromFileString, IoResultExt, Path, ToFileString, ToHumanString};
 
@@ -437,7 +437,7 @@ fn build_requests_from_locations(
     install: &Install,
     canonical_build_locations: &BTreeMap<Locator, Path>,
     force_rebuild_locators: &BTreeSet<Locator>,
-    dependencies_meta: &Vec<(FilterDescriptor, PackageMeta)>,
+    dependencies_meta: &Vec<(VersionFilter, PackageMeta)>,
 ) -> Result<BuildRequests, Error> {
     let tree
         = &install.install_state.resolution_tree;

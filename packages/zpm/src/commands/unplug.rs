@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use clipanion::cli;
 use zpm_parsers::{Document, JsonDocument, Value};
-use zpm_primitives::{FilterDescriptor, Locator, Reference};
+use zpm_primitives::{VersionFilter, Locator, Reference};
 use zpm_utils::ToFileString;
 
 use crate::{
@@ -50,7 +50,7 @@ pub struct Unplug {
     json: bool,
 
     /// The patterns to unplug
-    patterns: Vec<FilterDescriptor>,
+    patterns: Vec<VersionFilter>,
 }
 
 fn package_ident(locator: &Locator) -> &zpm_primitives::Ident {

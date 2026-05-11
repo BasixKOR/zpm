@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use clipanion::cli;
 use indexmap::IndexMap;
-use zpm_primitives::{DescriptorResolution, IdentGlob, IdentResolution, Locator, Reference};
+use zpm_primitives::{DescriptorResolution, IdentResolution, Locator, Reference, ReferenceFilter};
 use zpm_utils::{tree, AbstractValue, Unit, ToFileString};
 
 use crate::{
@@ -73,7 +73,7 @@ pub struct Info {
     json: bool,
 
     /// The patterns to match
-    patterns: Vec<IdentGlob>,
+    patterns: Vec<ReferenceFilter>,
 }
 
 impl Info {
@@ -463,43 +463,14 @@ impl Info {
     }
 
     fn get_filter(&self) -> Result<impl Fn(&Locator) -> bool, Error> {
-        let parsed_patterns = self.patterns.iter()
-            .map(|matcher| {
-                let raw = matcher.to_file_string();
-                if let Some(at_idx) = raw.find('@') {
-                    let (ident_part, rest) = raw.split_at(at_idx);
-                    if rest.starts_with("@npm:") || rest.starts_with("@workspace:")
-                        || rest.starts_with("@file:") || rest.starts_with("@portal:")
-                        || rest.starts_with("@link:") || rest.starts_with("@patch:")
-                        || rest.starts_with("@exec:") || rest.starts_with("@git+")
-                        || rest.starts_with("@github:") || rest.starts_with("@http:")
-                        || rest.starts_with("@https:") || rest.starts_with("@jsr:")
-                    {
-                        let reference = rest[1..].to_string();
-                        if !ident_part.is_empty() {
-                            return (Some(IdentGlob::new(ident_part).unwrap_or_else(|_| matcher.clone())), Some(reference));
-                        }
-                    }
-                }
-
-                (Some(matcher.clone()), None)
-            })
-            .collect::<Vec<_>>();
+        let patterns = self.patterns.clone();
 
         Ok(move |locator: &Locator| {
-            if parsed_patterns.is_empty() {
+            if patterns.is_empty() {
                 return true;
             }
 
-            parsed_patterns.iter().any(|(ident_glob, reference)| {
-                let ident_match = ident_glob.as_ref()
-                    .map_or(true, |g| g.check(&locator.ident));
-
-                let reference_match = reference.as_ref()
-                    .map_or(true, |r| locator.reference.to_file_string() == *r);
-
-                ident_match && reference_match
-            })
+            patterns.iter().any(|p| p.check(locator))
         })
     }
 

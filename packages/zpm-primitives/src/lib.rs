@@ -1,6 +1,7 @@
 pub mod testing;
 
-mod descriptor_filter;
+mod reference_filter;
+mod version_filter;
 mod descriptor_resolution;
 mod descriptor_semver;
 mod descriptor;
@@ -14,7 +15,8 @@ mod ident;
 mod locator;
 mod registry;
 
-pub use descriptor_filter::*;
+pub use reference_filter::*;
+pub use version_filter::*;
 pub use descriptor_resolution::*;
 pub use descriptor_semver::*;
 pub use descriptor::*;

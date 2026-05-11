@@ -2,7 +2,7 @@ use std::{collections::{BTreeMap, BTreeSet}, fs::Permissions, os::unix::fs::Perm
 
 use zpm_formats::iter_ext::IterExt;
 use zpm_parsers::JsonDocument;
-use zpm_primitives::{Descriptor, FilterDescriptor, Locator, Reference};
+use zpm_primitives::{Descriptor, VersionFilter, Locator, Reference};
 use zpm_utils::{Path, PathError, System, ToHumanString};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
@@ -32,11 +32,11 @@ pub struct PackageMeta {
 pub struct TopLevelConfiguration {
     #[serde(default)]
     #[serde_as(as = "BTreeMap<_, _>")]
-    dependencies_meta: Vec<(FilterDescriptor, PackageMeta)>,
+    dependencies_meta: Vec<(VersionFilter, PackageMeta)>,
 }
 
 impl TopLevelConfiguration {
-    pub fn from_project(project: &Project) -> Vec<(FilterDescriptor, PackageMeta)> {
+    pub fn from_project(project: &Project) -> Vec<(VersionFilter, PackageMeta)> {
         project.manifest_path()
             .if_exists()
             .and_then(|path| path.fs_read_text().ok()).map(|data| JsonDocument::hydrate_from_str::<TopLevelConfiguration>(&data).unwrap().dependencies_meta)
@@ -378,7 +378,7 @@ pub struct PackageBuildInfo {
     pub build_commands: Option<Vec<build::Command>>,
 }
 
-pub fn get_package_internal_info(project: &Project, install: &Install, dependencies_meta: &Vec<(FilterDescriptor, PackageMeta)>, locator: &Locator, resolution: &Resolution, physical_package_data: &PackageData) -> PackageBuildInfo {
+pub fn get_package_internal_info(project: &Project, install: &Install, dependencies_meta: &Vec<(VersionFilter, PackageMeta)>, locator: &Locator, resolution: &Resolution, physical_package_data: &PackageData) -> PackageBuildInfo {
     // The package meta is based on the top-level configuration extracted
     // from the `dependenciesMeta` field.
     //

@@ -271,7 +271,7 @@
       "type": "array",
       "description": "List of package descriptors (package@range) that bypass the minimum age check. Use this for packages that you trust or that need to be installed immediately.",
       "items": {
-        "type": "zpm_primitives::FilterDescriptor"
+        "type": "zpm_primitives::VersionFilter"
       }
     },
     "npmAuthIdent": {

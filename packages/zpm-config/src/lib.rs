@@ -1101,7 +1101,7 @@ merge_settings!(zpm_formats::CompressionAlgorithm, |s: &str| FromFileString::fro
 merge_optional_settings!(zpm_formats::CompressionAlgorithm);
 
 merge_settings!(zpm_primitives::Descriptor, |s: &str| FromFileString::from_file_string(s).unwrap());
-merge_settings!(zpm_primitives::FilterDescriptor, |s: &str| FromFileString::from_file_string(s).unwrap());
+merge_settings!(zpm_primitives::VersionFilter, |s: &str| FromFileString::from_file_string(s).unwrap());
 merge_settings!(zpm_primitives::Ident, |s: &str| FromFileString::from_file_string(s).unwrap());
 merge_settings!(zpm_primitives::IdentGlob, |s: &str| FromFileString::from_file_string(s).unwrap());
 merge_settings!(zpm_primitives::Locator, |s: &str| FromFileString::from_file_string(s).unwrap());
@@ -1109,7 +1109,7 @@ merge_settings!(zpm_primitives::PeerRange, |s: &str| FromFileString::from_file_s
 merge_settings!(zpm_primitives::Range, |s: &str| FromFileString::from_file_string(s).unwrap());
 merge_settings!(zpm_primitives::Reference, |s: &str| FromFileString::from_file_string(s).unwrap());
 merge_optional_settings!(zpm_primitives::Descriptor);
-merge_optional_settings!(zpm_primitives::FilterDescriptor);
+merge_optional_settings!(zpm_primitives::VersionFilter);
 merge_optional_settings!(zpm_primitives::Ident);
 merge_optional_settings!(zpm_primitives::IdentGlob);
 merge_optional_settings!(zpm_primitives::Locator);
