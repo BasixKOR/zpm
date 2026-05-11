@@ -66,37 +66,6 @@ so every recorded path is relative to `__dirname` and resolved with
 `path.resolve(__dirname, ...)` at runtime. Cross-cutting but
 mechanical.
 
-## `--inline-builds` log streaming
-
-The `--inline-builds` flag is accepted by `install` but only as a
-no-op. The full feature should:
-
-1. Print a `<locator> must be built because ...` line per scheduled
-   build (test: `should not build virtual workspaces`).
-2. Stream each build script's stdout/stderr live into the install
-   report, prefixed with the locator (tests: `should print the logs
-   to the standard output when using --inline-builds`, `should not
-   mark package as built if any of its scripts fails`).
-
-Today builds run with output piped to a temp `error.log`; the
-streaming variant needs a parallel sink that interleaves into the
-report. Probably ~4–5 install tests, plus the
-`features/installArtifactCleanup.test.ts: "should remove the PnP flags
-from NODE_OPTIONS in build scripts ..."` tests which use the
-`--inline-builds` stdout to assert.
-
-## Content-addressed index (hardlink dedup)
-
-`features/contentAddressedIndex.test.ts` (4 tests) wants identical
-files across packages to share the same inode via hardlinks into a
-content-addressed store, and wants tampered index entries to be
-detected and repaired on the next install.
-
-zpm currently extracts each package's files independently. A
-content-addressed layer would mean a project-or-global index keyed by
-file hash, with hardlinks into the extracted package folders, plus
-an integrity check on install.
-
 ## `install --json` NDJSON output
 
 `it should print regular messages as JSON items when using --json`
@@ -105,34 +74,6 @@ expects the install report to emit one NDJSON object per message
 accepted as a no-op. Implementing it requires the report writer to
 support a JSON sink in addition to the human one (parallel to
 `logFilters` — both touch the same code path).
-
-## `--refresh-lockfile` semantics
-
-Three install tests:
-- `it should update the lockfile when using --refresh-lockfile`
-- `it should block invalid lockfiles when using --refresh-lockfile
-  with --immutable`
-- `it should enable --refresh-lockfile --immutable by default in
-  public PR CIs`
-
-The flag is plumbed through `RunInstallOptions::refresh_lockfile` but
-not actually doing anything on the metadata path. Expected behavior:
-re-fetch packument metadata for already-resolved locators and update
-their lockfile entries (checksums, dist URLs) without changing the
-resolution; under `--immutable`, error if any entry would change; and
-auto-enable both flags when CI env vars (`GITHUB_EVENT_NAME=
-pull_request` etc.) indicate a PR build.
-
-## `stage` command not ported
-
-`commands/stage.test.js` (4 tests) covers `yarn stage`, which inspects
-`git status`, stages yarn-specific files (`package.json`, lockfile,
-`.yarn/cache`, `.pnp.cjs`, etc.), and with `-c` builds a commit
-message like `chore(yarn): Creates pkg-a (and one other)` /
-`chore(yarn): Deletes ..., adds ..., removes ..., updates ...`.
-
-The command was a berry plugin originally. Decide whether to port it
-or drop the tests.
 
 ## `npmMinimalAgeGate` recursive up
 
@@ -150,21 +91,6 @@ propagating its forced version through transitive deps when followed
 by an `up --recursive`. Worth tracing rather than deferring, but
 non-trivial.
 
-## `packageExtensions` unused warnings
-
-`features/packageExtensions.test.ts` (3 tests) wants two diagnostics:
-
-- `<parent> ➤ dependencies ➤ <child>: No matching package in the
-  dependency tree; you may not need this rule anymore.` — when a
-  `packageExtensions` entry's parent never matches any installed
-  package.
-- A similar warning when the entry is matched but the added
-  field is already present in the upstream manifest.
-
-Implementing requires tagging each extension rule with whether it
-was applied during install and which fields contributed; we then walk
-the rule list after install and emit warnings for un-applied ones.
-
 ## Collapsed peer-dependency warnings
 
 `features/peerDependenciesMeta.test.ts` (2 tests) and
@@ -174,9 +100,9 @@ incompatible"` (YN0060) want grouped peer-dep warnings of the form
 which doesn't satisfy what mismatched-peer-deps-lvl1 and other
 dependencies request (1.0.0)`.
 
-Today zpm emits YN0002 for missing peers (added this session) but
-doesn't collapse multi-dependent mismatches nor compute the parent
-hash marker (`p123456`).
+Today zpm emits YN0002 for missing peers but doesn't collapse
+multi-dependent mismatches nor compute the parent hash marker
+(`p123456`).
 
 ## node-modules linker edge cases
 
@@ -206,21 +132,6 @@ Adding a custom deserializer that accepts either shape unlocks the
 `nohoist` warning plus several node-modules tests that use the object
 shape just to declare nested workspace globs.
 
-## Workspace bin-without-name validation
-
-`install.test.ts: "reports warning if published binary field is a
-path but no package name is set"` and `displays validation issues of
-nested workspaces` want a warning of the form
-`<workspace-pretty-name>: String bin field, but no attached package
-name` when a workspace declares `bin: "./path"` without a `name`.
-
-The workspace pretty name format is `<ident-or-folder>-<hash6>` (e.g.
-`root-workspace-0b6124`, `package-a-ddd35d`). We don't have an
-equivalent rendering helper today; the closest is `Locator::slug()`
-which produces `<ident>-<reference>-<hash32>`. Need a
-`prettyWorkspace` helper plus a manifest-validation pass that runs
-during install and emits the warning.
-
 ## `version major --deferred` + `decline`
 
 `commands/version.test.ts: 'it should successfully apply "decline" on
@@ -248,14 +159,6 @@ runs before the early return at line 133, but the observed behavior
 says otherwise. Needs instrumented tracing to confirm; likely a
 subtle issue with virtualization or root-iteration order.
 
-## `pnpLoose` mode
-
-`features/pnpLoose.test.ts` (4 tests) wants `pnpMode: loose` to fall
-back to node-modules-style resolution when a require hits an
-undeclared dependency, instead of throwing `UNDECLARED_DEPENDENCY`.
-The PnP runtime in `packages/zpm/src/linker/pnp.rs` (or its emitted
-`.pnp.cjs`) doesn't honor this mode today.
-
 ## JSR protocol not implemented
 
 `protocols/jsr.test.ts` (4 tests) wants the `jsr:` protocol for
@@ -263,22 +166,14 @@ adding, installing, renaming, and the publish-time rewrite to `npm:`.
 No `jsr` resolver/fetcher exists in `packages/zpm/src/resolvers/` or
 `fetchers/`.
 
-## `checkResolutions` test infra mismatch
+## `--check-resolutions` validator not implemented
 
-`features/checkResolutions.test.ts` (7 tests) reads/writes the
-lockfile through `@yarnpkg/parsers`' `parseSyml`/`stringifySyml`,
-which is incompatible with zpm's JSON-with-`entries` lockfile shape.
-The test file would need to be rewritten against zpm's lockfile
-format before the underlying `--check-resolutions` validation can
-even be exercised. Decide whether to rewrite or drop.
-
-## Resolution-cache fallback
-
-`features/resolutionCache.test.ts` (2 tests) wants that, when the
-network metadata response no longer contains a known-resolved
-version, zpm falls back to the on-disk metadata cache. Today the
-fetcher always trusts the latest response (ETag-revalidated). The
-test relies on this fallback to install offline-ish.
+The tests under `features/checkResolutions.test.ts` were ported to
+zpm's JSON lockfile shape, but the flag is still wired in as a no-op.
+Expected behaviour: re-resolve each lockfile entry's descriptor and
+fail with YN0078 when the recorded `resolution` would not be picked
+again (e.g. someone hand-edited the lockfile to point a known
+descriptor at an unrelated locator).
 
 ## `prunedNativeDeps` (os/cpu/libc filtering)
 
