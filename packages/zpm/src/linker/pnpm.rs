@@ -54,6 +54,9 @@ pub async fn link_project_pnpm<'a>(project: &'a Project, install: &'a Install) -
     let store_path = project.project_cwd
         .with_join_str(&project.config.settings.pnpm_store_folder.value);
 
+    let cas_index_root = project.config.settings.global_folder.value
+        .with_join_str("index");
+
     // Remove existing node_modules
     linker::helpers::fs_remove_nm(nm_path)?;
 
@@ -89,9 +92,10 @@ pub async fn link_project_pnpm<'a>(project: &'a Project, install: &'a Install) -
                 let package_store_path = package_base_path
                     .with_join(&locator.ident.nm_subdir());
 
-                linker::helpers::fs_extract_archive(
+                linker::helpers::fs_extract_archive_with_cas(
                     &package_store_path,
                     physical_package_data,
+                    &cas_index_root,
                 )?;
 
                 package_store_path

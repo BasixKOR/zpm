@@ -83,41 +83,161 @@ pub fn fs_remove_nm(nm_path: Path) -> Result<(), Error> {
 }
 
 pub fn fs_extract_archive(destination: &Path, package_data: &PackageData) -> Result<bool, Error> {
+    fs_extract_archive_impl(destination, package_data, None)
+}
+
+/// Same as [`fs_extract_archive`], but routes every extracted file
+/// through a content-addressed index stored at `index_root`. Identical
+/// file contents (across packages or projects) share one inode, and
+/// modifications to any hardlinked copy are detected on the next install
+/// and repaired in place — matching berry's pnpm content-addressed
+/// store (PR yarnpkg/berry#4586).
+pub fn fs_extract_archive_with_cas(destination: &Path, package_data: &PackageData, index_root: &Path) -> Result<bool, Error> {
+    fs_extract_archive_impl(destination, package_data, Some(index_root))
+}
+
+fn fs_extract_archive_impl(destination: &Path, package_data: &PackageData, index_root: Option<&Path>) -> Result<bool, Error> {
     let ready_path = destination
         .with_join_str(".ready");
 
-    if !ready_path.fs_exists() && !matches!(package_data, &PackageData::MissingZip {..}) {
-        let package_subpath
-            = package_data.package_subpath();
+    let already_extracted = ready_path.fs_exists();
 
-        let package_bytes = match package_data {
-            PackageData::Zip {archive_path, ..} => archive_path.fs_read()?,
-            _ => panic!("Expected a zip archive"),
-        };
+    // Without CAS, the .ready marker is enough — we trust the
+    // extraction was correct and skip the (expensive) zip walk.
+    // With CAS, we still re-walk so we can repair any index entry
+    // whose mtime drifted from SAFE_TIME (signalling an external
+    // modification since the last install).
+    if (index_root.is_none() && already_extracted) || matches!(package_data, &PackageData::MissingZip {..}) {
+        return Ok(false);
+    }
 
-        let entries
-            = zpm_formats::zip::entries_from_zip(&package_bytes)?
-                .into_iter()
-                .strip_path_prefix(&package_subpath)
-                .collect::<Vec<_>>();
+    let package_subpath
+        = package_data.package_subpath();
 
-        for entry in entries {
-            let target_path = destination
-                .with_join(&entry.name);
+    let package_bytes = match package_data {
+        PackageData::Zip {archive_path, ..} => archive_path.fs_read()?,
+        _ => panic!("Expected a zip archive"),
+    };
 
+    let entries
+        = zpm_formats::zip::entries_from_zip(&package_bytes)?
+            .into_iter()
+            .strip_path_prefix(&package_subpath)
+            .collect::<Vec<_>>();
+
+    for entry in entries {
+        let target_path = destination
+            .with_join(&entry.name);
+
+        target_path.fs_create_parent()?;
+
+        if let Some(index_root) = index_root {
+            link_into_cas(&target_path, &entry.data, entry.mode as u32, index_root)?;
+        } else {
             target_path
-                .fs_create_parent()?
                 .fs_write(&entry.data)?
                 .fs_set_permissions(Permissions::from_mode(entry.mode as u32))?;
         }
+    }
 
+    if !already_extracted {
         ready_path
             .fs_write(vec![])?;
-
-        Ok(true)
-    } else {
-        Ok(false)
     }
+
+    Ok(!already_extracted)
+}
+
+/// Time marker we set on every index entry so that a later
+/// `os.stat().mtime != SAFE_TIME` reading flags the entry as having
+/// been modified out-of-band — at which point we restore its contents
+/// from the (still trusted) source zip.
+const CAS_SAFE_TIME_SECS: i64 = 456_789_000;
+
+const CAS_DEFAULT_MODE: u32 = 0o644;
+
+fn link_into_cas(target_path: &Path, data: &[u8], mode: u32, index_root: &Path) -> Result<(), Error> {
+    use sha1::{Digest, Sha1};
+    use std::os::unix::fs::MetadataExt;
+
+    let mode_bits = mode & 0o777;
+
+    let hash = {
+        let mut hasher = Sha1::new();
+        hasher.update(data);
+        hex::encode(hasher.finalize())
+    };
+
+    let index_filename = if mode_bits == CAS_DEFAULT_MODE {
+        format!("{}.dat", hash)
+    } else {
+        format!("{}{:o}.dat", hash, mode_bits)
+    };
+
+    let index_dir = index_root
+        .with_join_str(&hash[..2]);
+    let index_path = index_dir
+        .with_join_str(&index_filename);
+
+    index_dir.fs_create_dir_all()?;
+
+    let mut needs_rewrite = !index_path.fs_exists();
+
+    if !needs_rewrite {
+        // mtime invariant: a fresh index entry is stamped at
+        // SAFE_TIME, so anything else means an external write since
+        // the last install and we should restore the canonical
+        // contents.
+        if let Ok(metadata) = index_path.fs_metadata() {
+            if metadata.mtime() != CAS_SAFE_TIME_SECS {
+                needs_rewrite = true;
+            }
+        }
+    }
+
+    if needs_rewrite {
+        if index_path.fs_exists() {
+            // Truncate in place so existing hardlinks (other projects'
+            // node_modules) inherit the repair without breaking their
+            // inode identity.
+            index_path.fs_write(data)?;
+        } else {
+            index_path.fs_write(data)?;
+        }
+        index_path.fs_set_permissions(Permissions::from_mode(mode_bits))?;
+        set_safe_mtime(&index_path)?;
+    }
+
+    // Decide whether to link or skip: if the destination already
+    // shares an inode with the index entry, there's nothing to do.
+    let dest_meta = target_path.fs_symlink_metadata().ok();
+    let index_meta = index_path.fs_metadata().ok();
+
+    let already_linked = match (&dest_meta, &index_meta) {
+        (Some(d), Some(i)) => d.dev() == i.dev() && d.ino() == i.ino(),
+        _ => false,
+    };
+
+    if !already_linked {
+        if target_path.fs_exists() {
+            target_path.fs_rm_file().ok();
+        }
+        std::fs::hard_link(index_path.to_path_buf(), target_path.to_path_buf())
+            .map_err(zpm_utils::PathError::from)?;
+    }
+
+    Ok(())
+}
+
+fn set_safe_mtime(path: &Path) -> Result<(), Error> {
+    let safe_time = std::time::UNIX_EPOCH + std::time::Duration::from_secs(CAS_SAFE_TIME_SECS as u64);
+
+    let file = std::fs::OpenOptions::new()
+        .write(true)
+        .open(path.to_path_buf())
+        .map_err(zpm_utils::PathError::from)?;
+    file.set_modified(safe_time).map_err(zpm_utils::PathError::from)?;
+    Ok(())
 }
 
 pub fn populate_build_entry_dependencies(package_build_entries: &BTreeMap<Locator, usize>, locator_resolutions: &BTreeMap<Locator, Resolution>, descriptor_to_locator: &BTreeMap<Descriptor, Locator>) -> Result<BTreeMap<usize, BTreeSet<usize>>, Error> {
