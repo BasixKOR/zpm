@@ -185,7 +185,7 @@ describe(`Commands`, () => {
 
         const lockfilePath = ppath.join(path, Filename.lockfile);
         const lockfileContent = await xfs.readFilePromise(lockfilePath, `utf8`);
-        const modifiedLockfile = lockfileContent.replace(/no-deps: "npm:1.0.0"/, `no-deps: "npm:2.0.0"`);
+        const modifiedLockfile = lockfileContent.replace(/"no-deps": "1\.0\.0"/, `"no-deps": "2.0.0"`);
         await xfs.writeFilePromise(lockfilePath, modifiedLockfile);
 
         await run(`install`);
@@ -229,7 +229,7 @@ describe(`Commands`, () => {
 
         const lockfilePath = ppath.join(path, Filename.lockfile);
         const lockfileContent = await xfs.readFilePromise(lockfilePath, `utf8`);
-        const modifiedLockfile = lockfileContent.replace(/no-deps: "npm:1.0.0"/, `no-deps: "npm:2.0.0"`);
+        const modifiedLockfile = lockfileContent.replace(/"no-deps": "1\.0\.0"/, `"no-deps": "2.0.0"`);
         await xfs.writeFilePromise(lockfilePath, modifiedLockfile);
 
         await run(`install`);
@@ -249,7 +249,7 @@ describe(`Commands`, () => {
 
         const lockfilePath = ppath.join(path, Filename.lockfile);
         const lockfileContent = await xfs.readFilePromise(lockfilePath, `utf8`);
-        const modifiedLockfile = lockfileContent.replace(/no-deps: "npm:1.0.0"/, `no-deps: "npm:2.0.0"`);
+        const modifiedLockfile = lockfileContent.replace(/"no-deps": "1\.0\.0"/, `"no-deps": "2.0.0"`);
         await xfs.writeFilePromise(lockfilePath, modifiedLockfile);
 
         const eventPath = ppath.join(path, `github-event-file.json`);
@@ -282,7 +282,7 @@ describe(`Commands`, () => {
 
         const lockfilePath = ppath.join(path, Filename.lockfile);
         const lockfileContent = await xfs.readFilePromise(lockfilePath, `utf8`);
-        const modifiedLockfile = lockfileContent.replace(/no-deps: "npm:1.0.0"/, `no-deps: "npm:2.0.0"`);
+        const modifiedLockfile = lockfileContent.replace(/"no-deps": "1\.0\.0"/, `"no-deps": "2.0.0"`);
         await xfs.writeFilePromise(lockfilePath, modifiedLockfile);
 
         const eventPath = ppath.join(path, `github-event-file.json`);
@@ -315,7 +315,7 @@ describe(`Commands`, () => {
 
         const lockfilePath = ppath.join(path, Filename.lockfile);
         const lockfileContent = await xfs.readFilePromise(lockfilePath, `utf8`);
-        const modifiedLockfile = lockfileContent.replace(/no-deps: "npm:1.0.0"/, `no-deps: "npm:2.0.0"`);
+        const modifiedLockfile = lockfileContent.replace(/"no-deps": "1\.0\.0"/, `"no-deps": "2.0.0"`);
         await xfs.writeFilePromise(lockfilePath, modifiedLockfile);
 
         const eventPath = ppath.join(path, `github-event-file.json`);
@@ -343,7 +343,7 @@ describe(`Commands`, () => {
 
         const lockfilePath = ppath.join(path, Filename.lockfile);
         const lockfileContent = await xfs.readFilePromise(lockfilePath, `utf8`);
-        const modifiedLockfile = lockfileContent.replace(/no-deps: "npm:1.0.0"/, `no-deps: "npm:2.0.0"`);
+        const modifiedLockfile = lockfileContent.replace(/"no-deps": "1\.0\.0"/, `"no-deps": "2.0.0"`);
         await xfs.writeFilePromise(lockfilePath, modifiedLockfile);
 
         const eventPath = ppath.join(path, `github-event-file.json`);

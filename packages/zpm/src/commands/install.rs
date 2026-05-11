@@ -115,12 +115,19 @@ impl Install {
             project.config.settings.enable_immutable_cache.source = Source::Cli;
         }
 
+        let mut refresh_lockfile = self.refresh_lockfile;
+        if !refresh_lockfile && is_public_pr_ci() {
+            refresh_lockfile = true;
+            project.config.settings.enable_immutable_installs.value = true;
+            project.config.settings.enable_immutable_installs.source = Source::Cli;
+        }
+
         sort_workspace_dependencies(&project)?;
 
         project.run_install(RunInstallOptions {
             check_checksums: self.check_checksums,
             check_resolutions: self.check_resolutions,
-            refresh_lockfile: self.refresh_lockfile,
+            refresh_lockfile,
             mode: self.mode,
             silent_or_error: self.silent,
             ..Default::default()
@@ -128,6 +135,44 @@ impl Install {
 
         Ok(())
     }
+}
+
+/// Returns true when zpm is running in a GitHub Actions pull-request
+/// workflow for a *public* repository, so we can auto-enable
+/// `--refresh-lockfile` and `--immutable` to guard against contributor
+/// supply-chain attacks.
+fn is_public_pr_ci() -> bool {
+    if std::env::var("GITHUB_ACTIONS").as_deref() != Ok("true") {
+        return false;
+    }
+
+    if std::env::var("GITHUB_EVENT_NAME").as_deref() != Ok("pull_request") {
+        return false;
+    }
+
+    let Ok(event_path) = std::env::var("GITHUB_EVENT_PATH") else {
+        return false;
+    };
+
+    #[derive(serde::Deserialize)]
+    struct Event {
+        repository: Option<Repository>,
+    }
+
+    #[derive(serde::Deserialize)]
+    struct Repository {
+        private: Option<bool>,
+    }
+
+    let Ok(text) = std::fs::read_to_string(&event_path) else {
+        return false;
+    };
+
+    let Ok(event) = serde_json::from_str::<Event>(&text) else {
+        return false;
+    };
+
+    event.repository.and_then(|r| r.private) == Some(false)
 }
 
 /// Sort dependency fields in all workspace package.json files alphabetically.
