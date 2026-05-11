@@ -18,6 +18,7 @@ pub mod git;
 pub mod graph;
 pub mod http_npm;
 pub mod http;
+pub mod immutable;
 pub mod install;
 pub mod island;
 pub mod island_provider;

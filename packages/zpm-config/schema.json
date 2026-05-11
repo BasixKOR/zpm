@@ -83,6 +83,13 @@
       "description": "Whether to report errors when a package would be added or removed from the cache",
       "default": false
     },
+    "immutablePatterns": {
+      "type": "array",
+      "description": "List of glob patterns whose checksum must not change during an --immutable install",
+      "items": {
+        "type": "zpm_utils::Glob"
+      }
+    },
     "enableMigrationMode": {
       "type": "boolean",
       "description": "Change various settings in Yarn to make it easier to use. This setting is NOT meant to be manually set; Yarn Switch will automatically apply it when necessary. See [Migration Mode](/getting-started/migration-mode) for details.",

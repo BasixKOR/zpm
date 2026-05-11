@@ -2,7 +2,7 @@ use clipanion::cli;
 use zpm_config::Source;
 use zpm_parsers::JsonDocument;
 
-use crate::{error::Error, project::{self, InstallMode, RunInstallOptions}};
+use crate::{error::Error, immutable, project::{self, InstallMode, RunInstallOptions}};
 
 /// Install dependencies
 ///
@@ -124,6 +124,26 @@ impl Install {
 
         sort_workspace_dependencies(&project)?;
 
+        // Snapshot pre-install state for each `immutablePatterns` glob
+        // so we can fail loudly if --immutable nevertheless changed
+        // one of the user's pinned paths.
+        let immutable_patterns: Vec<_> = project.config.settings.immutable_patterns
+            .iter()
+            .map(|setting| setting.value.clone())
+            .collect();
+        let pattern_check_enabled = project.config.settings.enable_immutable_installs.value
+            && !immutable_patterns.is_empty();
+        let pre_snapshot = if pattern_check_enabled {
+            Some(immutable_patterns
+                .iter()
+                .map(|pattern| -> Result<_, Error> {
+                    Ok((pattern.raw().to_string(), immutable::snapshot_pattern(&project.project_cwd, pattern)?))
+                })
+                .collect::<Result<Vec<_>, Error>>()?)
+        } else {
+            None
+        };
+
         project.run_install(RunInstallOptions {
             check_checksums: self.check_checksums,
             check_resolutions: self.check_resolutions,
@@ -133,6 +153,19 @@ impl Install {
             inline_builds: self.inline_builds,
             ..Default::default()
         }).await?;
+
+        if let Some(pre_snapshot) = pre_snapshot {
+            for (pattern_raw, pre_hash) in pre_snapshot {
+                let glob = immutable_patterns
+                    .iter()
+                    .find(|p| p.raw() == pattern_raw)
+                    .expect("immutable pattern vanished mid-install");
+                let post_hash = immutable::snapshot_pattern(&project.project_cwd, glob)?;
+                if post_hash != pre_hash {
+                    return Err(Error::ImmutablePatternViolation(pattern_raw));
+                }
+            }
+        }
 
         Ok(())
     }

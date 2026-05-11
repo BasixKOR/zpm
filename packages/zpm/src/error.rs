@@ -496,6 +496,9 @@ pub enum Error {
     #[error("[YN0078] {} would resolve to {} on a fresh install, but the lockfile pins it to {}", .0.to_print_string(), .2.to_print_string(), .1.to_print_string())]
     ResolutionMismatch(Descriptor, Locator, Locator),
 
+    #[error("[YN0036] The checksum for {0} has been modified by this install")]
+    ImmutablePatternViolation(String),
+
     #[error("Task timeout")]
     TaskTimeout,
 
