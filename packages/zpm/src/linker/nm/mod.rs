@@ -1,11 +1,11 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
-use zpm_primitives::{Ident, Reference};
+use zpm_primitives::{FilterDescriptor, Ident, Locator, Reference};
 use zpm_sync::{SyncItem, SyncTemplate, SyncTree};
 use zpm_utils::{FromFileString, Path, ToHumanString};
 
 use crate::{
-    build::BuildRequests, content_flags, error::Error, fetchers::PackageData, install::Install, linker::{LinkResult, nm::hoist::{Hoister, WorkTree}}, project::Project
+    build::{self, BuildRequest, BuildRequests}, content_flags, error::Error, fetchers::PackageData, install::Install, linker::{self, LinkResult, helpers::PackageMeta, nm::hoist::{Hoister, WorkTree}}, project::Project
 };
 
 pub mod hoist;
@@ -195,6 +195,8 @@ fn generate_workspace_node_modules(
     work_tree: &WorkTree,
     workspace_node_idx: usize,
     packages_by_location: &mut BTreeMap<Path, zpm_primitives::Locator>,
+    canonical_build_locations: &mut BTreeMap<Locator, Path>,
+    force_rebuild_locators: &mut BTreeSet<Locator>,
 ) -> Result<(), Error> {
     let workspace_node
         = &work_tree.nodes[workspace_node_idx];
@@ -293,15 +295,37 @@ fn generate_workspace_node_modules(
                     workspace_nm_tree.register_entry(child_rel_path, SyncItem::Symlink {
                         target_path: target_path.clone(),
                     })?;
+
+                    canonical_build_locations
+                        .entry(child_node.locator.clone())
+                        .or_insert_with(|| package_directory.relative_to(&project.project_cwd));
                 },
 
                 Some(PackageData::Zip {archive_path, package_directory, ..}) => {
+                    // The SyncTree only re-extracts when the destination
+                    // is missing. A user-deleted package therefore gets
+                    // re-extracted automatically; we just need to flag
+                    // it for rebuild so the build cache doesn't short-
+                    // circuit the matching tree-hash entry.
+                    let dest_abs_path
+                        = workspace_abs_path
+                            .with_join(&node_rel_path)
+                            .with_join(&child_rel_path);
+
+                    if !dest_abs_path.fs_exists() {
+                        force_rebuild_locators.insert(child_node.locator.clone());
+                    }
+
                     workspace_nm_tree.register_entry(child_rel_path, SyncItem::Folder {
                         template: Some(SyncTemplate::Zip {
                             archive_path: archive_path.clone(),
                             inner_path: package_directory.relative_to(&archive_path),
                         }),
                     })?;
+
+                    canonical_build_locations
+                        .entry(child_node.locator.clone())
+                        .or_insert_with(|| dest_abs_path.relative_to(&project.project_cwd));
                 },
 
                 Some(PackageData::MissingZip {..}) => {
@@ -351,6 +375,74 @@ fn generate_workspace_node_modules(
     Ok(())
 }
 
+fn build_requests_from_locations(
+    project: &Project,
+    install: &Install,
+    canonical_build_locations: &BTreeMap<Locator, Path>,
+    force_rebuild_locators: &BTreeSet<Locator>,
+    dependencies_meta: &Vec<(FilterDescriptor, PackageMeta)>,
+) -> Result<BuildRequests, Error> {
+    let tree
+        = &install.install_state.resolution_tree;
+
+    let mut all_build_entries
+        = Vec::<BuildRequest>::new();
+    let mut package_build_entries
+        = BTreeMap::<Locator, usize>::new();
+
+    for (locator, build_cwd) in canonical_build_locations {
+        // Virtual locators share their build with the physical one.
+        if locator.reference.is_virtual_reference() {
+            continue;
+        }
+
+        let physical = locator.physical_locator();
+
+        let Some(physical_package_data) = install.package_data.get(&physical) else {
+            continue;
+        };
+
+        let Some(resolution) = tree.locator_resolutions.get(locator) else {
+            continue;
+        };
+
+        let info = linker::helpers::get_package_internal_info(
+            project,
+            install,
+            dependencies_meta,
+            locator,
+            resolution,
+            physical_package_data,
+        );
+
+        let Some(build_commands) = info.build_commands else {
+            continue;
+        };
+
+        package_build_entries.insert(locator.clone(), all_build_entries.len());
+
+        all_build_entries.push(build::BuildRequest {
+            cwd: build_cwd.clone(),
+            locator: locator.clone(),
+            commands: build_commands,
+            allowed_to_fail: tree.optional_builds.contains(locator),
+            force_rebuild: force_rebuild_locators.contains(locator),
+            inline_builds: install.inline_builds,
+        });
+    }
+
+    let dependencies = linker::helpers::populate_build_entry_dependencies(
+        &package_build_entries,
+        &tree.locator_resolutions,
+        &tree.descriptor_to_locator,
+    )?;
+
+    Ok(BuildRequests {
+        entries: all_build_entries,
+        dependencies,
+    })
+}
+
 pub async fn link_island_nm(
     project: &Project,
     install: &Install,
@@ -358,6 +450,11 @@ pub async fn link_island_nm(
 ) -> Result<LinkResult, Error> {
     let mut packages_by_location
         = BTreeMap::new();
+
+    let mut canonical_build_locations
+        = BTreeMap::new();
+    let mut force_rebuild_locators
+        = BTreeSet::new();
 
     for workspace_ident in &island.workspace_idents {
         let workspace = project.workspace_by_ident(workspace_ident)?;
@@ -380,15 +477,25 @@ pub async fn link_island_nm(
             &work_tree,
             0,
             &mut packages_by_location,
+            &mut canonical_build_locations,
+            &mut force_rebuild_locators,
         )?;
     }
 
+    let dependencies_meta
+        = linker::helpers::TopLevelConfiguration::from_project(project);
+
+    let build_requests = build_requests_from_locations(
+        project,
+        install,
+        &canonical_build_locations,
+        &force_rebuild_locators,
+        &dependencies_meta,
+    )?;
+
     Ok(LinkResult {
         packages_by_location,
-        build_requests: BuildRequests {
-            entries: vec![],
-            dependencies: BTreeMap::new(),
-        },
+        build_requests,
     })
 }
 
@@ -402,6 +509,11 @@ pub async fn link_project_nm(project: &Project, install: &Install) -> Result<Lin
     let mut packages_by_location
         = BTreeMap::new();
 
+    let mut canonical_build_locations
+        = BTreeMap::new();
+    let mut force_rebuild_locators
+        = BTreeSet::new();
+
     hoister.hoist();
 
     let mut project_queue
@@ -414,16 +526,26 @@ pub async fn link_project_nm(project: &Project, install: &Install) -> Result<Lin
             &work_tree,
             workspace_node_idx,
             &mut packages_by_location,
+            &mut canonical_build_locations,
+            &mut force_rebuild_locators,
         )?;
 
         project_queue.extend_from_slice(&work_tree.nodes[workspace_node_idx].workspaces_idx);
     }
 
+    let dependencies_meta
+        = linker::helpers::TopLevelConfiguration::from_project(project);
+
+    let build_requests = build_requests_from_locations(
+        project,
+        install,
+        &canonical_build_locations,
+        &force_rebuild_locators,
+        &dependencies_meta,
+    )?;
+
     Ok(LinkResult {
         packages_by_location,
-        build_requests: BuildRequests {
-            entries: vec![],
-            dependencies: BTreeMap::new(),
-        },
+        build_requests,
     })
 }
