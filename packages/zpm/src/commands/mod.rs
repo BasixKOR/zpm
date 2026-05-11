@@ -157,6 +157,11 @@ pub async fn run_default(args: Option<Vec<String>>) -> ExitCode {
         unsafe { std::env::set_var("PWD", cwd.as_str()); }
     }
 
+    if args.len() == 1 && (args[0] == "--version" || args[0] == "-v") {
+        println!("{}", workspace_version().unwrap_or_else(|| "0.0.0".to_string()));
+        return ExitCode::SUCCESS;
+    }
+
     let env
         = Environment::default()
             .with_program_name("Yarn Package Manager".to_string())
@@ -165,4 +170,20 @@ pub async fn run_default(args: Option<Vec<String>>) -> ExitCode {
             .with_argv(args);
 
     YarnCli::run(env).await
+}
+
+fn workspace_version() -> Option<String> {
+    use zpm_utils::Path;
+
+    let cwd = Path::current_dir().ok()?;
+    let manifest_path = cwd.with_join_str("package.json");
+    let text = manifest_path.fs_read_text().ok()?;
+
+    #[derive(serde::Deserialize)]
+    struct VersionField {
+        version: Option<String>,
+    }
+
+    let parsed: VersionField = zpm_parsers::JsonDocument::hydrate_from_str(&text).ok()?;
+    Some(parsed.version.unwrap_or_else(|| "0.0.0".to_string()))
 }
