@@ -106,49 +106,31 @@ multi-dependent mismatches nor compute the parent hash marker
 
 ## node-modules linker remaining gaps
 
-After the hoist-border, self-references, manifest-shape, and
-config-plumbing pass, `node-modules.test.ts` is down to ~15 failures.
-They cluster into independent areas, each of which needs its own
-focused work:
+After the hoist-border, self-references, manifest-shape, portals,
+peer-dep inheritance, deletion detection, and circular-workspace
+fixes, `node-modules.test.ts` is down to 6 failures clustering into:
 
-- **Portal handling** (~6 tests). Portal targets need their direct
-  deps to hoist into the parent under `nmHoistingLimits: dependencies`,
-  internal portals (relative paths) should be exempt from
-  conflict-detection while external portals should error out on
-  conflicting deps with the parent, and the linker should never
-  modify the portal target's own directory.
 - **`nmMode: hardlinks-local` / `nmMode: hardlinks-global`**. Schema
-  + setting now parse, but the linker still always writes files
+  + setting parse, but the linker still always writes files
   (no hardlinks). For `hardlinks-global` we already have a content-
   addressed extractor for the pnpm linker (`fs_extract_archive_with_cas`);
   the nm linker can reuse it.
-- **`winLinkType`** is schema-parsed and a no-op on non-Windows
-  (matching the expected behaviour); the two Windows-host tests still
-  fail because their assertions go through other broken paths.
-- **Circular workspace dependencies**. When `ws` declares
-  `dependencies: { foo: "workspace:*" }` against the root workspace
-  `foo`, today's `expand_node` filters the dep out via the parent
-  chain so `ws/node_modules/foo` is never produced. Needs a special
-  back-symlink for the "inner depends on outer" case.
-- **Peer-dependency inheritance** for nested workspaces — `foo/bar`
-  with `peerDependencies` is meant to resolve them through its parent
-  workspace's deps rather than the global tree.
 - **`should prefer bin executables from the calling workspace`** is
   about `yarn run` resolving bins from the active workspace's
   `node_modules/.bin` first, not about the linker layout.
-- **Deletion detection and rebuild** (`should reinstall and rebuild
-  dependencies deleted by the user on the next install`). The
-  linker needs to notice that a previously-installed package is
-  missing on disk and re-extract / rebuild it.
 - **`supportedArchitectures`** — packages whose `os`/`cpu`/`libc`
   don't match should still be recorded in `.yarn-state.yml` so other
   hosts can install them later; currently they're dropped entirely.
-- **Permissions after upgrade** — file modes from the new tarball
-  aren't applied when an existing extracted folder gets replaced.
+- **Permissions after upgrade** — the test fixture uses `scoped/has-bin-entry`
+  (missing `@` prefix), which zpm's strict Ident parser rejects.
+  Either relax Ident parsing or fix the fixture upstream.
 - **User-created `node_modules` symlinks** — when a workspace's
   `node_modules` is a pre-existing symlink to elsewhere, the sync
   tree should resolve the symlink and write into its target rather
   than overwrite the symlink.
+
+`winLinkType` parses as a no-op on non-Windows hosts (matching the
+expected behaviour); the two Windows-only tests run elsewhere.
 
 ## `version major --deferred` + `decline`
 
@@ -184,28 +166,34 @@ adding, installing, renaming, and the publish-time rewrite to `npm:`.
 No `jsr` resolver/fetcher exists in `packages/zpm/src/resolvers/` or
 `fetchers/`.
 
-## `--check-resolutions` validator not implemented
+## `--check-resolutions` git-URL descriptor keying
 
-The tests under `features/checkResolutions.test.ts` were ported to
-zpm's JSON lockfile shape, but the flag is still wired in as a no-op.
-Expected behaviour: re-resolve each lockfile entry's descriptor and
-fail with YN0078 when the recorded `resolution` would not be picked
-again (e.g. someone hand-edited the lockfile to point a known
-descriptor at an unrelated locator).
+`features/checkResolutions.test.ts` is now wired and passes the four
+npm-range cases (range/version mismatch and alias variants), but the
+three git-URL cases still fail before reaching `--check-resolutions`:
+the test edits `lockfileData.entries[\`util-deprecate@https://.../\`]`
+after `add`, expecting that exact string to be the entry key. zpm
+normalizes the git range with the resolved commit
+(`util-deprecate@https://.../#commit=...`) into the key, so the
+test's lookup misses. Either teach the test to look up the resolved
+descriptor, or change zpm to keep the unresolved range as the entry
+key (with the commit recorded only in the locator).
 
 ## `prunedNativeDeps` (os/cpu/libc filtering)
 
-`features/prunedNativeDeps.test.ts` (4 tests) wants the install
-plan's `--mode=update-lockfile` or `supportedArchitectures` to filter
-packageTarball entries by `os`/`cpu`/`libc`, removing unsupported
-variants from the lockfile/cache.
+`features/prunedNativeDeps.test.ts` is mostly green (7/11 pass).
+Remaining gaps:
 
-## Pack `**` gitignore — intentional bug parity
-
-`commands/pack.test.js: "should support gitignore patterns (**)"`
-encodes berry's *known* bug (yarnpkg/berry#5872) where a `**/x.js`
-pattern in `.gitignore` excludes nested `x.js` files but leaves the
-root `x.js` in the pack list. zpm's gitignore implementation is
-correct (root `x.js` is excluded) and the test fails as a result.
-Decide: replicate the bug for compatibility, or update the expected
-output once berry is fixed upstream.
+- `should resolve all dependencies, regardless of the system` —
+  expects a `root-workspace.*` entry in `file.entries`. zpm splits
+  workspaces into a separate `workspaces` top-level field; either
+  also list them in `entries` or update the test to merge both maps.
+- `should also validate other architectures than the current one if
+  necessary when using --check-cache` and
+  `should only fetch other architectures when using --check-cache
+  if they are already in the cache` — both want `--check-cache` to
+  re-verify and possibly re-fetch cached files even when the locator
+  is incompatible with the current `supportedArchitectures`. zpm's
+  fetch path treats those locators as mock fetches and never opens
+  the cache file. Needs the fetch decision to look beyond the
+  configured systems when `--check-cache` is set.
