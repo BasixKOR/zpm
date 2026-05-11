@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use zpm_parsers::JsonDocument;
 use zpm_primitives::Locator;
-use zpm_utils::{CollectHash, Hash64, IoResultExt, Path, ToFileString};
+use zpm_utils::{CollectHash, Hash64, IoResultExt, Path, ToFileString, ToHumanString};
 use rkyv::Archive;
 use futures::{future::BoxFuture, stream::FuturesUnordered, FutureExt, StreamExt};
 use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize};
@@ -268,7 +268,9 @@ impl<'a> BuildManager<'a> {
             = &self.requests.entries[idx];
 
         if !script_result.success() {
-            self.build_errors.insert(request.key());
+            if self.build_errors.insert(request.key()) {
+                emit_yn0009(&request.locator);
+            }
         } else {
             self.build_state_out.entries.entry(request.locator.clone())
                 .or_insert_with(BTreeMap::new)
@@ -405,7 +407,9 @@ impl<'a> BuildManager<'a> {
                 }
 
                 Err(_) => {
-                    self.build_errors.insert(request.key());
+                    if self.build_errors.insert(request.key()) {
+                        emit_yn0009(&request.locator);
+                    }
                 }
             }
 
@@ -422,5 +426,16 @@ impl<'a> BuildManager<'a> {
         Ok(Build {
             build_errors: self.build_errors,
         })
+    }
+}
+
+fn emit_yn0009(locator: &Locator) {
+    if let Some(report_guard) = crate::report::try_current_report() {
+        if let Some(report) = report_guard.as_ref() {
+            report.warn(format!(
+                "[YN0009] {} couldn't be built successfully; please check the logs above for more information.",
+                locator.to_print_string(),
+            ));
+        }
     }
 }
