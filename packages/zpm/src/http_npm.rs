@@ -485,6 +485,8 @@ fn write_cache_to_disk(cache_file: &Path, metadata: &[u8], etag: Option<String>,
         return;
     };
 
+    let _ = cache_file.fs_create_parent();
+
     let _ = cache_file.fs_write_atomic(|tmp| {
         tmp.fs_write(&encoded)?;
         Ok::<_, zpm_utils::PathError>(())
@@ -553,19 +555,64 @@ async fn fetch_metadata_with_disk_cache(params: &GetPackageMetadataParams<'_>) -
             .and_then(|v| v.to_str().ok())
             .map(|s| s.to_string());
 
-    let body
+    let fresh_body
         = response.error_for_status()?.bytes().await?;
 
+    // Resolution-cache fallback: merge any version entries we previously
+    // cached but the new response omits. Lets resolution continue working
+    // when a fixed version was once published but is later removed (or
+    // hidden by an allow-list, as the test exercises).
+    let merged_body = match &cached {
+        Some(cached) => Bytes::from(merge_versions_into_fresh(&cached.metadata, &fresh_body)),
+        None => fresh_body,
+    };
+
     let body_for_disk
-        = body.clone();
+        = merged_body.clone();
     let cache_file_for_disk
         = cache_file.clone();
 
-    tokio::task::spawn_blocking(move || {
-        write_cache_to_disk(&cache_file_for_disk, &body_for_disk, etag, last_modified);
-    });
+    // We write inline (synchronously inside the async future) instead
+    // of spawn_blocking because tokio::main drops the runtime as soon
+    // as `main` returns. Any orphan spawn_blocking tasks racy-lose the
+    // cache entry on quick subprocess exits.
+    write_cache_to_disk(&cache_file_for_disk, &body_for_disk, etag, last_modified);
 
-    Ok(body)
+    Ok(merged_body)
+}
+
+/// Layer any version entries from the stale on-disk metadata into the
+/// fresh registry response when the fresh response no longer carries
+/// them. Fresh values always win on conflicts; only the version-map is
+/// merged (top-level fields like `dist-tags` stay authoritative).
+fn merge_versions_into_fresh(stale: &[u8], fresh: &[u8]) -> Vec<u8> {
+    let Ok(stale_json) = serde_json::from_slice::<serde_json::Value>(stale) else {
+        return fresh.to_vec();
+    };
+
+    let Ok(mut fresh_json) = serde_json::from_slice::<serde_json::Value>(fresh) else {
+        return fresh.to_vec();
+    };
+
+    let Some(stale_versions) = stale_json.get("versions").and_then(|v| v.as_object()) else {
+        return serde_json::to_vec(&fresh_json).unwrap_or_else(|_| fresh.to_vec());
+    };
+
+    let Some(fresh_obj) = fresh_json.as_object_mut() else {
+        return fresh.to_vec();
+    };
+
+    let fresh_versions_entry = fresh_obj
+        .entry("versions".to_string())
+        .or_insert_with(|| serde_json::Value::Object(serde_json::Map::new()));
+
+    if let Some(fresh_versions) = fresh_versions_entry.as_object_mut() {
+        for (version, value) in stale_versions {
+            fresh_versions.entry(version.clone()).or_insert_with(|| value.clone());
+        }
+    }
+
+    serde_json::to_vec(&fresh_json).unwrap_or_else(|_| fresh.to_vec())
 }
 
 pub async fn post(params: &NpmHttpParams<'_>, body: String) -> Result<Response, Error> {
