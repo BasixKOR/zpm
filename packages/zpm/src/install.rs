@@ -1,4 +1,4 @@
-use std::{collections::{BTreeMap, BTreeSet, HashMap}, sync::{Arc, LazyLock}};
+use std::{collections::{BTreeMap, BTreeSet, HashMap}, sync::{Arc, LazyLock, Mutex}};
 
 use chrono::{DateTime, Utc};
 use futures::future::{BoxFuture, FutureExt};
@@ -41,6 +41,37 @@ pub struct InstallContext<'a> {
     pub refresh_lockfile: bool,
     pub install_time: DateTime<Utc>,
     pub mode: Option<InstallMode>,
+    pub extension_tracking: Arc<Mutex<ExtensionTracking>>,
+}
+
+/// Tracks how user-configured `packageExtensions` rules behaved during
+/// resolution, so we can warn about rules that never matched (unused) or
+/// rules whose added field was already present upstream (redundant).
+#[derive(Debug, Default)]
+pub struct ExtensionTracking {
+    pub matched: BTreeSet<SemverDescriptor>,
+    pub applied: BTreeSet<(SemverDescriptor, ExtensionFieldKey)>,
+    pub redundant: BTreeSet<(SemverDescriptor, ExtensionFieldKey)>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum ExtensionFieldKey {
+    Dependency(Ident),
+    PeerDependency(Ident),
+    PeerDependencyMetaOptional(Ident),
+}
+
+impl ExtensionFieldKey {
+    pub fn render(&self) -> String {
+        match self {
+            ExtensionFieldKey::Dependency(ident)
+                => format!("dependencies ➤ {}", ident.to_print_string()),
+            ExtensionFieldKey::PeerDependency(ident)
+                => format!("peerDependencies ➤ {}", ident.to_print_string()),
+            ExtensionFieldKey::PeerDependencyMetaOptional(ident)
+                => format!("peerDependenciesMeta ➤ {} ➤ optional", ident.to_print_string()),
+        }
+    }
 }
 
 impl<'a> Default for InstallContext<'a> {
@@ -56,6 +87,7 @@ impl<'a> Default for InstallContext<'a> {
             refresh_lockfile: false,
             install_time: Utc::now(),
             mode: None,
+            extension_tracking: Arc::new(Mutex::new(ExtensionTracking::default())),
         }
     }
 }
@@ -626,6 +658,7 @@ pub struct Install {
     pub skip_link_step: bool,
     pub skip_lockfile_update: bool,
     pub constraints_check: bool,
+    pub extension_tracking: Arc<Mutex<ExtensionTracking>>,
 }
 
 #[derive(Debug)]
@@ -675,8 +708,49 @@ impl Install {
         }
     }
 
+    async fn report_package_extension_diagnostics(&self, project: &Project) {
+        let report_guard = current_report().await;
+        let Some(report) = report_guard.as_ref() else {
+            return;
+        };
+
+        let tracking = self.extension_tracking.lock().unwrap();
+
+        for (descriptor, extension) in project.config.settings.package_extensions.iter() {
+            let matched = tracking.matched.contains(descriptor);
+            let parent = descriptor.ident.to_print_string();
+
+            let entries = extension.dependencies.keys()
+                .map(|ident| ExtensionFieldKey::Dependency(ident.clone()))
+                .chain(extension.peer_dependencies.keys()
+                    .map(|ident| ExtensionFieldKey::PeerDependency(ident.clone())))
+                .chain(extension.peer_dependencies_meta.iter()
+                    .filter(|(_, m)| m.optional.value == Some(true))
+                    .map(|(ident, _)| ExtensionFieldKey::PeerDependencyMetaOptional(ident.clone())));
+
+            for key in entries {
+                let rule_key = (descriptor.clone(), key.clone());
+
+                if !matched {
+                    report.warn(format!(
+                        "[YN0068] {} ➤ {}: No matching package in the dependency tree; you may not need this rule anymore.",
+                        parent,
+                        key.render(),
+                    ));
+                } else if tracking.redundant.contains(&rule_key) && !tracking.applied.contains(&rule_key) {
+                    report.warn(format!(
+                        "[YN0068] {} ➤ {}: This rule seems redundant when applied on the original package; the extension may have been applied upstream.",
+                        parent,
+                        key.render(),
+                    ));
+                }
+            }
+        }
+    }
+
     pub async fn link_and_build(mut self, project: &mut Project) -> Result<InstallResult, Error> {
         self.report_missing_peer_dependencies().await;
+        self.report_package_extension_diagnostics(project).await;
 
         let graph = build_locator_graph(
             &self.install_state.normalized_resolutions,
@@ -1104,6 +1178,8 @@ impl<'a> InstallManager<'a> {
 
         self.result.skip_build = self.context.mode == Some(InstallMode::SkipBuild);
 
+        self.result.extension_tracking = self.context.extension_tracking.clone();
+
         if let Some(cache) = &self.context.package_cache {
             cache.clean().await?;
         }
@@ -1437,15 +1513,41 @@ pub fn normalize_resolutions(context: &InstallContext<'_>, resolution: &Resoluti
 
     for (descriptor, extension) in project.config.settings.package_extensions.iter() {
         if descriptor.ident == resolution.locator.ident && descriptor.range.check(&resolution.version) {
+            let mut tracking = context.extension_tracking.lock().unwrap();
+            tracking.matched.insert(descriptor.clone());
+
             for (dependency, range) in extension.dependencies.iter() {
-                if !dependencies.contains_key(dependency) {
+                let key = ExtensionFieldKey::Dependency(dependency.clone());
+                if dependencies.contains_key(dependency) {
+                    tracking.redundant.insert((descriptor.clone(), key));
+                } else {
                     dependencies.insert(dependency.clone(), Descriptor::new_bound(dependency.clone(), range.value.clone(), None));
+                    tracking.applied.insert((descriptor.clone(), key));
                 }
             }
 
             for (peer_dependency, range) in extension.peer_dependencies.iter() {
-                if !peer_dependencies.contains_key(peer_dependency) {
+                let key = ExtensionFieldKey::PeerDependency(peer_dependency.clone());
+                if peer_dependencies.contains_key(peer_dependency) {
+                    tracking.redundant.insert((descriptor.clone(), key));
+                } else {
                     peer_dependencies.insert(peer_dependency.clone(), range.value.clone());
+                    tracking.applied.insert((descriptor.clone(), key));
+                }
+            }
+
+            for (peer_dependency, meta) in extension.peer_dependencies_meta.iter() {
+                if meta.optional.value == Some(true) {
+                    let key = ExtensionFieldKey::PeerDependencyMetaOptional(peer_dependency.clone());
+                    if resolution.optional_peer_dependencies.contains(peer_dependency) {
+                        tracking.redundant.insert((descriptor.clone(), key));
+                    } else {
+                        // We just need to flag it as applied here — the
+                        // actual `optional_peer_dependencies` set comes
+                        // from the original manifest and is not mutable
+                        // through this code path.
+                        tracking.applied.insert((descriptor.clone(), key));
+                    }
                 }
             }
         }

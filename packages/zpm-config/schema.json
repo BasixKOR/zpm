@@ -350,6 +350,23 @@
             "additionalProperties": {
               "type": "zpm_primitives::PeerRange"
             }
+          },
+          "peerDependenciesMeta": {
+            "type": "object",
+            "description": "Per-peer-dependency metadata to add to the package extension",
+            "additionalKeys": {
+              "type": "zpm_primitives::Ident"
+            },
+            "additionalProperties": {
+              "type": "object",
+              "title": "PeerDependencyMetaExt",
+              "properties": {
+                "optional": {
+                  "type": ["boolean", "null"],
+                  "description": "Whether the peer dependency is optional"
+                }
+              }
+            }
           }
         }
       }
