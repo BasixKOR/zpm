@@ -759,6 +759,15 @@ pub struct InstallState {
     /// matter.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub cache_checksums: BTreeMap<Locator, Hash64>,
+
+    /// The `nmMode` value the last install ran under, stored verbatim
+    /// (lower-case kebab). On the next install, the nm linker checks
+    /// for a transition and rebuilds the affected files — switching
+    /// from hardlinks-* back to classic, for instance, has to break
+    /// any existing hardlinks so the on-disk files end up regular
+    /// again. Optional so older install states (pre-tracking) deserialize.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub nm_mode: Option<String>,
 }
 
 #[derive(Clone, Default)]
@@ -889,6 +898,13 @@ impl Install {
         } else {
             self.install_state.last_installed_at
                 = project.last_modified_at.as_nanos();
+
+            self.install_state.nm_mode
+                = Some(match project.config.settings.nm_mode.value {
+                    zpm_config::NmMode::Classic => "classic".to_string(),
+                    zpm_config::NmMode::HardlinksLocal => "hardlinks-local".to_string(),
+                    zpm_config::NmMode::HardlinksGlobal => "hardlinks-global".to_string(),
+                });
 
             let hash_handle = tokio::task::spawn_blocking(move || {
                 compute_workspace_hashes(&graph, &workspace_locators)

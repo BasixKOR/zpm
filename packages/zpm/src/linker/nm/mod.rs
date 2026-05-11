@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use zpm_primitives::{FilterDescriptor, Ident, Locator, Reference};
 use zpm_sync::{SyncItem, SyncTemplate, SyncTree};
-use zpm_utils::{FromFileString, Path, ToFileString, ToHumanString};
+use zpm_utils::{FromFileString, IoResultExt, Path, ToFileString, ToHumanString};
 
 use crate::{
     build::{self, BuildRequest, BuildRequests}, content_flags, error::Error, fetchers::PackageData, install::Install, linker::{self, LinkResult, helpers::PackageMeta, nm::hoist::{Hoister, WorkTree}}, project::Project
@@ -197,7 +197,17 @@ fn generate_workspace_node_modules(
     packages_by_location: &mut BTreeMap<Path, zpm_primitives::Locator>,
     canonical_build_locations: &mut BTreeMap<Locator, Path>,
     force_rebuild_locators: &mut BTreeSet<Locator>,
+    cas_extractions: &mut Vec<(Path, Locator)>,
 ) -> Result<(), Error> {
+    let hardlinks_mode = matches!(
+        project.config.settings.nm_mode.value,
+        zpm_config::NmMode::HardlinksLocal | zpm_config::NmMode::HardlinksGlobal,
+    );
+
+    let nm_mode_changed = nm_mode_transitioned(project);
+    let force_wipe_before_extract = nm_mode_changed
+        && project.config.settings.nm_mode.value == zpm_config::NmMode::Classic;
+
     let workspace_node
         = &work_tree.nodes[workspace_node_idx];
 
@@ -340,16 +350,35 @@ fn generate_workspace_node_modules(
                             .with_join(&node_rel_path)
                             .with_join(&child_rel_path);
 
+                    // Switching back to nmMode: classic from a hardlinks
+                    // mode needs to break the inode sharing the previous
+                    // install left behind. Drop the folder here so the
+                    // SyncTree treats it as missing and writes regular
+                    // (nlink=1) files.
+                    if force_wipe_before_extract && dest_abs_path.fs_exists() {
+                        let _ = dest_abs_path.fs_rm().ok_missing();
+                    }
+
                     if !dest_abs_path.fs_exists() {
                         force_rebuild_locators.insert(child_node.locator.clone());
                     }
 
-                    workspace_nm_tree.register_entry(child_rel_path, SyncItem::Folder {
-                        template: Some(SyncTemplate::Zip {
-                            archive_path: archive_path.clone(),
-                            inner_path: package_directory.relative_to(&archive_path),
-                        }),
-                    })?;
+                    if hardlinks_mode {
+                        // Hand the package off to the CAS extractor;
+                        // SyncTree's `Any` placeholder keeps the
+                        // parent's walk from treating the folder as
+                        // extraneous without trying to manage its
+                        // contents.
+                        workspace_nm_tree.register_entry(child_rel_path, SyncItem::Any)?;
+                        cas_extractions.push((dest_abs_path.clone(), child_node.locator.clone()));
+                    } else {
+                        workspace_nm_tree.register_entry(child_rel_path, SyncItem::Folder {
+                            template: Some(SyncTemplate::Zip {
+                                archive_path: archive_path.clone(),
+                                inner_path: package_directory.relative_to(&archive_path),
+                            }),
+                        })?;
+                    }
 
                     canonical_build_locations
                         .entry(child_node.locator.clone())
@@ -483,6 +512,8 @@ pub async fn link_island_nm(
         = BTreeMap::new();
     let mut force_rebuild_locators
         = BTreeSet::new();
+    let mut cas_extractions
+        = Vec::new();
 
     for workspace_ident in &island.workspace_idents {
         let workspace = project.workspace_by_ident(workspace_ident)?;
@@ -507,8 +538,11 @@ pub async fn link_island_nm(
             &mut packages_by_location,
             &mut canonical_build_locations,
             &mut force_rebuild_locators,
+            &mut cas_extractions,
         )?;
     }
+
+    run_cas_extractions(project, install, &cas_extractions)?;
 
     let dependencies_meta
         = linker::helpers::TopLevelConfiguration::from_project(project);
@@ -525,6 +559,76 @@ pub async fn link_island_nm(
         packages_by_location,
         build_requests,
     })
+}
+
+fn nm_mode_token(mode: zpm_config::NmMode) -> &'static str {
+    match mode {
+        zpm_config::NmMode::Classic => "classic",
+        zpm_config::NmMode::HardlinksLocal => "hardlinks-local",
+        zpm_config::NmMode::HardlinksGlobal => "hardlinks-global",
+    }
+}
+
+/// Returns true when the user has flipped `nmMode` since the previous
+/// install — switching from `hardlinks-*` back to `classic`, for
+/// example, has to break any existing hardlinks so the on-disk files
+/// end up regular again.
+fn nm_mode_transitioned(project: &Project) -> bool {
+    let current = nm_mode_token(project.config.settings.nm_mode.value);
+    let previous = project.install_state.as_ref()
+        .and_then(|state| state.nm_mode.as_deref());
+    match previous {
+        None => false,
+        Some(prev) => prev != current,
+    }
+}
+
+/// When `nmMode` asks for hardlinks, route every extracted zip
+/// through a content-aware extractor so identical files share inodes.
+/// `hardlinks-local` keeps the dedup table in-memory (the first
+/// extracted destination doubles as the canonical copy, no separate
+/// index file inflating the link count). `hardlinks-global` lands
+/// every file in the shared global CAS so dedup spans projects.
+fn run_cas_extractions(
+    project: &Project,
+    install: &Install,
+    cas_extractions: &[(Path, Locator)],
+) -> Result<(), Error> {
+    if cas_extractions.is_empty() {
+        return Ok(());
+    }
+
+    match project.config.settings.nm_mode.value {
+        zpm_config::NmMode::HardlinksLocal => {
+            let mut local_index = BTreeMap::new();
+            for (dest_abs_path, locator) in cas_extractions {
+                let package_data = install.package_data
+                    .get(&locator.physical_locator())
+                    .unwrap_or_else(|| panic!("Expected package_data for {}", locator.to_print_string()));
+
+                linker::helpers::fs_extract_archive_with_local_dedup(
+                    dest_abs_path,
+                    package_data,
+                    &mut local_index,
+                )?;
+            }
+        },
+        zpm_config::NmMode::HardlinksGlobal => {
+            let index_root = project.config.settings.global_folder.value
+                .with_join_str("index");
+
+            for (dest_abs_path, locator) in cas_extractions {
+                let package_data = install.package_data
+                    .get(&locator.physical_locator())
+                    .unwrap_or_else(|| panic!("Expected package_data for {}", locator.to_print_string()));
+
+                linker::helpers::fs_extract_archive_with_cas(dest_abs_path, package_data, &index_root)?;
+            }
+        },
+        zpm_config::NmMode::Classic => {},
+    }
+
+    Ok(())
 }
 
 /// When any locator in the resolution uses a portal protocol, the
@@ -705,6 +809,8 @@ pub async fn link_project_nm(project: &Project, install: &Install) -> Result<Lin
         = BTreeMap::new();
     let mut force_rebuild_locators
         = BTreeSet::new();
+    let mut cas_extractions
+        = Vec::new();
 
     hoister.hoist();
 
@@ -722,10 +828,13 @@ pub async fn link_project_nm(project: &Project, install: &Install) -> Result<Lin
             &mut packages_by_location,
             &mut canonical_build_locations,
             &mut force_rebuild_locators,
+            &mut cas_extractions,
         )?;
 
         project_queue.extend_from_slice(&work_tree.nodes[workspace_node_idx].workspaces_idx);
     }
+
+    run_cas_extractions(project, install, &cas_extractions)?;
 
     let dependencies_meta
         = linker::helpers::TopLevelConfiguration::from_project(project);

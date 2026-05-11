@@ -83,7 +83,7 @@ pub fn fs_remove_nm(nm_path: Path) -> Result<(), Error> {
 }
 
 pub fn fs_extract_archive(destination: &Path, package_data: &PackageData) -> Result<bool, Error> {
-    fs_extract_archive_impl(destination, package_data, None)
+    fs_extract_archive_impl(destination, package_data, ExtractMode::Classic)
 }
 
 /// Same as [`fs_extract_archive`], but routes every extracted file
@@ -93,10 +93,31 @@ pub fn fs_extract_archive(destination: &Path, package_data: &PackageData) -> Res
 /// and repaired in place — matching berry's pnpm content-addressed
 /// store (PR yarnpkg/berry#4586).
 pub fn fs_extract_archive_with_cas(destination: &Path, package_data: &PackageData, index_root: &Path) -> Result<bool, Error> {
-    fs_extract_archive_impl(destination, package_data, Some(index_root))
+    fs_extract_archive_impl(destination, package_data, ExtractMode::Cas { index_root })
 }
 
-fn fs_extract_archive_impl(destination: &Path, package_data: &PackageData, index_root: Option<&Path>) -> Result<bool, Error> {
+/// Project-local dedup: like CAS but without a side-channel index
+/// file. The first destination that asks for a given content is
+/// written normally and stashed in `local_index`; later destinations
+/// asking for the same hash are hardlinked to that first path
+/// instead. That matches berry's `nmMode: hardlinks-local`, where the
+/// inode count reflects only the on-disk consumers (no extra index
+/// file to inflate it).
+pub fn fs_extract_archive_with_local_dedup(
+    destination: &Path,
+    package_data: &PackageData,
+    local_index: &mut BTreeMap<zpm_utils::Hash64, Path>,
+) -> Result<bool, Error> {
+    fs_extract_archive_impl(destination, package_data, ExtractMode::LocalDedup { local_index })
+}
+
+enum ExtractMode<'a> {
+    Classic,
+    Cas { index_root: &'a Path },
+    LocalDedup { local_index: &'a mut BTreeMap<zpm_utils::Hash64, Path> },
+}
+
+fn fs_extract_archive_impl(destination: &Path, package_data: &PackageData, mut mode: ExtractMode<'_>) -> Result<bool, Error> {
     let ready_path = destination
         .with_join_str(".ready");
 
@@ -104,10 +125,11 @@ fn fs_extract_archive_impl(destination: &Path, package_data: &PackageData, index
 
     // Without CAS, the .ready marker is enough — we trust the
     // extraction was correct and skip the (expensive) zip walk.
-    // With CAS, we still re-walk so we can repair any index entry
-    // whose mtime drifted from SAFE_TIME (signalling an external
-    // modification since the last install).
-    if (index_root.is_none() && already_extracted) || matches!(package_data, &PackageData::MissingZip {..}) {
+    // With CAS or local-dedup, we still re-walk so we can repair
+    // any index entry whose mtime drifted from SAFE_TIME (CAS) or
+    // re-hardlink any destination that's been overwritten in place.
+    let skip_for_classic = matches!(mode, ExtractMode::Classic) && already_extracted;
+    if skip_for_classic || matches!(package_data, &PackageData::MissingZip {..}) {
         return Ok(false);
     }
 
@@ -131,12 +153,18 @@ fn fs_extract_archive_impl(destination: &Path, package_data: &PackageData, index
 
         target_path.fs_create_parent()?;
 
-        if let Some(index_root) = index_root {
-            link_into_cas(&target_path, &entry.data, entry.mode as u32, index_root)?;
-        } else {
-            target_path
-                .fs_write(&entry.data)?
-                .fs_set_permissions(Permissions::from_mode(entry.mode as u32))?;
+        match &mut mode {
+            ExtractMode::Cas { index_root } => {
+                link_into_cas(&target_path, &entry.data, entry.mode as u32, index_root)?;
+            },
+            ExtractMode::LocalDedup { local_index } => {
+                link_into_local_index(&target_path, &entry.data, entry.mode as u32, local_index)?;
+            },
+            ExtractMode::Classic => {
+                target_path
+                    .fs_write(&entry.data)?
+                    .fs_set_permissions(Permissions::from_mode(entry.mode as u32))?;
+            },
         }
     }
 
@@ -146,6 +174,68 @@ fn fs_extract_archive_impl(destination: &Path, package_data: &PackageData, index
     }
 
     Ok(!already_extracted)
+}
+
+fn link_into_local_index(
+    target_path: &Path,
+    data: &[u8],
+    mode: u32,
+    local_index: &mut BTreeMap<zpm_utils::Hash64, Path>,
+) -> Result<(), Error> {
+    use std::os::unix::fs::MetadataExt;
+
+    let mode_bits = mode & 0o777;
+    let hash = zpm_utils::Hash64::from_data(data);
+
+    // First time we see this content: write it normally and stash
+    // the location so siblings can hardlink to it later. We also
+    // remember the path so we can short-circuit subsequent writes
+    // even if they target a different folder.
+    let Some(canonical_path) = local_index.get(&hash).cloned() else {
+        if target_path.fs_exists() {
+            target_path.fs_rm_file().ok();
+        }
+        target_path
+            .fs_write(data)?
+            .fs_set_permissions(Permissions::from_mode(mode_bits))?;
+        local_index.insert(hash, target_path.clone());
+        return Ok(());
+    };
+
+    // If the canonical path got blown away between installs (user
+    // deleted node_modules, say), fall back to a fresh write at the
+    // target and treat that as the new canonical copy.
+    if !canonical_path.fs_exists() {
+        if target_path.fs_exists() {
+            target_path.fs_rm_file().ok();
+        }
+        target_path
+            .fs_write(data)?
+            .fs_set_permissions(Permissions::from_mode(mode_bits))?;
+        local_index.insert(hash, target_path.clone());
+        return Ok(());
+    }
+
+    // Skip the hardlink if the target already shares an inode with
+    // the canonical path — repeated runs on an unchanged tree are
+    // a no-op.
+    let dest_meta = target_path.fs_symlink_metadata().ok();
+    let canonical_meta = canonical_path.fs_metadata().ok();
+
+    let already_linked = match (&dest_meta, &canonical_meta) {
+        (Some(d), Some(c)) => d.dev() == c.dev() && d.ino() == c.ino(),
+        _ => false,
+    };
+
+    if !already_linked {
+        if target_path.fs_exists() {
+            target_path.fs_rm_file().ok();
+        }
+        std::fs::hard_link(canonical_path.to_path_buf(), target_path.to_path_buf())
+            .map_err(zpm_utils::PathError::from)?;
+    }
+
+    Ok(())
 }
 
 /// Time marker we set on every index entry so that a later
