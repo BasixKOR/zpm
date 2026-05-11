@@ -6,7 +6,7 @@ use zpm_utils::{impl_file_string_from_str, impl_file_string_serialization, DataT
 
 use crate::{IdentError, ReferenceError};
 
-use super::{reference::VirtualReference, Ident, Reference};
+use super::{reference::VirtualReference, split_ident_and_selector, Ident, Reference};
 
 #[derive(thiserror::Error, Clone, Debug)]
 pub enum LocatorError {
@@ -92,22 +92,22 @@ impl FromFileString for Locator {
     type Error = LocatorError;
 
     fn from_file_string(src: &str) -> Result<Self, Self::Error> {
-        let at_split = src.strip_prefix('@')
-            .map_or_else(|| src.find('@'), |rest| rest.find('@').map(|x| x + 1))
+        let (ident_str, after_at) = split_ident_and_selector(src);
+        let after_at = after_at
             .ok_or_else(|| LocatorError::SyntaxError(src.to_string()))?;
 
         let parent_marker
             = "::parent=";
         let parent_split
-            = src.find(parent_marker);
+            = after_at.find(parent_marker);
 
         let ident
-            = Ident::from_file_string(&src[..at_split])?;
+            = Ident::from_file_string(ident_str)?;
         let reference
-            = Reference::from_file_string(&src[at_split + 1..parent_split.map_or(src.len(), |idx| idx)])?;
+            = Reference::from_file_string(&after_at[..parent_split.unwrap_or(after_at.len())])?;
 
         let parent = parent_split
-            .map(|idx| Locator::from_file_string(&src[idx + parent_marker.len()..]))
+            .map(|idx| Locator::from_file_string(&after_at[idx + parent_marker.len()..]))
             .transpose()?
             .map(Arc::new);
 
