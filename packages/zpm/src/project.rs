@@ -889,6 +889,7 @@ impl Project {
                     .with_package_cache(Some(&package_cache))
                     .with_project(Some(self))
                     .set_check_checksums(options.check_checksums)
+                    .set_check_resolutions(options.check_resolutions)
                     .set_enforced_resolutions(options.enforced_resolutions)
                     .set_prune_dev_dependencies(options.prune_dev_dependencies)
                     .set_refresh_lockfile(options.refresh_lockfile)

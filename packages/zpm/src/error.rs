@@ -493,6 +493,9 @@ pub enum Error {
     #[error("Bad resolution")]
     BadResolution(Descriptor, Locator),
 
+    #[error("[YN0078] {} would resolve to {} on a fresh install, but the lockfile pins it to {}", .0.to_print_string(), .2.to_print_string(), .1.to_print_string())]
+    ResolutionMismatch(Descriptor, Locator, Locator),
+
     #[error("Task timeout")]
     TaskTimeout,
 

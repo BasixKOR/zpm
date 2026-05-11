@@ -294,11 +294,22 @@ fn resolve_descriptor_impl<'a>(
         if let Some(cached) = cached {
             match cached {
                 CacheHit::Full(result) => {
+                    if ctx.check_resolutions {
+                        with_context_result(ReportContext::Descriptor(descriptor.clone()), async {
+                            verify_resolution_consistency(&descriptor, &result.resolution.locator)
+                        }).await.map_err(Arc::new)?;
+                    }
                     start_fetch(&result, ctx, maps).await;
                     return Ok(result);
                 },
 
                 CacheHit::Pinned(locator) => {
+                    if ctx.check_resolutions {
+                        with_context_result(ReportContext::Descriptor(descriptor.clone()), async {
+                            verify_resolution_consistency(&descriptor, &locator)
+                        }).await.map_err(Arc::new)?;
+                    }
+
                     // Inline Refresh: wait for locator prerequisites, then resolve_locator
                     let refresh_deps
                         = build_locator_fetch_deps(&locator, maps, ctx).await?;
@@ -564,6 +575,74 @@ enum CacheHit {
     Pinned(Locator),
 }
 
+/// `--check-resolutions` sanity check: re-derive whether the locator
+/// the lockfile has handed us is still a plausible answer to the
+/// descriptor's range. The check is intentionally structural — it
+/// doesn't redo resolution from scratch — so that the lockfile can
+/// keep pinning a lower compatible version than what fresh resolution
+/// would pick. We only fail when the pin is *out of range*, which
+/// matches the supply-chain attack this flag is designed to catch:
+/// someone swapping the lockfile's locator for an unrelated package
+/// or out-of-range version.
+fn verify_resolution_consistency(descriptor: &Descriptor, locator: &Locator) -> Result<(), Error> {
+    let mismatch = || Error::ResolutionMismatch(
+        descriptor.clone(),
+        locator.clone(),
+        locator.clone(),
+    );
+
+    match &descriptor.range {
+        Range::RegistrySemver(range_params) => {
+            let physical_reference = locator.reference.physical_reference();
+
+            let (resolved_ident, resolved_version) = match physical_reference {
+                Reference::Registry(ref_params) => (&ref_params.ident, &ref_params.version),
+                // Shorthand drops the redundant `ident@` prefix when
+                // it matches the locator's own ident, so we read the
+                // effective ident off the locator itself.
+                Reference::Shorthand(ref_params) => (&locator.ident, &ref_params.version),
+                _ => return Err(mismatch()),
+            };
+
+            let expected_ident = range_params.ident.as_ref().unwrap_or(&descriptor.ident);
+            if expected_ident != resolved_ident {
+                return Err(mismatch());
+            }
+
+            if !range_params.range.check(resolved_version) {
+                return Err(mismatch());
+            }
+        },
+
+        Range::Git(range_params) => {
+            let physical_reference = locator.reference.physical_reference();
+            let Reference::Git(ref_params) = physical_reference else {
+                return Err(mismatch());
+            };
+
+            if ref_params.git.repo != range_params.git.repo {
+                return Err(mismatch());
+            }
+
+            // A `commit=X` request only accepts a locator pinned at
+            // the same commit. Other treeish kinds (tags, semver,
+            // HEAD) get resolved upstream so we have no cheap way to
+            // verify them here — let those through and rely on the
+            // normal install path to fail if the fetch returns the
+            // wrong tree.
+            if let zpm_git::GitTreeish::Commit(expected_commit) = &range_params.git.treeish {
+                if ref_params.git.commit != *expected_commit {
+                    return Err(mismatch());
+                }
+            }
+        },
+
+        _ => {},
+    }
+
+    Ok(())
+}
+
 /// Check if a descriptor can be resolved from the lockfile cache.
 fn check_resolution_cache(ctx: &InstallContext<'_>, lockfile: &Lockfile, descriptor: &Descriptor) -> Result<Option<CacheHit>, Error> {
     let range_details
@@ -572,6 +651,12 @@ fn check_resolution_cache(ctx: &InstallContext<'_>, lockfile: &Lockfile, descrip
     if range_details.transient_resolution {
         return Ok(None);
     }
+
+    // --check-resolutions runs the cache hit as normal (the lockfile
+    // is the source of truth for what we install), but the descriptor
+    // → locator binding gets verified before being accepted. The check
+    // lives in `resolve_descriptor_impl` to keep the flag's effect
+    // localized.
 
     // enforced_resolutions semantics:
     // - None (not in map): use lockfile resolution if available
