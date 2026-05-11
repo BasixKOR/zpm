@@ -1065,6 +1065,28 @@ impl Workspace {
         }.into())
     }
 
+    /// Human-readable name for the workspace, matching berry's prettyWorkspace
+    /// format. For unnamed workspaces, appends a 6-hex-char sha512 of the
+    /// relative cwd so collisions are visible to the user.
+    pub fn pretty_name(&self) -> String {
+        use sha2::{Digest, Sha512};
+
+        if self.manifest.name.is_some() {
+            return self.name.to_print_string();
+        }
+
+        let rel_input = if self.rel_path == Path::new() {
+            ".".to_string()
+        } else {
+            self.rel_path.to_file_string()
+        };
+
+        let digest = Sha512::digest(rel_input.as_bytes());
+        let hex_prefix = &hex::encode(&digest)[..6];
+
+        format!("{}-{}", self.name.as_str(), hex_prefix)
+    }
+
     pub fn locator(&self) -> Locator {
         Locator::new(self.name.clone(), WorkspaceIdentReference {
             ident: self.name.clone(),

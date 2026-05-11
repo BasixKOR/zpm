@@ -839,6 +839,16 @@ impl<'a> InstallManager<'a> {
                         report.warn(format!("[YN0057] Legacy glob syntax found in resolutions ({legacy_key}); the leading **/ prefix is no longer needed."));
                     }
                 }
+
+                let has_string_bin = matches!(workspace.manifest.bin, Some(crate::manifest::bin::BinField::String(_)));
+                if has_string_bin && workspace.manifest.name.is_none() {
+                    if let Some(report) = current_report().await.as_ref() {
+                        report.warn(format!(
+                            "[YN0057] {}: String bin field, but no attached package name",
+                            workspace.pretty_name(),
+                        ));
+                    }
+                }
             }
         }
 
