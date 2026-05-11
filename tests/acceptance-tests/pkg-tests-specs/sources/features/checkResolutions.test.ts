@@ -41,9 +41,21 @@ describe(`Features`, () => {
         const lockfilePath = ppath.join(path, Filename.lockfile);
         const lockfileData = await xfs.readJsonPromise(lockfilePath);
 
-        const replacementEntry = lockfileData.entries[replacement];
-        if (!replacementEntry)
+        // zpm normalizes git URLs in the entry key (e.g. https form
+        // collapses to `github:` short form, no-commit becomes
+        // `#head=HEAD`), so the raw replacement descriptor isn't a
+        // direct key into `entries`. Find the (single) entry matching
+        // this ident instead and reuse its concrete resolution.
+        const replacementIdent = parseDescriptor(replacement).identString;
+        const replacementMatch = Object.entries(lockfileData.entries).find(
+          ([key]) => key === `${replacementIdent}@${parseDescriptor(replacement).range}`
+            || key.startsWith(`${replacementIdent}@`),
+        ) as [string, any] | undefined;
+
+        if (!replacementMatch)
           throw new Error(`Expected the replacement '${replacement}' to be present in the lockfile`);
+
+        const [, replacementEntry] = replacementMatch;
 
         // Re-publish the replacement's resolution record under the `initial`
         // descriptor — this mimics the supply-chain-style attack the
