@@ -150,6 +150,11 @@ pub async fn run_default(args: Option<Vec<String>>) -> ExitCode {
 
         cwd.sys_set_current_dir()
             .expect("Failed to set current directory");
+
+        // SAFETY: Configuration happens during startup before any threads are
+        // spawned. Setting PWD preserves the user-specified (logical) path so
+        // child processes like `pwd` show the symlink they were asked to use.
+        unsafe { std::env::set_var("PWD", cwd.as_str()); }
     }
 
     let env
