@@ -27,19 +27,6 @@ Blocks ~10 tests in `features/cache.test.ts`,
 `features/mirror.test.js`, `features/enableOfflineMode.test.ts`, and
 the `commands/add.test.ts` shared-cache test.
 
-## Manifest reformatting on install
-
-`features/immutablePatterns.test.ts: 'should prevent reformatting of
-manifests when so configured'` expects an install to strip an empty
-`dependencies: {}` block out of `package.json` (so the
-`immutablePatterns` check then flags the diff). zpm currently
-preserves the manifest exactly as written and never rewrites the
-empty section, so the test sees no change and the assertion fails.
-
-The other immutablePatterns tests pass — implementing the rewrite is
-its own piece of work in `manifest::Manifest::persist` or
-equivalent.
-
 ## `logFilters` not implemented
 
 `features/logFilter.test.ts` (~7 tests) wants a `logFilters` config —
