@@ -104,33 +104,51 @@ Today zpm emits YN0002 for missing peers but doesn't collapse
 multi-dependent mismatches nor compute the parent hash marker
 (`p123456`).
 
-## node-modules linker edge cases
+## node-modules linker remaining gaps
 
-`node-modules.test.ts` has ~30 failures across hoisting (workspace
-hoist borders, `nmHoistingLimits: dependencies`, nested
-`nohoist`/`workspaces.nohoist`, portal hoisting, self-references,
-scoped workspaces, `nmMode: hardlinks{,-global}`, `winLinkType`,
-`supportedArchitectures`, etc.). These are all individual edge cases
-of `linker/node_modules.rs`.
+After the hoist-border, self-references, manifest-shape, and
+config-plumbing pass, `node-modules.test.ts` is down to ~15 failures.
+They cluster into independent areas, each of which needs its own
+focused work:
 
-Worth a focused pass; each one is small but together they're large.
-Most depend on either the hoist algorithm understanding new
-`workspaces` shapes (object form with `nohoist`) or on portal-specific
-isolation logic.
-
-## `nohoist` deprecation warning
-
-`node-modules.test.ts: "should warn about 'nohoist' usage and retain
-nohoist field in the manifest"` (and several other workspace-shape
-tests) needs the `workspaces` manifest field to accept both the array
-shape (today) and the legacy object shape `{packages, nohoist}`. zpm's
-deserializer is `Option<Vec<String>>` and rejects the object form
-outright, so the install fails with a manifest parse error before any
-warning could fire.
-
-Adding a custom deserializer that accepts either shape unlocks the
-`nohoist` warning plus several node-modules tests that use the object
-shape just to declare nested workspace globs.
+- **Portal handling** (~6 tests). Portal targets need their direct
+  deps to hoist into the parent under `nmHoistingLimits: dependencies`,
+  internal portals (relative paths) should be exempt from
+  conflict-detection while external portals should error out on
+  conflicting deps with the parent, and the linker should never
+  modify the portal target's own directory.
+- **`nmMode: hardlinks-local` / `nmMode: hardlinks-global`**. Schema
+  + setting now parse, but the linker still always writes files
+  (no hardlinks). For `hardlinks-global` we already have a content-
+  addressed extractor for the pnpm linker (`fs_extract_archive_with_cas`);
+  the nm linker can reuse it.
+- **`winLinkType`** is schema-parsed and a no-op on non-Windows
+  (matching the expected behaviour); the two Windows-host tests still
+  fail because their assertions go through other broken paths.
+- **Circular workspace dependencies**. When `ws` declares
+  `dependencies: { foo: "workspace:*" }` against the root workspace
+  `foo`, today's `expand_node` filters the dep out via the parent
+  chain so `ws/node_modules/foo` is never produced. Needs a special
+  back-symlink for the "inner depends on outer" case.
+- **Peer-dependency inheritance** for nested workspaces — `foo/bar`
+  with `peerDependencies` is meant to resolve them through its parent
+  workspace's deps rather than the global tree.
+- **`should prefer bin executables from the calling workspace`** is
+  about `yarn run` resolving bins from the active workspace's
+  `node_modules/.bin` first, not about the linker layout.
+- **Deletion detection and rebuild** (`should reinstall and rebuild
+  dependencies deleted by the user on the next install`). The
+  linker needs to notice that a previously-installed package is
+  missing on disk and re-extract / rebuild it.
+- **`supportedArchitectures`** — packages whose `os`/`cpu`/`libc`
+  don't match should still be recorded in `.yarn-state.yml` so other
+  hosts can install them later; currently they're dropped entirely.
+- **Permissions after upgrade** — file modes from the new tarball
+  aren't applied when an existing extracted folder gets replaced.
+- **User-created `node_modules` symlinks** — when a workspace's
+  `node_modules` is a pre-existing symlink to elsewhere, the sync
+  tree should resolve the symlink and write into its target rather
+  than overwrite the symlink.
 
 ## `version major --deferred` + `decline`
 
