@@ -59,6 +59,7 @@ pub struct RunInstallOptions {
     pub refresh_lockfile: bool,
     pub roots: Option<BTreeSet<Ident>>,
     pub silent_or_error: bool,
+    pub inline_builds: bool,
 }
 
 pub struct Project {
@@ -892,6 +893,7 @@ impl Project {
                     .set_prune_dev_dependencies(options.prune_dev_dependencies)
                     .set_refresh_lockfile(options.refresh_lockfile)
                     .set_mode(options.mode)
+                    .set_inline_builds(options.inline_builds)
                     .with_systems(Some(&systems));
 
             let roots

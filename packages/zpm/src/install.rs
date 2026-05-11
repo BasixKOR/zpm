@@ -41,6 +41,7 @@ pub struct InstallContext<'a> {
     pub refresh_lockfile: bool,
     pub install_time: DateTime<Utc>,
     pub mode: Option<InstallMode>,
+    pub inline_builds: bool,
     pub extension_tracking: Arc<Mutex<ExtensionTracking>>,
 }
 
@@ -87,6 +88,7 @@ impl<'a> Default for InstallContext<'a> {
             refresh_lockfile: false,
             install_time: Utc::now(),
             mode: None,
+            inline_builds: false,
             extension_tracking: Arc::new(Mutex::new(ExtensionTracking::default())),
         }
     }
@@ -130,6 +132,11 @@ impl<'a> InstallContext<'a> {
 
     pub fn set_mode(mut self, mode: Option<InstallMode>) -> Self {
         self.mode = mode;
+        self
+    }
+
+    pub fn set_inline_builds(mut self, inline_builds: bool) -> Self {
+        self.inline_builds = inline_builds;
         self
     }
 
@@ -658,6 +665,7 @@ pub struct Install {
     pub skip_link_step: bool,
     pub skip_lockfile_update: bool,
     pub constraints_check: bool,
+    pub inline_builds: bool,
     pub extension_tracking: Arc<Mutex<ExtensionTracking>>,
 }
 
@@ -1179,6 +1187,7 @@ impl<'a> InstallManager<'a> {
         self.result.skip_build = self.context.mode == Some(InstallMode::SkipBuild);
 
         self.result.extension_tracking = self.context.extension_tracking.clone();
+        self.result.inline_builds = self.context.inline_builds;
 
         if let Some(cache) = &self.context.package_cache {
             cache.clean().await?;

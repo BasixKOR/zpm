@@ -130,6 +130,7 @@ impl Install {
             refresh_lockfile,
             mode: self.mode,
             silent_or_error: self.silent,
+            inline_builds: self.inline_builds,
             ..Default::default()
         }).await?;
 

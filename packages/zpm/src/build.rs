@@ -55,6 +55,7 @@ pub struct BuildRequest {
     pub commands: Vec<Command>,
     pub allowed_to_fail: bool,
     pub force_rebuild: bool,
+    pub inline_builds: bool,
 }
 
 impl BuildRequest {
@@ -67,6 +68,18 @@ impl BuildRequest {
             .with_package(project, &self.locator)?
             .with_env_variable("INIT_CWD", cwd_abs.as_str())
             .with_cwd(cwd_abs.clone());
+
+        if let Some(report_guard) = crate::report::try_current_report() {
+            if let Some(report) = report_guard.as_ref() {
+                report.info(format!(
+                    "[YN0007] {} must be built because it never has been before",
+                    self.locator.to_print_string(),
+                ));
+            }
+        }
+
+        let inline_builds = self.inline_builds;
+        let locator = self.locator.clone();
 
         let res = with_context_result(ReportContext::Locator(self.locator.clone()), async {
             let build_cache_folder = if self.locator.reference.is_disk_reference() {
@@ -89,6 +102,9 @@ impl BuildRequest {
                 artifact_finder.rsync()?;
             }
 
+            let mut combined_stdout = Vec::<u8>::new();
+            let mut combined_stderr = Vec::<u8>::new();
+
             for command in self.commands.iter() {
                 let script_result = match command {
                     Command::Program {name, args} => {
@@ -105,7 +121,20 @@ impl BuildRequest {
                     },
                 };
 
+                if inline_builds {
+                    match &script_result {
+                        ScriptResult::Success(output) | ScriptResult::Failure(output, _, _) => {
+                            combined_stdout.extend_from_slice(&output.stdout);
+                            combined_stderr.extend_from_slice(&output.stderr);
+                        },
+                    }
+                }
+
                 if !script_result.success() {
+                    if inline_builds {
+                        emit_success_log(&locator, &combined_stdout, &combined_stderr);
+                    }
+
                     return match self.allowed_to_fail {
                         true => {
                             Ok(ScriptResult::new_success())
@@ -116,6 +145,10 @@ impl BuildRequest {
                         },
                     };
                 }
+            }
+
+            if inline_builds {
+                emit_success_log(&locator, &combined_stdout, &combined_stderr);
             }
 
             if let Some(build_cache_folder) = build_cache_folder {
@@ -436,6 +469,36 @@ fn emit_yn0009(locator: &Locator) {
                 "[YN0009] {} couldn't be built successfully; please check the logs above for more information.",
                 locator.to_print_string(),
             ));
+        }
+    }
+}
+
+/// Persists the build's combined stdout/stderr to a temp log file and
+/// asks the active report to dump it under the install summary.
+/// Mirrors the failure path's \`ChildProcessFailedWithLog\` flow so
+/// --inline-builds users see the same shape for successful builds.
+fn emit_success_log(locator: &Locator, stdout: &[u8], stderr: &[u8]) {
+    let Ok(temp_dir) = Path::temp_dir() else {
+        return;
+    };
+
+    let log_path = temp_dir
+        .with_join_str(format!("{}-build.log", locator.slug()));
+
+    let body = format!(
+        "=== BUILD {} ===\n\n=== STDOUT ===\n\n{}\n=== STDERR ===\n\n{}",
+        locator.to_file_string(),
+        String::from_utf8_lossy(stdout),
+        String::from_utf8_lossy(stderr),
+    );
+
+    if log_path.fs_write_text(&body).is_err() {
+        return;
+    }
+
+    if let Some(report_guard) = crate::report::try_current_report() {
+        if let Some(report) = report_guard.as_ref() {
+            report.add_log_file(log_path);
         }
     }
 }

@@ -128,18 +128,23 @@ pub async fn link_project_pnpm<'a>(project: &'a Project, install: &'a Install) -
         );
 
         if let Some(build_commands) = package_build_info.build_commands {
-            package_build_entries.insert(
-                locator.clone(),
-                all_build_entries.len(),
-            );
+            // Virtualized locators share their build with the physical
+            // counterpart — only the physical entry should drive a build.
+            if !locator.reference.is_virtual_reference() {
+                package_build_entries.insert(
+                    locator.clone(),
+                    all_build_entries.len(),
+                );
 
-            all_build_entries.push(build::BuildRequest {
-                cwd: package_location_rel,
-                locator: locator.clone(),
-                commands: build_commands,
-                allowed_to_fail: install.install_state.resolution_tree.optional_builds.contains(locator),
-                force_rebuild: false, // TODO: track this properly for pnpm
-            });
+                all_build_entries.push(build::BuildRequest {
+                    cwd: package_location_rel,
+                    locator: locator.clone(),
+                    commands: build_commands,
+                    allowed_to_fail: install.install_state.resolution_tree.optional_builds.contains(locator),
+                    force_rebuild: false, // TODO: track this properly for pnpm
+                    inline_builds: install.inline_builds,
+                });
+            }
         }
     }
 

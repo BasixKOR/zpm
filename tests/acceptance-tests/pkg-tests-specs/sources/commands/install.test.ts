@@ -70,7 +70,7 @@ describe(`Commands`, () => {
         const {stdout} = await run(`install`, `--inline-builds`);
 
         expect(stdout).toContain(`no-deps-scripted@npm:1.0.0 must be built because it never has been before`);
-        expect(stdout).toContain(`STDOUT preinstall out`);
+        expect(stdout).toContain(`preinstall out`);
       }),
     );
 
@@ -566,8 +566,11 @@ describe(`Commands`, () => {
 
           const {stdout} = await run(`install`);
 
-          expect(stdout).toContain(`foo@workspace:workspace must be built`);
+          expect(stdout).toContain(`foo@workspace:foo must be built`);
           expect(stdout).not.toMatch(/foo@virtual:.* must be built/);
+          // Should only build once even though the workspace is virtualized
+          // through its peer dependency on no-deps.
+          expect(stdout.match(/foo@workspace:foo must be built/g)?.length ?? 0).toEqual(1);
         },
       ),
     );

@@ -540,6 +540,10 @@ impl StreamReport {
         self.report(ReportMessage::Line(Severity::Warning, self.with_content_prefix(message)));
     }
 
+    pub fn add_log_file(&self, log_path: Path) {
+        self.report(ReportMessage::LogFile(log_path));
+    }
+
     pub fn error(&self, error: Error) {
         if !matches!(error, Error::SilentError) {
             self.report(ReportMessage::Line(Severity::Error, self.with_content_prefix(error.to_string())));
