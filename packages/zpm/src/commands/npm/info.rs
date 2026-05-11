@@ -4,7 +4,7 @@ use clipanion::cli;
 use serde::Deserialize;
 use serde_json::Value as JsonValue;
 use zpm_parsers::{JsonDocument, RawJsonValue};
-use zpm_primitives::Ident;
+use zpm_primitives::{split_ident_and_selector, Ident};
 use zpm_utils::FromFileString;
 
 use crate::{
@@ -118,32 +118,17 @@ enum Selector {
 }
 
 fn parse_package_arg(arg: &str) -> Result<(Ident, Selector), Error> {
-    let at_split = arg.strip_prefix('@')
-        .map_or_else(|| arg.find('@'), |rest| rest.find('@').map(|x| x + 1));
+    let (ident_str, range_str) = split_ident_and_selector(arg);
 
-    match at_split {
-        None => {
-            let ident = Ident::from_file_string(arg)
-                .map_err(|_| Error::InvalidIdent(arg.to_string()))?;
+    let ident = Ident::from_file_string(ident_str)
+        .map_err(|_| Error::InvalidIdent(ident_str.to_string()))?;
 
-            Ok((ident, Selector::Latest))
-        },
-        Some(idx) => {
-            let ident_str = &arg[..idx];
-            let range_str = &arg[idx + 1..];
+    let selector = match range_str {
+        None | Some("") => Selector::Latest,
+        Some(range_str) => zpm_semver::Range::from_file_string(range_str)
+            .map(Selector::Range)
+            .unwrap_or_else(|_| Selector::Tag(range_str.to_string())),
+    };
 
-            let ident = Ident::from_file_string(ident_str)
-                .map_err(|_| Error::InvalidIdent(ident_str.to_string()))?;
-
-            if range_str.is_empty() {
-                return Ok((ident, Selector::Latest));
-            }
-
-            if let Ok(range) = zpm_semver::Range::from_file_string(range_str) {
-                return Ok((ident, Selector::Range(range)));
-            }
-
-            Ok((ident, Selector::Tag(range_str.to_string())))
-        },
-    }
+    Ok((ident, selector))
 }
