@@ -22,6 +22,7 @@ enum SwitchExecCli {
     DaemonCommand(daemon::DaemonCommand),
     DaemonListCommand(switch::daemon_list::DaemonListCommand),
     DaemonOpenCommand(switch::daemon_open::DaemonOpenCommand),
+    DaemonSendCommand(switch::daemon_open::DaemonSendCommand),
     ExplicitCommand(switch::explicit::ExplicitCommand),
     LinksListCommand(switch::links_list::LinksListCommand),
     LinksClearCommand(switch::links_clear::LinksClearCommand),
