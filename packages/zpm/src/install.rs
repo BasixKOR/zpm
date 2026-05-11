@@ -931,6 +931,16 @@ impl<'a> InstallManager<'a> {
                         ));
                     }
                 }
+
+                for nohoist_pattern in &workspace.manifest.workspaces.nohoist {
+                    if let Some(report) = current_report().await.as_ref() {
+                        report.warn(format!(
+                            "[YN0058] {}: 'nohoist' is deprecated, please use 'installConfig.hoistingLimits' instead (pattern: {})",
+                            workspace.pretty_name(),
+                            nohoist_pattern,
+                        ));
+                    }
+                }
             }
         }
 

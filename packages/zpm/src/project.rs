@@ -1112,7 +1112,8 @@ impl Workspace {
     pub async fn workspaces(&self) -> Result<Vec<Workspace>, Error> {
         let mut workspaces = vec![];
 
-        if let Some(patterns) = &self.manifest.workspaces {
+        if !self.manifest.workspaces.is_empty() {
+            let patterns = &self.manifest.workspaces.packages;
             let roots
                 = patterns.iter().filter_map(|pattern| {
                     if pattern.starts_with('!') {
@@ -1221,8 +1222,8 @@ impl Workspace {
                                 last_changed_at: *last_changed_at,
                             })?);
 
-                            if let Some(nested_patterns) = &manifest.workspaces {
-                                workspace_queue.push((workspace_rel_path, nested_patterns.clone()));
+                            if !manifest.workspaces.packages.is_empty() {
+                                workspace_queue.push((workspace_rel_path, manifest.workspaces.packages.clone()));
                             }
                         },
 

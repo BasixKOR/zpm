@@ -140,12 +140,21 @@ impl<'a> WorkTree<'a> {
             = (!physical_locator.reference.is_workspace_reference() || !terminal_workspaces) && !matches!(physical_locator.reference, Reference::Link(_));
 
         if may_have_dependencies {
-            let resolution
-                = &self.install_state.resolution_tree.locator_resolutions[&locator];
-
-            dependencies = resolution.dependencies.iter()
-                .map(|(ident, descriptor)| (ident.clone(), self.install_state.resolution_tree.descriptor_to_locator[descriptor].clone()))
-                .collect();
+            // Workspaces excluded from a `workspaces focus` run drop
+            // out of the resolution tree entirely. Treat them as
+            // dependency-less so they still get a node we can decide
+            // to skip later on, instead of panicking on the missing
+            // BTreeMap key.
+            match self.install_state.resolution_tree.locator_resolutions.get(&locator) {
+                Some(resolution) => {
+                    dependencies = resolution.dependencies.iter()
+                        .map(|(ident, descriptor)| (ident.clone(), self.install_state.resolution_tree.descriptor_to_locator[descriptor].clone()))
+                        .collect();
+                },
+                None => {
+                    children = Some(BTreeMap::new());
+                },
+            }
         } else {
             children = Some(BTreeMap::new());
         }
@@ -187,12 +196,14 @@ impl<'a> WorkTree<'a> {
         }
 
         let peer_dependencies
-            = &self.install_state.resolution_tree.locator_resolutions[&node.locator].peer_dependencies;
+            = self.install_state.resolution_tree.locator_resolutions
+                .get(&node.locator)
+                .map(|res| &res.peer_dependencies);
 
         let children
             = node.dependencies.clone()
                 .into_iter()
-                .filter(|(_, dependency)| !peer_dependencies.contains_key(&dependency.ident))
+                .filter(|(_, dependency)| peer_dependencies.map_or(true, |peers| !peers.contains_key(&dependency.ident)))
                 .filter(|(_, dependency)| !parent_chain.contains(&dependency))
                 .map(|(ident, dependency)| (ident, convert_workspace_to_link(self.project, dependency)))
                 .map(|(ident, dependency)| (ident, self.create_node(dependency, Some(node_idx), true)))

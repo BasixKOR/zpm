@@ -26,6 +26,83 @@ pub struct DistManifest {
     pub tarball: String,
 }
 
+/// Accepts both the modern array form (`workspaces: ["foo/*"]`) and the
+/// deprecated object form (`workspaces: { packages: [...], nohoist: [...] }`).
+///
+/// We keep `nohoist` around even though zpm doesn't honor it, so the
+/// install pass can emit a deprecation warning naming each pattern.
+#[derive(Clone, Debug, Default, Archive, rkyv::Serialize, rkyv::Deserialize)]
+pub struct WorkspacesField {
+    pub packages: Vec<String>,
+    pub nohoist: Vec<String>,
+}
+
+impl WorkspacesField {
+    pub fn is_empty(&self) -> bool {
+        self.packages.is_empty() && self.nohoist.is_empty()
+    }
+}
+
+impl<'de> Deserialize<'de> for WorkspacesField {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Either {
+            Array(Vec<String>),
+            Object {
+                #[serde(default)]
+                packages: Vec<String>,
+                #[serde(default)]
+                nohoist: Vec<String>,
+            },
+        }
+
+        Ok(match Either::deserialize(deserializer)? {
+            Either::Array(packages) => WorkspacesField { packages, nohoist: Vec::new() },
+            Either::Object { packages, nohoist } => WorkspacesField { packages, nohoist },
+        })
+    }
+}
+
+impl Serialize for WorkspacesField {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        // We only ever serialize back the packages array; the nohoist
+        // round-trip would otherwise pin the deprecated shape into
+        // manifests that didn't ask for it.
+        self.packages.serialize(serializer)
+    }
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, Archive, rkyv::Serialize, rkyv::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InstallConfig {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hoisting_limits: Option<HoistingLimitsValue>,
+
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub self_references: Option<bool>,
+}
+
+/// Mirror of `zpm_config::NmHoistingLimits` that derives the rkyv traits
+/// the manifest archive requires (zpm-config doesn't depend on rkyv).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize, Archive, rkyv::Serialize, rkyv::Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum HoistingLimitsValue {
+    None,
+    Workspaces,
+    Dependencies,
+}
+
+impl From<HoistingLimitsValue> for zpm_config::NmHoistingLimits {
+    fn from(value: HoistingLimitsValue) -> Self {
+        match value {
+            HoistingLimitsValue::None => zpm_config::NmHoistingLimits::None,
+            HoistingLimitsValue::Workspaces => zpm_config::NmHoistingLimits::Workspaces,
+            HoistingLimitsValue::Dependencies => zpm_config::NmHoistingLimits::Dependencies,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize, Archive, rkyv::Serialize, rkyv::Deserialize)]
 pub struct BinManifest {
     pub name: Option<Ident>,
@@ -185,8 +262,12 @@ pub struct Manifest {
     #[serde(skip_serializing_if = "zpm_utils::is_default")]
     pub publish_config: PublishConfig,
 
+    #[serde(default, skip_serializing_if = "WorkspacesField::is_empty")]
+    pub workspaces: WorkspacesField,
+
+    #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub workspaces: Option<Vec<String>>,
+    pub install_config: Option<InstallConfig>,
 
     #[serde(default)]
     #[serde(skip_serializing_if = "BTreeMap::is_empty")]

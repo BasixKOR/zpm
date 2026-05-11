@@ -213,6 +213,26 @@
       "description": "The linker to use for node_modules",
       "default": "pnp"
     },
+    "nmHoistingLimits": {
+      "type": "crate::NmHoistingLimits",
+      "description": "How far the node-modules linker is allowed to hoist a workspace's dependencies (none / workspaces / dependencies)",
+      "default": "none"
+    },
+    "nmSelfReferences": {
+      "type": "boolean",
+      "description": "Whether the node-modules linker creates a symlink from each workspace's node_modules back to itself so it can require its own name",
+      "default": true
+    },
+    "nmMode": {
+      "type": "crate::NmMode",
+      "description": "Whether the node-modules linker copies files, hardlinks them per project, or hardlinks them through a shared content-addressed index",
+      "default": "classic"
+    },
+    "winLinkType": {
+      "type": "crate::WinLinkType",
+      "description": "On Windows, choose between true symlinks and NTFS junctions for node_modules; a no-op on every other platform",
+      "default": "symlinks"
+    },
     "npmAlwaysAuth": {
       "type": "boolean",
       "description": "Whether to always send authentication headers when querying the npm registry",

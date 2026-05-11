@@ -77,6 +77,76 @@ fn register_bin_symlinks_at_path(workspace_nm_tree: &mut SyncTree, node_rel_path
     Ok(())
 }
 
+/// When a workspace's effective `selfReferences` setting is `true`,
+/// register a `<host>/node_modules/<workspace-name>` symlink pointing at
+/// that workspace's source dir, so dependents (and the workspace
+/// itself, when `host` is the workspace) can require it by name.
+///
+/// Skipped when the workspace name collides with one of `host`'s
+/// direct hoisted children (the dependency wins), when the workspace
+/// is anonymous, or when its resolution was dropped from the tree
+/// (e.g. `yarn workspaces focus` exclusions).
+fn register_workspace_symlinks_at(
+    project: &Project,
+    install: &Install,
+    workspace_nm_tree: &mut SyncTree,
+    host_node: &hoist::WorkNode,
+    host_abs_path: &Path,
+    candidate_workspaces: impl IntoIterator<Item = (Ident, Path)>,
+) -> Result<(), Error> {
+    let global_default = project.config.settings.nm_self_references.value;
+    let host_children = host_node.children.as_ref();
+
+    for (workspace_ident, workspace_dir) in candidate_workspaces {
+        if host_children.map_or(false, |children| children.contains_key(&workspace_ident)) {
+            continue;
+        }
+
+        let target_workspace = project.workspace_by_ident(&workspace_ident).ok();
+
+        let Some(target_workspace) = target_workspace else {
+            continue;
+        };
+
+        if target_workspace.manifest.name.is_none() {
+            continue;
+        }
+
+        // Workspaces excluded from a `workspaces focus` run don't have
+        // an entry in the resolution tree; we don't symlink them so
+        // their incomplete state doesn't leak into the project root.
+        // Note that `project.install_state` isn't attached yet at link
+        // time, so we look the resolution tree up via the Install we
+        // were handed.
+        let target_locator = target_workspace.locator();
+        if !install.install_state.resolution_tree.locator_resolutions.contains_key(&target_locator) {
+            continue;
+        }
+
+        let per_workspace = target_workspace.manifest.install_config
+            .as_ref()
+            .and_then(|cfg| cfg.self_references);
+
+        if !per_workspace.unwrap_or(global_default) {
+            continue;
+        }
+
+        let symlink_path
+            = Path::new()
+                .with_join_str(workspace_ident.as_str());
+
+        let target_path
+            = workspace_dir
+                .relative_to(&host_abs_path.with_join(&symlink_path).dirname().unwrap_or_default());
+
+        workspace_nm_tree.register_entry(symlink_path, SyncItem::Symlink {
+            target_path,
+        })?;
+    }
+
+    Ok(())
+}
+
 fn register_workspace_bin_symlinks(workspace_nm_tree: &mut SyncTree, workspace_path: &Path, binaries: &BTreeMap<String, (Ident, Path)>) -> Result<(), Error> {
     for (bin_name, (_ident, bin_path)) in binaries {
         let target_abs_path
@@ -136,6 +206,28 @@ fn generate_workspace_node_modules(
         = collect_workspace_binaries(install, &work_tree.nodes[workspace_node_idx]);
 
     register_workspace_bin_symlinks(&mut workspace_nm_tree, &workspace_dir, &workspace_binaries)?;
+
+    // Berry's `nmSelfReferences` puts every workspace into the project
+    // root's node_modules so that any code in the project can require
+    // it by name. Nested workspaces don't get a self-symlink in their
+    // own node_modules (the "no circular self-references" rule).
+    let is_root_workspace
+        = workspace.rel_path == Path::new();
+
+    if is_root_workspace {
+        let candidate_workspaces: Vec<(Ident, Path)> = project.workspaces.iter()
+            .map(|ws| (ws.name.clone(), project.project_cwd.with_join(&ws.rel_path)))
+            .collect();
+
+        register_workspace_symlinks_at(
+            project,
+            install,
+            &mut workspace_nm_tree,
+            &work_tree.nodes[workspace_node_idx],
+            &workspace_abs_path,
+            candidate_workspaces,
+        )?;
+    }
 
     let mut workspace_queue
         = vec![(Path::new(), workspace_node_idx)];
