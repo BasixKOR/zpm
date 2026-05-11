@@ -341,7 +341,12 @@ fn generate_workspace_node_modules(
     }
 
     workspace_nm_tree
-        .run(workspace_abs_path)?;
+        .run(workspace_abs_path.clone())?;
+
+    // Tests (and tools) reach for `workspace/node_modules` without
+    // checking that it exists. Make sure we always materialize the
+    // directory, even when the workspace has no deps or symlinks.
+    workspace_abs_path.fs_create_dir_all()?;
 
     Ok(())
 }
