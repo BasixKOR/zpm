@@ -1,7 +1,7 @@
 use std::process::ExitStatus;
 
 use clipanion::cli;
-use zpm_primitives::{AnonymousSemverRange, Descriptor, Ident, Range, RegistryTagRange};
+use zpm_primitives::{split_ident_and_selector, AnonymousSemverRange, Descriptor, Ident, Range, RegistryTagRange};
 use zpm_semver::RangeKind;
 use zpm_utils::{FromFileString, Path, ToFileString};
 
@@ -99,13 +99,8 @@ impl Create {
 }
 
 fn rewrite_starter(input: &str) -> Result<(Ident, Option<String>), Error> {
-    let at_split = input.strip_prefix('@')
-        .map_or_else(|| input.find('@'), |rest| rest.find('@').map(|x| x + 1));
-
-    let (selector, range_part) = match at_split {
-        Some(idx) => (&input[..idx], Some(input[idx + 1..].to_string())),
-        None => (input, None),
-    };
+    let (selector, range_part) = split_ident_and_selector(input);
+    let range_part = range_part.map(str::to_string);
 
     let new_ident_str = if let Some(stripped) = selector.strip_prefix('@') {
         if let Some((scope, rest)) = stripped.split_once('/') {
