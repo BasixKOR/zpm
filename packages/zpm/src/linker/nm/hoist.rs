@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use itertools::Itertools;
 use zpm_primitives::{Ident, LinkReference, Locator, Reference};
-use zpm_utils::{Path, ToFileString, ToHumanString, tree};
+use zpm_utils::{FromFileString, Path, ToFileString, ToHumanString, tree};
 
 use crate::{
     algos,
@@ -27,6 +27,29 @@ fn convert_workspace_to_link(project: &Project, locator: Locator) -> Locator {
     } else {
         locator
     }
+}
+
+/// A locator is "workspace-backed" if it's either a real workspace
+/// reference or a Link reference whose target is one of the project's
+/// workspace directories. We convert workspace deps to Link refs
+/// before hoisting (so the hoister doesn't need to special-case
+/// workspaces in its main path), but the hoister still needs to refuse
+/// to lift these synthetic Links — moving them would break the peer
+/// dependency context they inherit from their filesystem parent.
+fn is_workspace_backed_locator(project: &Project, locator: &Locator) -> bool {
+    if locator.reference.is_workspace_reference() {
+        return true;
+    }
+
+    let Reference::Link(params) = &locator.reference else {
+        return false;
+    };
+
+    let Ok(link_path) = Path::from_file_string(&params.path) else {
+        return false;
+    };
+
+    project.workspaces.iter().any(|ws| ws.path == link_path)
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -591,11 +614,13 @@ impl<'a, 'b> Hoister<'a, 'b> {
                 // The SCC cannot be hoisted if the dependency is a workspace. Note that we will only
                 // ever encounter this situation for workspaces under their top-level view - if a
                 // package depends on a workspace, we will have turned that dependency into a link
-                // prior to hoisting.
+                // prior to hoisting. We still need to refuse to hoist those synthetic Links — a
+                // nested workspace relies on its filesystem parent to satisfy its peer deps, and
+                // bubbling it up to the root would silently switch those resolutions.
 
                 let is_workspace
                     = scc.iter().any(|&scc_locator| {
-                        scc_locator.reference.is_workspace_reference()
+                        is_workspace_backed_locator(self.work_tree.project, scc_locator)
                     });
 
                 if is_workspace {

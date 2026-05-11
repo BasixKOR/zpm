@@ -232,7 +232,23 @@ fn generate_workspace_node_modules(
         = workspace.rel_path == Path::new();
 
     if is_root_workspace {
+        // Nested workspaces (those living inside another workspace's
+        // directory) resolve their peer dependencies through their
+        // parent's node_modules, so surfacing them at the project root
+        // would point consumers at a sibling subtree that doesn't share
+        // the same parent context. Restrict the root self-references
+        // to top-level workspaces.
+        let non_root_workspace_paths: std::collections::BTreeSet<&Path> = project.workspaces.iter()
+            .map(|ws| &ws.rel_path)
+            .filter(|rel_path| !rel_path.is_empty())
+            .collect();
+
         let candidate_workspaces: Vec<(Ident, Path)> = project.workspaces.iter()
+            .filter(|ws| {
+                ws.rel_path.iter_path().rev()
+                    .skip(1)
+                    .all(|ancestor| !non_root_workspace_paths.contains(&ancestor))
+            })
             .map(|ws| (ws.name.clone(), project.project_cwd.with_join(&ws.rel_path)))
             .collect();
 
