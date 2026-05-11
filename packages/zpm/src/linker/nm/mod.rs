@@ -131,6 +131,21 @@ fn register_workspace_symlinks_at(
             continue;
         }
 
+        // A workspace whose effective hoistingLimits says "stay inside
+        // your own border" also doesn't want its locator surfaced in
+        // the project root's node_modules.
+        let install_limit = target_workspace.manifest.install_config
+            .as_ref()
+            .and_then(|cfg| cfg.hoisting_limits)
+            .map(zpm_config::NmHoistingLimits::from)
+            .unwrap_or(project.config.settings.nm_hoisting_limits.value);
+
+        if install_limit != zpm_config::NmHoistingLimits::None
+            && target_workspace.rel_path != Path::new()
+        {
+            continue;
+        }
+
         let symlink_path
             = Path::new()
                 .with_join_str(workspace_ident.as_str());

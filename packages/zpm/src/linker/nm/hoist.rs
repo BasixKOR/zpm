@@ -7,8 +7,10 @@ use zpm_utils::{Path, ToFileString, ToHumanString, tree};
 use crate::{
     algos,
     install::InstallState,
+    manifest::HoistingLimitsValue,
     project::Project,
 };
+use zpm_config::NmHoistingLimits;
 
 fn convert_workspace_to_link(project: &Project, locator: Locator) -> Locator {
     let physical_locator
@@ -172,6 +174,49 @@ impl<'a> WorkTree<'a> {
         self.nodes.push(node);
 
         node_idx
+    }
+
+    /// Effective `hoistingLimits` value for `node_idx`: workspace-side
+    /// `installConfig.hoistingLimits` wins over the project-wide
+    /// `nmHoistingLimits` setting.
+    fn effective_hoisting_limit(&self, node_idx: usize) -> NmHoistingLimits {
+        let node = &self.nodes[node_idx];
+
+        let global_limit = self.project.config.settings.nm_hoisting_limits.value;
+
+        let per_workspace_limit = self.project
+            .workspace_by_locator(&node.locator).ok()
+            .and_then(|workspace| workspace.manifest.install_config.as_ref())
+            .and_then(|cfg| cfg.hoisting_limits)
+            .map(NmHoistingLimits::from);
+
+        per_workspace_limit.unwrap_or(global_limit)
+    }
+
+    /// Returns true when the node's children's transitive dependencies
+    /// should NOT bubble up past this node when its parent processes
+    /// hoisting candidates.
+    ///
+    /// For `workspaces`, only workspace nodes act as borders; for
+    /// `dependencies`, every node with that limit blocks outbound.
+    pub fn blocks_outbound_hoisting(&self, node_idx: usize) -> bool {
+        match self.effective_hoisting_limit(node_idx) {
+            NmHoistingLimits::None => false,
+            NmHoistingLimits::Workspaces => {
+                let reference = &self.nodes[node_idx].locator.reference;
+                reference.is_workspace_reference()
+                    || matches!(reference, Reference::Link(_))
+            },
+            NmHoistingLimits::Dependencies => true,
+        }
+    }
+
+    /// Returns true when this node should NOT accept any of its
+    /// children's transitive dependencies as hoist candidates of its
+    /// own — i.e. only direct children land in this node, transitives
+    /// stay nested. Triggered by the `dependencies` limit.
+    pub fn blocks_inbound_transitives(&self, node_idx: usize) -> bool {
+        matches!(self.effective_hoisting_limit(node_idx), NmHoistingLimits::Dependencies)
     }
 
     fn expand_node(&mut self, node_idx: usize) {
@@ -394,8 +439,24 @@ impl<'a, 'b> Hoister<'a, 'b> {
         let mut hoist_candidates_with_parents: BTreeMap<Locator, Vec<(usize, Ident, usize)>>
             = BTreeMap::new();
 
+        // If this node's effective `hoistingLimits` is `dependencies`,
+        // it refuses to accept any transitive child as its own — only
+        // its direct dependencies land here. Skip gathering candidates
+        // entirely.
+        let host_blocks_inbound
+            = self.work_tree.blocks_inbound_transitives(node_idx);
+
         for &child_idx in node_children.iter() {
             self.work_tree.expand_node(child_idx);
+
+            // Hoist-border check: if this child says "don't let your
+            // transitive dependencies escape me", skip its children
+            // entirely when collecting candidates to hoist INTO the
+            // current node. The child still gets hoisted itself (one
+            // level up), but its grandchildren stay put.
+            if host_blocks_inbound || self.work_tree.blocks_outbound_hoisting(child_idx) {
+                continue;
+            }
 
             let flattened_node
                 = &self.work_tree.nodes[child_idx];
