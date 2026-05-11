@@ -222,7 +222,15 @@ impl<'a> WorkTree<'a> {
     ///
     /// For `workspaces`, only workspace nodes act as borders; for
     /// `dependencies`, every node with that limit blocks outbound.
+    /// Portals are always transparent: their direct deps need to hoist
+    /// into the parent so consumers reach them via the portal symlink
+    /// (Node walks up from the symlink target, not from the portal's
+    /// position in `node_modules`).
     pub fn blocks_outbound_hoisting(&self, node_idx: usize) -> bool {
+        if matches!(self.nodes[node_idx].locator.reference.physical_reference(), Reference::Portal(_)) {
+            return false;
+        }
+
         match self.effective_hoisting_limit(node_idx) {
             NmHoistingLimits::None => false,
             NmHoistingLimits::Workspaces => {
@@ -481,7 +489,18 @@ impl<'a, 'b> Hoister<'a, 'b> {
             // entirely when collecting candidates to hoist INTO the
             // current node. The child still gets hoisted itself (one
             // level up), but its grandchildren stay put.
-            if host_blocks_inbound || self.work_tree.blocks_outbound_hoisting(child_idx) {
+            //
+            // Portals are transparent for this check: their direct
+            // deps must reach the parent (the portal target sees its
+            // deps through the symlink it lives at), so we treat them
+            // as if the host had `none` inbound when this child is a
+            // portal.
+            let child_is_portal = matches!(
+                self.work_tree.nodes[child_idx].locator.reference.physical_reference(),
+                Reference::Portal(_),
+            );
+
+            if (host_blocks_inbound && !child_is_portal) || self.work_tree.blocks_outbound_hoisting(child_idx) {
                 continue;
             }
 
@@ -617,10 +636,15 @@ impl<'a, 'b> Hoister<'a, 'b> {
                 // prior to hoisting. We still need to refuse to hoist those synthetic Links — a
                 // nested workspace relies on its filesystem parent to satisfy its peer deps, and
                 // bubbling it up to the root would silently switch those resolutions.
+                //
+                // Portals get the same treatment: berry keeps portal nodes pinned at their
+                // declared parent so the portal's own deps can be checked against that parent
+                // (and only that parent) for conflicts, instead of bubbling up indefinitely.
 
                 let is_workspace
                     = scc.iter().any(|&scc_locator| {
                         is_workspace_backed_locator(self.work_tree.project, scc_locator)
+                            || matches!(scc_locator.reference.physical_reference(), Reference::Portal(_))
                     });
 
                 if is_workspace {

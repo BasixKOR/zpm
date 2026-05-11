@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use zpm_primitives::{FilterDescriptor, Ident, Locator, Reference};
 use zpm_sync::{SyncItem, SyncTemplate, SyncTree};
-use zpm_utils::{FromFileString, Path, ToHumanString};
+use zpm_utils::{FromFileString, Path, ToFileString, ToHumanString};
 
 use crate::{
     build::{self, BuildRequest, BuildRequests}, content_flags, error::Error, fetchers::PackageData, install::Install, linker::{self, LinkResult, helpers::PackageMeta, nm::hoist::{Hoister, WorkTree}}, project::Project
@@ -280,8 +280,6 @@ fn generate_workspace_node_modules(
             let child_rel_path
                 = node_rel_path.with_join_str(&ident.as_str());
 
-            workspace_queue.push((child_rel_path.with_join_str("node_modules"), *child_idx));
-
             let abs_path
                 = workspace_abs_path
                     .with_join(&node_rel_path)
@@ -295,6 +293,20 @@ fn generate_workspace_node_modules(
 
             let package_data
                 = install.package_data.get(&child_node.locator.physical_locator());
+
+            // Symlinked children (portals, links, file:) can't host a
+            // nested `node_modules` in the sync tree — the sync layer
+            // refuses to descend through a Symlink node. The
+            // dependencies of those packages either hoisted to the
+            // current node already or will be reported as a conflict
+            // by the post-hoist portal check.
+            let is_symlinked
+                = matches!(package_data, Some(PackageData::Local { .. }))
+                    || matches!(child_node.locator.reference.physical_reference(), Reference::Link(_) | Reference::Portal(_));
+
+            if !is_symlinked {
+                workspace_queue.push((child_rel_path.with_join_str("node_modules"), *child_idx));
+            }
 
             match package_data {
                 Some(PackageData::Abstract) => {
@@ -515,7 +527,171 @@ pub async fn link_island_nm(
     })
 }
 
+/// When any locator in the resolution uses a portal protocol, the
+/// node-modules linker emits a warning telling the user to launch Node
+/// with `--preserve-symlinks` (or the per-module variant). Without it,
+/// dependencies hoisted into the parent's node_modules wouldn't be
+/// reachable from the portal target — Node walks up from the symlink's
+/// resolved location, not from where the symlink was instantiated.
+fn warn_about_portals_if_any(install: &Install) {
+    let has_portal = install.install_state
+        .resolution_tree
+        .locator_resolutions
+        .keys()
+        .any(|locator| matches!(locator.reference.physical_reference(), Reference::Portal(_)));
+
+    if !has_portal {
+        return;
+    }
+
+    if let Some(report_guard) = crate::report::try_current_report() {
+        if let Some(report) = report_guard.as_ref() {
+            report.warn(
+                "[YN0066] Portals are in use. Make sure to set --preserve-symlinks (or NODE_PRESERVE_SYMLINKS_MAIN=1) so node can resolve hoisted dependencies through the portal symlink.".to_string(),
+            );
+        }
+    }
+}
+
+/// Walks the post-hoist work tree to find external portals whose
+/// direct dependencies couldn't hoist into the portal's immediate
+/// parent (the parent already had a conflicting locator under that
+/// name). Berry refuses to silently lose those resolutions on disk —
+/// the portal target is read-only by convention — so we surface the
+/// conflict and fail the install. Internal portals (relative paths
+/// that resolve inside the project) are exempt: the user owns those
+/// directories and we can let the dep stay nested under the symlink.
+fn check_external_portal_conflicts(
+    project: &Project,
+    install: &Install,
+    work_tree: &hoist::WorkTree,
+) -> Result<(), Error> {
+    let mut has_conflict = false;
+
+    for node in &work_tree.nodes {
+        // A portal with peer deps gets wrapped in a Virtual reference;
+        // `physical_reference()` unwraps that for the type check while
+        // we keep the original `node.locator` around for printing the
+        // user-facing context.
+        if !matches!(node.locator.reference.physical_reference(), Reference::Portal(_)) {
+            continue;
+        }
+
+        let Some(children) = &node.children else {
+            continue;
+        };
+
+        if children.is_empty() {
+            continue;
+        }
+
+        let Some(parent_idx) = node.parent_idx else {
+            continue;
+        };
+
+        let parent_node = &work_tree.nodes[parent_idx];
+
+        let Some(parent_children) = parent_node.children.as_ref() else {
+            continue;
+        };
+
+        let package_directory = install.package_data
+            .get(&node.locator.physical_locator())
+            .and_then(|pd| match pd {
+                PackageData::Local { package_directory, .. } => Some(package_directory),
+                _ => None,
+            });
+
+        let is_internal = package_directory
+            .map(|pd| project.project_cwd.contains(pd))
+            .unwrap_or(false);
+
+        if is_internal {
+            continue;
+        }
+
+        for (child_ident, &child_idx) in children {
+            let child_locator
+                = &work_tree.nodes[child_idx].locator;
+
+            let parent_locator = parent_children.get(child_ident)
+                .map(|&idx| &work_tree.nodes[idx].locator);
+
+            // Look for a sibling portal under the same parent whose
+            // original dependency map already declared the conflicting
+            // version — that means the hoister picked the sibling's
+            // copy first, and the user gets a clearer error pointing
+            // at which sibling caused it.
+            let sibling_portal = parent_locator
+                .and_then(|parent_loc| {
+                    parent_children.iter()
+                        .filter_map(|(_, &sibling_idx)| {
+                            let sibling = &work_tree.nodes[sibling_idx];
+                            if sibling_idx == child_idx {
+                                return None;
+                            }
+                            let sibling_is_portal = matches!(
+                                sibling.locator.reference.physical_reference(),
+                                Reference::Portal(_),
+                            );
+                            if !sibling_is_portal {
+                                return None;
+                            }
+                            let original = sibling.dependencies.get(child_ident)?;
+                            if original == parent_loc {
+                                Some(&sibling.locator)
+                            } else {
+                                None
+                            }
+                        })
+                        .next()
+                });
+
+            if let Some(report_guard) = crate::report::try_current_report() {
+                if let Some(report) = report_guard.as_ref() {
+                    match (parent_locator, sibling_portal) {
+                        (Some(parent_locator), Some(sibling_locator)) => {
+                            report.warn(format!(
+                                "[YN0067] {}: dependency {} conflicts with dependency {} from sibling portal {}",
+                                node.locator.to_file_string(),
+                                child_locator.to_file_string(),
+                                parent_locator.to_file_string(),
+                                sibling_locator.ident.as_str(),
+                            ));
+                        },
+                        (Some(parent_locator), None) => {
+                            report.warn(format!(
+                                "[YN0067] {}: dependency {} conflicts with parent dependency {}",
+                                node.locator.to_file_string(),
+                                child_locator.to_file_string(),
+                                parent_locator.to_file_string(),
+                            ));
+                        },
+                        (None, _) => {
+                            report.warn(format!(
+                                "[YN0067] {}: dependency {} can't be hoisted into the parent and the portal target is external",
+                                node.locator.to_file_string(),
+                                child_locator.to_file_string(),
+                            ));
+                        },
+                    }
+                }
+            }
+
+            has_conflict = true;
+        }
+    }
+
+    if has_conflict {
+        return Err(Error::SilentError);
+    }
+
+    Ok(())
+}
+
 pub async fn link_project_nm(project: &Project, install: &Install) -> Result<LinkResult, Error> {
+    warn_about_portals_if_any(install);
+
     let mut work_tree
         = WorkTree::new(project, &install.install_state);
 
@@ -531,6 +707,8 @@ pub async fn link_project_nm(project: &Project, install: &Install) -> Result<Lin
         = BTreeSet::new();
 
     hoister.hoist();
+
+    check_external_portal_conflicts(project, install, &work_tree)?;
 
     let mut project_queue
         = vec![0usize];
