@@ -651,6 +651,15 @@ pub struct InstallState {
     pub conditional_locators: BTreeSet<Locator>,
     pub island_descriptor_to_locator: BTreeMap<String, BTreeMap<Descriptor, Locator>>,
     pub island_normalized_resolutions: BTreeMap<String, BTreeMap<Locator, Resolution>>,
+
+    /// Per-locator zip checksums. The lockfile strips checksums from
+    /// conditional locators so the file stays stable across
+    /// architectures, but `--check-cache` still wants to detect
+    /// tampering of cached native packages — so we keep a parallel
+    /// record in install state, where cross-arch determinism doesn't
+    /// matter.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub cache_checksums: BTreeMap<Locator, Hash64>,
 }
 
 #[derive(Clone, Default)]
@@ -1062,8 +1071,17 @@ impl<'a> InstallManager<'a> {
             self.record_fetch(locator, package_data)?;
         }
 
+        let check_checksums = self.context.check_checksums;
+
         let missing_checksums = self.result.lockfile.entries.values()
             .filter(|entry| {
+                // --check-cache asks us to re-verify every entry on disk,
+                // so don't trust the previously-recorded checksum: force
+                // a fresh hash even when the lockfile had one.
+                if check_checksums {
+                    return true;
+                }
+
                 let previous_entry
                     = self.initial_lockfile.entries.get(&entry.resolution.locator);
 
@@ -1079,6 +1097,10 @@ impl<'a> InstallManager<'a> {
                 let PackageData::Zip {archive_path, ..} = package_data else {
                     return None;
                 };
+
+                if !archive_path.fs_exists() {
+                    return None;
+                }
 
                 Some((entry.resolution.locator.clone(), archive_path))
             })
@@ -1107,7 +1129,18 @@ impl<'a> InstallManager<'a> {
             let previous_checksum = previous_entry
                 .and_then(|s| s.checksum.as_ref());
 
+            let previous_cache_checksum = self.previous_state
+                .and_then(|state| state.cache_checksums.get(&entry.resolution.locator));
+
+            // Under --check-cache we trust late_checksums (freshly hashed
+            // from disk) over the previously-recorded lockfile checksum,
+            // so a tampered cache file fails the comparison below.
             let mut checksum = package_data.checksum()
+                .or_else(|| if self.context.check_checksums {
+                    late_checksums.get(&entry.resolution.locator).cloned()
+                } else {
+                    None
+                })
                 .or_else(|| previous_checksum.cloned())
                 .or_else(|| late_checksums.get(&entry.resolution.locator).cloned());
 
@@ -1115,8 +1148,47 @@ impl<'a> InstallManager<'a> {
                 = self.result.install_state.conditional_locators
                     .contains(&entry.resolution.locator);
 
+            // Stash the (possibly fresh) checksum in install state
+            // before the conditional-locator scrub clears it from the
+            // lockfile entry — that's the copy --check-cache compares
+            // against to detect tampering of native packages.
+            if let Some(cs) = &checksum {
+                self.result.install_state.cache_checksums
+                    .insert(entry.resolution.locator.clone(), cs.clone());
+            }
+
             if is_conditional_locator {
                 checksum = None;
+            }
+
+            // Conditional locators (native variants) don't carry a
+            // checksum in the lockfile because that would make the
+            // lockfile arch-dependent. We keep one in install state
+            // instead; --check-cache compares the freshly-hashed cache
+            // file against that prior install's record.
+            if self.context.check_checksums && is_conditional_locator {
+                let recomputed = late_checksums.get(&entry.resolution.locator);
+                if let (Some(recomputed), Some(previous_cache_checksum)) = (recomputed, previous_cache_checksum) {
+                    if recomputed != previous_cache_checksum {
+                        if let PackageData::Zip {archive_path, ..} = package_data {
+                            if let Some(project) = &self.context.project {
+                                let quarantine_path = project.ignore_path()
+                                    .with_join_str("quarantine")
+                                    .with_join_str(entry.resolution.locator.slug())
+                                    .with_ext("zip");
+
+                                let data = archive_path
+                                    .fs_read_prealloc()?;
+
+                                quarantine_path
+                                    .fs_create_parent()?
+                                    .fs_write(&data)?;
+                            }
+
+                            return Err(Error::ChecksumMismatch(entry.resolution.locator.clone()));
+                        }
+                    }
+                }
             }
 
             if self.context.check_checksums {
