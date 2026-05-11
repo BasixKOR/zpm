@@ -430,10 +430,24 @@ async fn start_fetch<'a>(
 ) {
     let systems
         = ctx.systems.unwrap();
-    let is_mock_request
+    let mut is_mock_request
         = !result.resolution.requirements.validate_any(systems);
     let locator
         = result.resolution.locator.clone();
+
+    // --check-cache cares about every cached zip, not just those
+    // compatible with the current `supportedArchitectures`. If a stale
+    // arch's cache file is still on disk, we want to refetch + verify
+    // it the same way as an in-scope package. Leave the mock flag
+    // alone when no cache file exists — refetching a never-cached
+    // arch would do the user no favors.
+    if is_mock_request && ctx.check_checksums {
+        if let Some(cache) = ctx.package_cache {
+            if let Ok(Some(_)) = cache.check_cache_entry(locator.clone(), ".zip") {
+                is_mock_request = false;
+            }
+        }
+    }
 
     ensure_fetched(locator, is_mock_request, ctx, maps).await;
 }

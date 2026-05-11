@@ -1,5 +1,6 @@
 use zpm_formats::iter_ext::IterExt;
 use zpm_primitives::{Locator, RegistryReference};
+use zpm_utils::Hash64;
 
 use crate::{
     error::Error,
@@ -19,6 +20,14 @@ pub fn try_fetch_locator_sync(context: &InstallContext, locator: &Locator, param
             .with_join(&params.ident.nm_subdir());
 
         return Ok(Some(FetchResult::new_mock(archive_path, package_directory)));
+    }
+
+    // --check-cache requires us to round-trip every cache entry
+    // through the registry so we can compare what's on disk against
+    // what the registry currently serves. Force the async path so the
+    // refetch + tamper-detection logic in `fetch_locator` runs.
+    if context.check_checksums {
+        return Ok(None);
     }
 
     let cache_entry = context.package_cache.unwrap()
@@ -80,7 +89,7 @@ pub async fn fetch_locator<'a>(context: &InstallContext<'a>, locator: &Locator, 
             allow_oidc: false,
         }).await?;
 
-    let cached_blob = package_cache.ensure_blob(locator.clone(), ".zip", || async {
+    let fetch_archive = || async {
         let bytes
             = http_npm::get(&http_npm::NpmHttpParams {
                 http_client: &project.http_client,
@@ -105,7 +114,34 @@ pub async fn fetch_locator<'a>(context: &InstallContext<'a>, locator: &Locator, 
         }).await??;
 
         Ok(archive)
-    }).await?.into_info();
+    };
+
+    // --check-cache wants every cached zip round-tripped through the
+    // registry so we can detect tampering. Compare the on-disk file
+    // (if any) against what the registry serves and bail out on
+    // mismatch before the atomic rename clobbers the evidence.
+    let pre_existing_hash = if context.check_checksums {
+        package_cache
+            .check_cache_entry(locator.clone(), ".zip")?
+            .and_then(|entry| {
+                entry.path.fs_read_prealloc().ok()
+                    .map(|bytes| Hash64::from_data(&bytes))
+            })
+    } else {
+        None
+    };
+
+    let cached_blob = if context.check_checksums {
+        package_cache.refetch_blob(locator.clone(), ".zip", fetch_archive).await?
+    } else {
+        package_cache.ensure_blob(locator.clone(), ".zip", fetch_archive).await?
+    }.into_info();
+
+    if let (Some(pre_existing_hash), Some(fresh_hash)) = (pre_existing_hash, cached_blob.checksum.as_ref()) {
+        if pre_existing_hash != *fresh_hash {
+            return Err(Error::ChecksumMismatch(locator.clone()));
+        }
+    }
 
     let package_directory = cached_blob.path
         .with_join(&package_subdir);

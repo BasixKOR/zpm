@@ -161,6 +161,32 @@ impl CompositeCache {
         panic!("Expected at least one cache to be set");
     }
 
+    /// Force-refetch variant of [`ensure_blob`]: always invokes the
+    /// fetcher, overwriting any existing cache entry. Used under
+    /// `--check-cache` so the npm fetcher can compare what the
+    /// registry currently serves against what's on disk.
+    pub async fn refetch_blob<R, F>(&self, key: Locator, ext: &str, func: F) -> Result<CacheEntry, Error>
+    where
+        R: Future<Output = Result<Vec<u8>, Error>>,
+        F: FnOnce() -> R,
+    {
+        if let Some(ref cache) = self.local_cache {
+            return cache.refetch_blob(key.clone(), ext, || async {
+                if let Some(ref cache) = self.global_cache {
+                    Ok(cache.refetch_blob_data(key, ext, || Self::load(func)).await?.data)
+                } else {
+                    Self::load(func).await
+                }
+            }).await;
+        }
+
+        if let Some(ref cache) = self.global_cache {
+            return cache.refetch_blob(key, ext, || Self::load(func)).await;
+        }
+
+        panic!("Expected at least one cache to be set");
+    }
+
     pub async fn upsert_blob<R, F>(&self, key: Locator, ext: &str, func: F) -> Result<DataCacheEntry, Error>
     where
         R: Future<Output = Result<Vec<u8>, Error>>,
@@ -250,6 +276,25 @@ impl DiskCache {
         R: Future<Output = Result<Vec<u8>, Error>>,
         F: FnOnce() -> R,
     {
+        self.ensure_blob_inner(key, ext, func, false).await
+    }
+
+    /// Same as [`ensure_blob`], but always invokes the fetcher even if
+    /// the cache already holds the file. Used by `--check-cache` to
+    /// round-trip cached zips through the registry for verification.
+    pub async fn refetch_blob<R, F>(&self, key: Locator, ext: &str, func: F) -> Result<CacheEntry, Error>
+    where
+        R: Future<Output = Result<Vec<u8>, Error>>,
+        F: FnOnce() -> R,
+    {
+        self.ensure_blob_inner(key, ext, func, true).await
+    }
+
+    async fn ensure_blob_inner<R, F>(&self, key: Locator, ext: &str, func: F, force_refetch: bool) -> Result<CacheEntry, Error>
+    where
+        R: Future<Output = Result<Vec<u8>, Error>>,
+        F: FnOnce() -> R,
+    {
         let key_path
             = self.key_path(&key, ext);
         let key_path_buf
@@ -259,14 +304,14 @@ impl DiskCache {
             = tokio::fs::try_exists(key_path_buf.clone()).await?;
 
         Ok(match exists {
-            true => {
+            true if !force_refetch => {
                 InfoCacheEntry {
                     path: key_path,
                     checksum: None,
                 }.into()
             },
 
-            false => {
+            true | false => {
                 if self.immutable {
                     return Err(Error::ImmutableCache(key));
                 }
@@ -292,51 +337,64 @@ impl DiskCache {
         R: Future<Output = Result<Vec<u8>, Error>>,
         F: FnOnce() -> R,
     {
+        self.upsert_blob_inner(key, ext, func, false).await
+    }
+
+    /// Force-refetch variant of [`upsert_blob`]: always invokes the
+    /// fetcher, returning the freshly downloaded bytes (and writing
+    /// them through to the on-disk cache).
+    pub async fn refetch_blob_data<R, F>(&self, key: Locator, ext: &str, func: F) -> Result<DataCacheEntry, Error>
+    where
+        R: Future<Output = Result<Vec<u8>, Error>>,
+        F: FnOnce() -> R,
+    {
+        self.upsert_blob_inner(key, ext, func, true).await
+    }
+
+    async fn upsert_blob_inner<R, F>(&self, key: Locator, ext: &str, func: F, force_refetch: bool) -> Result<DataCacheEntry, Error>
+    where
+        R: Future<Output = Result<Vec<u8>, Error>>,
+        F: FnOnce() -> R,
+    {
         let key_path
             = self.key_path(&key, ext);
         let key_path_buf
             = key_path.to_path_buf();
 
-        let read
-            = tokio::fs::read(key_path_buf.clone()).await;
+        if !force_refetch {
+            let read
+                = tokio::fs::read(key_path_buf.clone()).await;
 
-        Ok(match read {
-            Ok(data) => {
-                DataCacheEntry {
+            if let Ok(data) = read {
+                return Ok(DataCacheEntry {
                     info: InfoCacheEntry {
                         path: key_path,
                         checksum: None,
                     },
                     data,
-                }
-            },
+                });
+            }
+        }
 
-            Err(err) => {
-                if err.kind() != std::io::ErrorKind::NotFound {
-                    return Err(err)?;
-                }
+        if self.immutable {
+            return Err(Error::ImmutableCache(key));
+        }
 
-                if self.immutable {
-                    return Err(Error::ImmutableCache(key));
-                }
+        let data
+            = self.fetch_and_store_blob::<R, F>(key_path_buf, func).await?;
 
-                let data
-                    = self.fetch_and_store_blob::<R, F>(key_path_buf, func).await?;
+        Ok(tokio::task::spawn(async move {
+            let checksum
+                = Hash64::from_data(&data);
 
-                tokio::task::spawn(async move {
-                    let checksum
-                        = Hash64::from_data(&data);
-
-                    DataCacheEntry {
-                        info: InfoCacheEntry {
-                            path: key_path,
-                            checksum: Some(checksum),
-                        },
-                        data,
-                    }
-                }).await.unwrap()
-            },
-        })
+            DataCacheEntry {
+                info: InfoCacheEntry {
+                    path: key_path,
+                    checksum: Some(checksum),
+                },
+                data,
+            }
+        }).await.unwrap())
     }
 
     async fn fetch_and_store_blob<R, F>(&self, key_path: PathBuf, func: F) -> Result<Vec<u8>, Error>
