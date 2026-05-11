@@ -27,19 +27,18 @@ Blocks ~10 tests in `features/cache.test.ts`,
 `features/mirror.test.js`, `features/enableOfflineMode.test.ts`, and
 the `commands/add.test.ts` shared-cache test.
 
-## `immutablePatterns` not implemented
+## Manifest reformatting on install
 
-`features/immutablePatterns.test.ts` (~6 tests) wants the
-`immutablePatterns` config setting to take a list of glob patterns;
-during a `--immutable` install, zpm should checksum the matching files
-before and after the install and fail with
-`The checksum for <pattern> has been modified by this install` if any
-of them changed.
+`features/immutablePatterns.test.ts: 'should prevent reformatting of
+manifests when so configured'` expects an install to strip an empty
+`dependencies: {}` block out of `package.json` (so the
+`immutablePatterns` check then flags the diff). zpm currently
+preserves the manifest exactly as written and never rewrites the
+empty section, so the test sees no change and the assertion fails.
 
-Today the setting is not parsed and no comparison happens. The feature
-is invasive — it has to hook the install lifecycle to snapshot the
-file tree, then re-hash after linking — but it's a self-contained
-addition (one config setting + one pre/post hook).
+The other immutablePatterns tests pass — implementing the rewrite is
+its own piece of work in `manifest::Manifest::persist` or
+equivalent.
 
 ## `logFilters` not implemented
 
@@ -107,14 +106,9 @@ multi-dependent mismatches nor compute the parent hash marker
 ## node-modules linker remaining gaps
 
 After the hoist-border, self-references, manifest-shape, portals,
-peer-dep inheritance, deletion detection, and circular-workspace
-fixes, `node-modules.test.ts` is down to 6 failures clustering into:
+peer-dep inheritance, deletion detection, circular-workspace, and
+nmMode-hardlinks fixes, `node-modules.test.ts` is down to 4 failures:
 
-- **`nmMode: hardlinks-local` / `nmMode: hardlinks-global`**. Schema
-  + setting parse, but the linker still always writes files
-  (no hardlinks). For `hardlinks-global` we already have a content-
-  addressed extractor for the pnpm linker (`fs_extract_archive_with_cas`);
-  the nm linker can reuse it.
 - **`should prefer bin executables from the calling workspace`** is
   about `yarn run` resolving bins from the active workspace's
   `node_modules/.bin` first, not about the linker layout.
@@ -166,34 +160,3 @@ adding, installing, renaming, and the publish-time rewrite to `npm:`.
 No `jsr` resolver/fetcher exists in `packages/zpm/src/resolvers/` or
 `fetchers/`.
 
-## `--check-resolutions` git-URL descriptor keying
-
-`features/checkResolutions.test.ts` is now wired and passes the four
-npm-range cases (range/version mismatch and alias variants), but the
-three git-URL cases still fail before reaching `--check-resolutions`:
-the test edits `lockfileData.entries[\`util-deprecate@https://.../\`]`
-after `add`, expecting that exact string to be the entry key. zpm
-normalizes the git range with the resolved commit
-(`util-deprecate@https://.../#commit=...`) into the key, so the
-test's lookup misses. Either teach the test to look up the resolved
-descriptor, or change zpm to keep the unresolved range as the entry
-key (with the commit recorded only in the locator).
-
-## `prunedNativeDeps` (os/cpu/libc filtering)
-
-`features/prunedNativeDeps.test.ts` is mostly green (7/11 pass).
-Remaining gaps:
-
-- `should resolve all dependencies, regardless of the system` —
-  expects a `root-workspace.*` entry in `file.entries`. zpm splits
-  workspaces into a separate `workspaces` top-level field; either
-  also list them in `entries` or update the test to merge both maps.
-- `should also validate other architectures than the current one if
-  necessary when using --check-cache` and
-  `should only fetch other architectures when using --check-cache
-  if they are already in the cache` — both want `--check-cache` to
-  re-verify and possibly re-fetch cached files even when the locator
-  is incompatible with the current `supportedArchitectures`. zpm's
-  fetch path treats those locators as mock fetches and never opens
-  the cache file. Needs the fetch decision to look beyond the
-  configured systems when `--check-cache` is set.
