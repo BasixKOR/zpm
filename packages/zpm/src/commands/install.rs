@@ -116,7 +116,11 @@ impl Install {
         let mut refresh_lockfile = self.refresh_lockfile;
         if !refresh_lockfile && is_public_pr_ci() {
             refresh_lockfile = true;
-            project.config.settings.enable_immutable_installs.force(true, Source::Cli);
+            // An explicit `--immutable=false` is a deliberate opt-out;
+            // don't override it even when the auto-flip kicks in.
+            if self.immutable != Some(false) {
+                project.config.settings.enable_immutable_installs.force(true, Source::Cli);
+            }
         }
 
         sort_workspace_dependencies(&project)?;

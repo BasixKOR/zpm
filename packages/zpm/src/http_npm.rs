@@ -586,17 +586,28 @@ async fn fetch_metadata_with_disk_cache(params: &GetPackageMetadataParams<'_>) -
 /// them. Fresh values always win on conflicts; only the version-map is
 /// merged (top-level fields like `dist-tags` stay authoritative).
 fn merge_versions_into_fresh(stale: &[u8], fresh: &[u8]) -> Vec<u8> {
-    let Ok(stale_json) = serde_json::from_slice::<serde_json::Value>(stale) else {
-        return fresh.to_vec();
-    };
-
     let Ok(mut fresh_json) = serde_json::from_slice::<serde_json::Value>(fresh) else {
         return fresh.to_vec();
     };
 
-    let Some(stale_versions) = stale_json.get("versions").and_then(|v| v.as_object()) else {
-        return serde_json::to_vec(&fresh_json).unwrap_or_else(|_| fresh.to_vec());
+    let Ok(stale_json) = serde_json::from_slice::<serde_json::Value>(stale) else {
+        return fresh.to_vec();
     };
+
+    let Some(stale_versions) = stale_json.get("versions").and_then(|v| v.as_object()) else {
+        return fresh.to_vec();
+    };
+
+    // Fast-path: if every stale version is already present in fresh,
+    // the merge would be a no-op. Skip the JSON re-serialisation —
+    // popular packages produce hundreds of KBs of registry metadata
+    // and the server returns 200 on every cache miss even when the
+    // version list hasn't shrunk.
+    if let Some(fresh_versions) = fresh_json.get("versions").and_then(|v| v.as_object()) {
+        if stale_versions.keys().all(|k| fresh_versions.contains_key(k)) {
+            return fresh.to_vec();
+        }
+    }
 
     let Some(fresh_obj) = fresh_json.as_object_mut() else {
         return fresh.to_vec();
@@ -800,4 +811,38 @@ async fn ask_for_otp(params: &NpmHttpParams<'_>, response: &Response) -> Result<
         .await;
 
     Ok(otp)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn body_with_versions(keys: &[&str]) -> Vec<u8> {
+        let map: serde_json::Map<String, serde_json::Value> = keys.iter()
+            .map(|k| (k.to_string(), serde_json::json!({"dist": {"tarball": "https://example/x.tgz"}})))
+            .collect();
+        serde_json::to_vec(&serde_json::json!({"name": "pkg", "versions": serde_json::Value::Object(map)})).unwrap()
+    }
+
+    #[test]
+    fn merge_returns_fresh_unchanged_when_stale_is_a_subset() {
+        let stale = body_with_versions(&["1.0.0", "1.1.0"]);
+        let fresh = body_with_versions(&["1.0.0", "1.1.0", "2.0.0"]);
+        // The fast-path should hand back `fresh` byte-for-byte instead
+        // of going through a JSON round-trip that may reorder keys.
+        assert_eq!(merge_versions_into_fresh(&stale, &fresh), fresh);
+    }
+
+    #[test]
+    fn merge_layers_in_missing_stale_versions() {
+        let stale = body_with_versions(&["1.0.0", "0.9.0"]);
+        let fresh = body_with_versions(&["1.0.0", "2.0.0"]);
+        let merged = merge_versions_into_fresh(&stale, &fresh);
+        let parsed: serde_json::Value = serde_json::from_slice(&merged).unwrap();
+        let versions = parsed.get("versions").unwrap().as_object().unwrap();
+        // 0.9.0 from stale should now be present alongside the fresh
+        // entries; 2.0.0 from fresh must still be there.
+        assert!(versions.contains_key("0.9.0"));
+        assert!(versions.contains_key("2.0.0"));
+    }
 }

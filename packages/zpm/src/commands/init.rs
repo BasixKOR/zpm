@@ -172,25 +172,46 @@ struct YarnRcInit {
 fn apply_init_fields(document: &mut JsonDocument, init_cwd: &Path) -> Result<(), Error> {
     let rc_filename = crate::commands::rc_helpers::rc_filename();
 
+    // Collect every rc on the way up from `init_cwd`, plus the home rc
+    // if it isn't already on that walk. We want the same cascade that
+    // `Configuration::load` produces — most-general (user) first,
+    // most-specific (closest to `init_cwd`) last — so that the values
+    // written into the new manifest reflect what the user would have
+    // gotten from the merged configuration. Returning on the first
+    // match would silently drop a `initFields` defined in the user rc
+    // when *any* parent rc also exists, even if it doesn't set
+    // `initFields` at all.
+    let mut rc_paths: Vec<Path> = Vec::new();
     let mut current: Option<Path> = Some(init_cwd.clone());
     while let Some(dir) = current {
         let rc_path = dir.with_join_str(&rc_filename);
         if rc_path.fs_exists() {
-            if let Ok(text) = rc_path.fs_read_text() {
-                if let Ok(parsed) = zpm_parsers::YamlDocument::hydrate_from_str::<YarnRcInit>(&text) {
-                    for (key, value) in parsed.init_fields {
-                        let parser_value = json_to_parser_value(&value);
-                        document.set_path(
-                            &zpm_parsers::Path::from_segments(vec![key]),
-                            parser_value,
-                        )?;
-                    }
-                    return Ok(());
-                }
-            }
+            rc_paths.push(rc_path);
         }
         current = dir.dirname();
     }
+
+    if let Ok(home_rc) = crate::commands::rc_helpers::home_rc_path() {
+        if home_rc.fs_exists() && !rc_paths.iter().any(|p| p == &home_rc) {
+            rc_paths.push(home_rc);
+        }
+    }
+
+    // `rc_paths` is currently innermost-first; reverse so we write
+    // outermost first and let inner rcs override.
+    for rc_path in rc_paths.into_iter().rev() {
+        let Ok(text) = rc_path.fs_read_text() else { continue };
+        let Ok(parsed) = zpm_parsers::YamlDocument::hydrate_from_str::<YarnRcInit>(&text) else { continue };
+
+        for (key, value) in parsed.init_fields {
+            let parser_value = json_to_parser_value(&value);
+            document.set_path(
+                &zpm_parsers::Path::from_segments(vec![key]),
+                parser_value,
+            )?;
+        }
+    }
+
     Ok(())
 }
 

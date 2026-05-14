@@ -83,6 +83,12 @@ describe(`Features`, () => {
           await check;
         } else {
           await expect(check).rejects.toThrow(/YN0078/);
+          // The YN0078 message must explain what's wrong; it must mention
+          // both the "lockfile pin" wording and the actual descriptor.
+          // (Catches the regression where the error tuple contained the
+          // same locator twice and printed "would resolve to X / pins it
+          // to X" — same X, no useful information.)
+          await expect(check).rejects.toThrow(/lockfile pins/);
         }
       }),
     );

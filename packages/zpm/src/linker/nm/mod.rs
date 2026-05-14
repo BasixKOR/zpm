@@ -290,10 +290,13 @@ fn generate_workspace_node_modules(
             let child_rel_path
                 = node_rel_path.with_join_str(&ident.as_str());
 
+            // `child_rel_path` already includes `node_rel_path` (see
+            // `node_rel_path.with_join_str` above) — joining
+            // `node_rel_path` again would double-prepend it for any
+            // nested entry, e.g. `foo/node_modules/foo/node_modules/bar`
+            // instead of `foo/node_modules/bar`.
             let abs_path
-                = workspace_abs_path
-                    .with_join(&node_rel_path)
-                    .with_join(&child_rel_path);
+                = workspace_abs_path.with_join(&child_rel_path);
 
             let rel_path
                 = abs_path
@@ -346,10 +349,11 @@ fn generate_workspace_node_modules(
                     // re-extracted automatically; we just need to flag
                     // it for rebuild so the build cache doesn't short-
                     // circuit the matching tree-hash entry.
-                    let dest_abs_path
-                        = workspace_abs_path
-                            .with_join(&node_rel_path)
-                            .with_join(&child_rel_path);
+                    //
+                    // Same caveat as `abs_path` above: `child_rel_path`
+                    // already starts with `node_rel_path`, so we only
+                    // join once.
+                    let dest_abs_path = abs_path.clone();
 
                     // Switching back to nmMode: classic from a hardlinks
                     // mode needs to break the inode sharing the previous

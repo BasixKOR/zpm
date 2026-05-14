@@ -202,7 +202,17 @@ fn parse_selector(key: &str) -> Option<ResolutionSelector> {
         descriptor
     };
 
-    let parent_descriptor = if parent_part.contains('@') && !parent_part.starts_with('@') || (parent_part.starts_with('@') && parent_part[1..].contains('@')) {
+    // True when `parent_part` contains an explicit `@<range>` selector
+    // (i.e. is shaped like a descriptor rather than just an ident). We
+    // handle the two ident forms explicitly so the `@` of a scope isn't
+    // confused with the descriptor separator.
+    let has_range_separator = if let Some(rest) = parent_part.strip_prefix('@') {
+        rest.contains('@')
+    } else {
+        parent_part.contains('@')
+    };
+
+    let parent_descriptor = if has_range_separator {
         let descriptor = Descriptor::from_file_string(parent_part).ok()?;
         Some(make_anonymous(descriptor))
     } else {

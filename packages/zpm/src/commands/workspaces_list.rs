@@ -221,6 +221,14 @@ impl WorkspacesList {
                         let matches = match &descriptor.range {
                             zpm_primitives::Range::WorkspaceMagic(_) => true,
                             zpm_primitives::Range::WorkspacePath(_) => true,
+                            // `workspace:my-pkg` re-references the
+                            // workspace by ident; since we already
+                            // matched the target workspace by ident
+                            // above, this always pairs them up.
+                            zpm_primitives::Range::WorkspaceIdent(_) => true,
+                            zpm_primitives::Range::WorkspaceSemver(params) => {
+                                target_version.map_or(true, |v| params.range.check(v))
+                            },
                             zpm_primitives::Range::AnonymousSemver(params) => {
                                 target_version.map_or(true, |v| params.range.check(v))
                             },

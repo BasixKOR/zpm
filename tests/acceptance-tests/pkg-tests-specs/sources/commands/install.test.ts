@@ -333,6 +333,40 @@ describe(`Commands`, () => {
     );
 
     test(
+      `it should let --immutable=false opt out of the public-PR-CI auto-flip`,
+      makeTemporaryEnv({
+        dependencies: {
+          [`one-fixed-dep`]: `1.0.0`,
+        },
+      }, async ({path, run, source}) => {
+        await run(`install`);
+
+        const lockfilePath = ppath.join(path, Filename.lockfile);
+        const lockfileContent = await xfs.readFilePromise(lockfilePath, `utf8`);
+        const modifiedLockfile = lockfileContent.replace(/"no-deps": "1\.0\.0"/, `"no-deps": "2.0.0"`);
+        await xfs.writeFilePromise(lockfilePath, modifiedLockfile);
+
+        const eventPath = ppath.join(path, `github-event-file.json`);
+        await xfs.writeJsonPromise(eventPath, {
+          repository: {
+            private: false,
+          },
+        });
+
+        // Without --no-immutable this would auto-flip to immutable
+        // and fail with YN0028. The explicit opt-out should bypass
+        // that, even under the public-PR-CI heuristic.
+        await run(`install`, `--no-immutable`, {
+          env: {
+            GITHUB_ACTIONS: `true`,
+            GITHUB_EVENT_NAME: `pull_request`,
+            GITHUB_EVENT_PATH: npath.fromPortablePath(eventPath),
+          },
+        });
+      }),
+    );
+
+    test(
       `it should not enable --refresh-lockfile --immutable if the GH environment file is weird`,
       makeTemporaryEnv({
         dependencies: {
@@ -636,6 +670,34 @@ describe(`Commands`, () => {
             code: 1,
             stdout: expect.stringContaining(`foo`),
           });
+        },
+      ),
+    );
+
+    test(
+      `should not duplicate the build log output on --inline-builds when a build fails`,
+      makeTemporaryEnv(
+        {
+          scripts: {
+            postinstall: `echo MARKER_FROM_FAILED_BUILD && exit 1`,
+          },
+        },
+        async ({path, run, source}) => {
+          let stdout = ``;
+          try {
+            await run(`install`, `--inline-builds`);
+          } catch (error: any) {
+            stdout = error.stdout;
+          }
+
+          // Before the fix, both `emit_success_log` and
+          // `ChildProcessFailedWithLog` would attach the build log to
+          // the install summary, so the report's end-of-run section
+          // would dump *two* log files for the same failure (each one
+          // containing its own `=== STDOUT ===` header). After the fix
+          // only `ChildProcessFailedWithLog`'s log survives.
+          const occurrences = (stdout.match(/=== STDOUT ===/g) ?? []).length;
+          expect(occurrences).toEqual(1);
         },
       ),
     );

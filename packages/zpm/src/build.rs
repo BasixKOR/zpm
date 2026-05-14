@@ -129,16 +129,27 @@ impl BuildRequest {
                 }
 
                 if !script_result.success() {
-                    if inline_builds {
-                        emit_success_log(&locator, &combined_stdout, &combined_stderr);
-                    }
-
                     return match self.allowed_to_fail {
                         true => {
+                            // The error is suppressed, so the
+                            // `ChildProcessFailedWithLog` summary
+                            // never reaches the user. Inline builds
+                            // would otherwise lose the output for
+                            // these failures — emit the captured log
+                            // explicitly to preserve it.
+                            if inline_builds {
+                                emit_success_log(&locator, &combined_stdout, &combined_stderr);
+                            }
                             Ok(ScriptResult::new_success())
                         },
 
                         false => {
+                            // `script_result.ok()` writes the captured
+                            // stdout/stderr into an `error.log` and
+                            // returns `ChildProcessFailedWithLog`, which
+                            // the report layer surfaces under the
+                            // install summary — emitting a duplicate
+                            // success log here would print it twice.
                             Err(script_result.ok().unwrap_err())
                         },
                     };

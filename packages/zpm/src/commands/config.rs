@@ -24,9 +24,11 @@ impl Config {
         let project
             = Project::new(None).await?;
 
-        if self.no_redacted == Some(false) || self.no_redacted.is_none() {
-            set_redacted(true);
-        }
+        // `--no-redacted` (Some(true)) is the only case where the user
+        // wants secrets revealed. Everything else (explicit
+        // `--no-redacted=false`, or the flag unset) keeps the default
+        // redaction on.
+        set_redacted(self.no_redacted != Some(true));
 
         if !self.json {
             let tree

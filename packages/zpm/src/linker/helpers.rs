@@ -3,7 +3,7 @@ use std::{collections::{BTreeMap, BTreeSet}, fs::Permissions, os::unix::fs::Perm
 use zpm_formats::iter_ext::IterExt;
 use zpm_parsers::JsonDocument;
 use zpm_primitives::{Descriptor, VersionFilter, Locator, Reference};
-use zpm_utils::{Path, PathError, System, ToHumanString};
+use zpm_utils::{Path, PathError, System};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
@@ -394,21 +394,12 @@ pub fn get_package_internal_info(project: &Project, install: &Install, dependenc
         = has_build_commands
             && (locator.reference.is_workspace_reference() || scripts_allowed_by_meta);
 
-    if has_build_commands && !locator.reference.is_workspace_reference() && !scripts_allowed_by_meta {
-        crate::report::if_active(|report| {
-            if package_meta.built == Some(false) {
-                report.info(format!(
-                    "[YN0005] {} lists build scripts, but its build has been explicitly disabled through configuration.",
-                    locator.to_print_string(),
-                ));
-            } else {
-                report.warn(format!(
-                    "[YN0004] {} lists build scripts, but its build has been explicitly disabled through configuration.",
-                    locator.to_print_string(),
-                ));
-            }
-        });
-    }
+    // YN0004/YN0005 used to be emitted from this function. Because the
+    // linker can call us multiple times per physical package (once per
+    // virtualised locator), the warning would print N copies of the
+    // same line. The diagnostic now lives in
+    // `Install::report_disabled_build_scripts`, which dedupes by
+    // physical locator the same way the YN0002 path does.
 
     // Optional dependencies baked by zip archives are always extracted,
     // as we have no way to know whether they would be extracted if we

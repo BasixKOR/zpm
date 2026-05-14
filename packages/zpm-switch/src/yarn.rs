@@ -146,14 +146,27 @@ pub fn extract_bin_meta(args: Option<Vec<String>>) -> BinMeta {
     });
 
     while let Some(first_arg) = args.first() {
-        if first_arg == "--cwd" && args.len() >= 2 {
-            let raw = args[1].clone();
+        if first_arg == "--cwd" {
+            // The next arg has to actually be a path, not another flag
+            // or the end of the arg list — otherwise we'd silently
+            // capture e.g. `yarn --cwd --immutable` as cwd=--immutable.
+            let raw = match args.get(1) {
+                Some(next) if !next.starts_with('-') => next.clone(),
+                _ => {
+                    eprintln!("error: `--cwd` requires a path argument");
+                    std::process::exit(1);
+                },
+            };
             cwd = Some(Path::current_dir().unwrap().with_join_str(&raw));
             args.drain(0..2);
             continue;
         }
 
         if let Some(rest) = first_arg.strip_prefix("--cwd=") {
+            if rest.is_empty() {
+                eprintln!("error: `--cwd=` requires a path argument");
+                std::process::exit(1);
+            }
             let raw = rest.to_string();
             cwd = Some(Path::current_dir().unwrap().with_join_str(&raw));
             args.remove(0);
@@ -178,5 +191,37 @@ pub fn extract_bin_meta(args: Option<Vec<String>>) -> BinMeta {
         cwd,
         args,
         version,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn vec_of(items: &[&str]) -> Vec<String> {
+        items.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn cwd_space_separated_form_consumes_two_args() {
+        let meta = extract_bin_meta(Some(vec_of(&["--cwd", "./sub", "install"])));
+        assert!(meta.cwd.is_some());
+        assert_eq!(meta.args, vec_of(&["install"]));
+    }
+
+    #[test]
+    fn cwd_equals_form_consumes_one_arg() {
+        let meta = extract_bin_meta(Some(vec_of(&["--cwd=./sub", "install"])));
+        assert!(meta.cwd.is_some());
+        assert_eq!(meta.args, vec_of(&["install"]));
+    }
+
+    #[test]
+    fn missing_cwd_arg_does_not_get_set() {
+        // No `--cwd` at all — cwd should remain unset and args
+        // should pass through unchanged.
+        let meta = extract_bin_meta(Some(vec_of(&["install", "--immutable"])));
+        assert!(meta.cwd.is_none());
+        assert_eq!(meta.args, vec_of(&["install", "--immutable"]));
     }
 }

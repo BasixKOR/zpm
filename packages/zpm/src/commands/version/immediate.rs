@@ -138,19 +138,33 @@ impl Version {
 
 fn report_non_upgradeable_dependents(project: &project::Project, bumped_ident: &zpm_primitives::Ident) {
     for workspace in project.workspaces.iter() {
-        for hard in workspace.manifest.iter_hard_dependencies() {
-            if hard.ident != bumped_ident {
-                continue;
-            }
+        // Collect both hard and peer ranges that target the bumped
+        // workspace. Peers were missed before; they share the same
+        // upgrade story as hard deps.
+        let hard_ranges = workspace.manifest.iter_hard_dependencies()
+            .filter(|hard| hard.ident == bumped_ident)
+            .map(|hard| hard.descriptor.range.clone());
 
-            if let Range::WorkspaceMagic(params) = &hard.descriptor.range {
-                if matches!(params.magic, zpm_semver::RangeKind::Exact) {
-                    println!(
-                        "Couldn't auto-upgrade range {} (in {})",
-                        params.magic.to_file_string(),
-                        workspace.locator_path().to_print_string(),
-                    );
-                }
+        let peer_ranges = workspace.manifest.iter_peer_dependencies()
+            .filter(|peer| peer.ident == bumped_ident)
+            .map(|peer| peer.range.to_range());
+
+        for range in hard_ranges.chain(peer_ranges) {
+            // `workspace:^`, `workspace:~`, `workspace:*` (magics) and
+            // explicit `workspace:<semver>` ranges all encode a pin
+            // that won't follow a major bump. `WorkspaceIdent` and
+            // `WorkspacePath` aren't versioned — nothing to flag.
+            let report = matches!(
+                range,
+                Range::WorkspaceMagic(_) | Range::WorkspaceSemver(_),
+            );
+
+            if report {
+                println!(
+                    "Couldn't auto-upgrade range {} (in {})",
+                    range.to_file_string(),
+                    workspace.locator_path().to_print_string(),
+                );
             }
         }
     }

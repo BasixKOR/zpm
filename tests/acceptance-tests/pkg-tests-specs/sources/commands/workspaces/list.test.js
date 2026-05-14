@@ -151,6 +151,74 @@ describe(`Commands`, () => {
     );
 
     test(
+      `it should recognize workspace:^ ranges as workspace dependencies`,
+      makeTemporaryEnv(
+        {
+          private: true,
+          workspaces: [`packages/*`],
+        },
+        async ({path, run}) => {
+          await writeJson(`${path}/packages/workspace-a/package.json`, {
+            name: `workspace-a`,
+            version: `1.0.0`,
+            dependencies: {
+              [`workspace-b`]: `workspace:^1.0.0`,
+            },
+          });
+
+          await writeJson(`${path}/packages/workspace-b/package.json`, {
+            name: `workspace-b`,
+            version: `1.0.0`,
+          });
+
+          await expect(parseJsonStream(
+            (await run(`workspaces`, `list`, `-v`, `--json`)).stdout,
+            `location`,
+          )).toMatchObject({
+            [`packages/workspace-a`]: {
+              workspaceDependencies: [`packages/workspace-b`],
+              mismatchedWorkspaceDependencies: [],
+            },
+          });
+        },
+      ),
+    );
+
+    test(
+      `it should recognize workspace:<ident> ranges as workspace dependencies`,
+      makeTemporaryEnv(
+        {
+          private: true,
+          workspaces: [`packages/*`],
+        },
+        async ({path, run}) => {
+          await writeJson(`${path}/packages/workspace-a/package.json`, {
+            name: `workspace-a`,
+            version: `1.0.0`,
+            dependencies: {
+              [`workspace-b`]: `workspace:workspace-b`,
+            },
+          });
+
+          await writeJson(`${path}/packages/workspace-b/package.json`, {
+            name: `workspace-b`,
+            version: `1.0.0`,
+          });
+
+          await expect(parseJsonStream(
+            (await run(`workspaces`, `list`, `-v`, `--json`)).stdout,
+            `location`,
+          )).toMatchObject({
+            [`packages/workspace-a`]: {
+              workspaceDependencies: [`packages/workspace-b`],
+              mismatchedWorkspaceDependencies: [],
+            },
+          });
+        },
+      ),
+    );
+
+    test(
       `--since returns no workspaces if there have been no changes`,
       makeWorkspacesListSinceEnv(async ({run}) => {
         await expect(

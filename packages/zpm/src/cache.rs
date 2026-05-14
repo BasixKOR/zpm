@@ -357,17 +357,23 @@ impl DiskCache {
             = key_path.to_path_buf();
 
         if !force_refetch {
-            let read
-                = tokio::fs::read(key_path_buf.clone()).await;
-
-            if let Ok(data) = read {
-                return Ok(DataCacheEntry {
-                    info: InfoCacheEntry {
-                        path: key_path,
-                        checksum: None,
-                    },
-                    data,
-                });
+            match tokio::fs::read(key_path_buf.clone()).await {
+                Ok(data) => {
+                    return Ok(DataCacheEntry {
+                        info: InfoCacheEntry {
+                            path: key_path,
+                            checksum: None,
+                        },
+                        data,
+                    });
+                },
+                // Only treat a missing entry as "cache miss, fall through
+                // to refetch". Any other IO error (permission denied,
+                // interrupted read, …) must be surfaced — silently
+                // refetching+overwriting would defeat any protection the
+                // user set on the cache files.
+                Err(err) if err.kind() == std::io::ErrorKind::NotFound => {},
+                Err(err) => return Err(err.into()),
             }
         }
 

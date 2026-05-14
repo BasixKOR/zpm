@@ -599,11 +599,7 @@ enum CacheHit {
 /// someone swapping the lockfile's locator for an unrelated package
 /// or out-of-range version.
 fn verify_resolution_consistency(descriptor: &Descriptor, locator: &Locator) -> Result<(), Error> {
-    let mismatch = || Error::ResolutionMismatch(
-        descriptor.clone(),
-        locator.clone(),
-        locator.clone(),
-    );
+    let mismatch = || Error::ResolutionMismatch(descriptor.clone(), locator.clone());
 
     match &descriptor.range {
         Range::RegistrySemver(range_params) => {
@@ -833,6 +829,71 @@ impl Install {
         }
     }
 
+    /// Emits YN0004 / YN0005 once per *physical* locator that lists
+    /// build commands but has scripts disabled. Without this dedup the
+    /// same package would surface a warning per virtualised locator,
+    /// which can mean dozens of identical lines for a single package.
+    async fn report_disabled_build_scripts(&self, project: &Project) {
+        let report_guard = current_report().await;
+        let Some(report) = report_guard.as_ref() else {
+            return;
+        };
+
+        let dependencies_meta = crate::linker::helpers::TopLevelConfiguration::from_project(project);
+
+        let mut warned: BTreeSet<Locator> = BTreeSet::new();
+
+        for (virtual_locator, resolution) in &self.install_state.resolution_tree.locator_resolutions {
+            let physical_locator = virtual_locator.physical_locator();
+            if !warned.insert(physical_locator.clone()) {
+                continue;
+            }
+
+            // Workspaces are always allowed to run their own scripts,
+            // so they're never the source of this warning. Bail early.
+            if physical_locator.reference.is_workspace_reference() {
+                continue;
+            }
+
+            let Some(package_flags) = self.install_state.content_flags.get(&physical_locator) else {
+                continue;
+            };
+
+            if package_flags.build_commands.is_empty() {
+                continue;
+            }
+
+            let package_ident = match &physical_locator.reference {
+                Reference::Registry(params) => &params.ident,
+                _ => &physical_locator.ident,
+            };
+
+            let package_meta = dependencies_meta.iter()
+                .find(|(selector, _)| selector.check(package_ident, &resolution.version))
+                .map(|(_, meta)| meta.clone())
+                .unwrap_or_default();
+
+            let scripts_allowed_by_meta = package_meta.built
+                .unwrap_or(project.config.settings.enable_scripts.value);
+
+            if scripts_allowed_by_meta {
+                continue;
+            }
+
+            if package_meta.built == Some(false) {
+                report.info(format!(
+                    "[YN0005] {} lists build scripts, but its build has been explicitly disabled through configuration.",
+                    physical_locator.to_print_string(),
+                ));
+            } else {
+                report.warn(format!(
+                    "[YN0004] {} lists build scripts, but its build has been explicitly disabled through configuration.",
+                    physical_locator.to_print_string(),
+                ));
+            }
+        }
+    }
+
     async fn report_package_extension_diagnostics(&self, project: &Project) {
         let report_guard = current_report().await;
         let Some(report) = report_guard.as_ref() else {
@@ -875,6 +936,7 @@ impl Install {
 
     pub async fn link_and_build(mut self, project: &mut Project) -> Result<InstallResult, Error> {
         self.report_missing_peer_dependencies().await;
+        self.report_disabled_build_scripts(project).await;
         self.report_package_extension_diagnostics(project).await;
 
         let graph = build_locator_graph(
