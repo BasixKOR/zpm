@@ -27,7 +27,6 @@ describe(`Commands`, () => {
           code: 42,
         });
       }));
-
     });
   }
 

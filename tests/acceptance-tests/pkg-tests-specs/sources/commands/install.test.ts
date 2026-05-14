@@ -1003,6 +1003,5 @@ describe(`Commands`, () => {
         await run(`install`);
       }),
     );
-
   });
 });

@@ -1,4 +1,4 @@
-import {Filename, ppath, xfs}  from '@yarnpkg/fslib';
+import {Filename, ppath, xfs} from '@yarnpkg/fslib';
 
 const tests: Array<[initial: string, replacement: string, valid: boolean]> = [
   [`no-deps@npm:^1.0.0`, `no-deps@npm:2.0.0`, false],
