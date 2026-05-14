@@ -1,19 +1,8 @@
 use clipanion::cli;
-use zpm_config::{Settings, Source};
+use zpm_config::Settings;
 use zpm_utils::set_redacted;
 
 use crate::{error::Error, project::Project};
-
-fn source_label(source: &Source) -> &'static str {
-    match source {
-        Source::Default => "<default>",
-        Source::User => "<user>",
-        Source::Project => "<project>",
-        Source::Environment => "<environment>",
-        Source::Cli => "<cli>",
-        Source::Mixed => "<mixed>",
-    }
-}
 
 /// List the project's configuration values
 #[cli::command]
@@ -61,7 +50,7 @@ impl Config {
             let line = serde_json::json!({
                 "key": name,
                 "effective": value,
-                "source": source_label(&entry.source),
+                "source": entry.source.label(),
             });
 
             println!("{}", serde_json::to_string(&line).unwrap());

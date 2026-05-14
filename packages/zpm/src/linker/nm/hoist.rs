@@ -7,7 +7,6 @@ use zpm_utils::{FromFileString, Path, ToFileString, ToHumanString, tree};
 use crate::{
     algos,
     install::InstallState,
-    manifest::HoistingLimitsValue,
     project::Project,
 };
 use zpm_config::NmHoistingLimits;
@@ -162,7 +161,7 @@ impl<'a> WorkTree<'a> {
             = locator.physical_locator();
 
         let may_have_dependencies
-            = (!physical_locator.reference.is_workspace_reference() || !terminal_workspaces) && !matches!(physical_locator.reference, Reference::Link(_));
+            = (!physical_locator.reference.is_workspace_reference() || !terminal_workspaces) && !physical_locator.reference.is_link();
 
         if may_have_dependencies {
             // Workspaces excluded from a `workspaces focus` run drop
@@ -227,7 +226,7 @@ impl<'a> WorkTree<'a> {
     /// (Node walks up from the symlink target, not from the portal's
     /// position in `node_modules`).
     pub fn blocks_outbound_hoisting(&self, node_idx: usize) -> bool {
-        if matches!(self.nodes[node_idx].locator.reference.physical_reference(), Reference::Portal(_)) {
+        if self.nodes[node_idx].locator.reference.physical_reference().is_portal() {
             return false;
         }
 
@@ -236,7 +235,7 @@ impl<'a> WorkTree<'a> {
             NmHoistingLimits::Workspaces => {
                 let reference = &self.nodes[node_idx].locator.reference;
                 reference.is_workspace_reference()
-                    || matches!(reference, Reference::Link(_))
+                    || reference.is_link()
             },
             NmHoistingLimits::Dependencies => true,
         }
@@ -495,10 +494,8 @@ impl<'a, 'b> Hoister<'a, 'b> {
             // deps through the symlink it lives at), so we treat them
             // as if the host had `none` inbound when this child is a
             // portal.
-            let child_is_portal = matches!(
-                self.work_tree.nodes[child_idx].locator.reference.physical_reference(),
-                Reference::Portal(_),
-            );
+            let child_is_portal
+                = self.work_tree.nodes[child_idx].locator.reference.physical_reference().is_portal();
 
             if (host_blocks_inbound && !child_is_portal) || self.work_tree.blocks_outbound_hoisting(child_idx) {
                 continue;
@@ -644,7 +641,7 @@ impl<'a, 'b> Hoister<'a, 'b> {
                 let is_workspace
                     = scc.iter().any(|&scc_locator| {
                         is_workspace_backed_locator(self.work_tree.project, scc_locator)
-                            || matches!(scc_locator.reference.physical_reference(), Reference::Portal(_))
+                            || scc_locator.reference.physical_reference().is_portal()
                     });
 
                 if is_workspace {

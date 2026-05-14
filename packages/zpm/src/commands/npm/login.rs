@@ -107,9 +107,9 @@ impl Login {
         });
 
         with_report_result(report, async {
-            current_report().await.as_ref().map(|report| {
+            crate::report::if_active_async(|report| {
                 report.info(format!("Logging in to {}", DataType::Url.colorize(&registry)));
-            });
+            }).await;
 
             let token
                 = self.authenticate(&project.http_client, &registry).await?;
@@ -123,19 +123,7 @@ impl Login {
                 .ok_missing()?
                 .unwrap_or_default();
 
-            let auth_token_path = if let Some(scope) = self.scope.as_ref() {
-                zpm_parsers::Path::from_segments(vec![
-                    "npmScopes".to_string(),
-                    scope.to_string(),
-                    "npmAuthToken".to_string(),
-                ])
-            } else {
-                zpm_parsers::Path::from_segments(vec![
-                    "npmRegistries".to_string(),
-                    registry.to_string(),
-                    "npmAuthToken".to_string(),
-                ])
-            };
+            let auth_token_path = npm_credential_path(self.scope.as_deref(), &registry, "npmAuthToken");
 
             let mut updated_content = DataDocument::update_document_field(
                 &config_content,
@@ -144,19 +132,7 @@ impl Login {
             )?;
 
             if self.always_auth {
-                let always_auth_path = if let Some(scope) = self.scope.as_ref() {
-                    zpm_parsers::Path::from_segments(vec![
-                        "npmScopes".to_string(),
-                        scope.to_string(),
-                        "npmAlwaysAuth".to_string(),
-                    ])
-                } else {
-                    zpm_parsers::Path::from_segments(vec![
-                        "npmRegistries".to_string(),
-                        registry.to_string(),
-                        "npmAlwaysAuth".to_string(),
-                    ])
-                };
+                let always_auth_path = npm_credential_path(self.scope.as_deref(), &registry, "npmAlwaysAuth");
 
                 updated_content = DataDocument::update_document_field(
                     &updated_content,
@@ -168,9 +144,9 @@ impl Login {
             config_path
                 .fs_write_text(&updated_content)?;
 
-            current_report().await.as_ref().map(|report| {
+            crate::report::if_active_async(|report| {
                 report.info("Successfully logged in".to_string());
-            });
+            }).await;
 
             Ok(())
         }).await
@@ -360,4 +336,21 @@ async fn get_credentials(is_token: bool) -> Result<Credentials, Error> {
         username,
         password,
     })
+}
+
+/// Builds the rc-document path for an npm credential key (`leaf`), keyed
+/// by scope when present, otherwise by registry URL.
+fn npm_credential_path(scope: Option<&str>, registry: &str, leaf: &str) -> zpm_parsers::Path {
+    match scope {
+        Some(scope) => zpm_parsers::Path::from_segments(vec![
+            "npmScopes".to_string(),
+            scope.to_string(),
+            leaf.to_string(),
+        ]),
+        None => zpm_parsers::Path::from_segments(vec![
+            "npmRegistries".to_string(),
+            registry.to_string(),
+            leaf.to_string(),
+        ]),
+    }
 }

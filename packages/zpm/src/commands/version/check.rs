@@ -52,19 +52,8 @@ impl VersionCheck {
 
         let versioning_state = collect_versioning_state(&project).await?;
 
-        let dependent_map = build_dependent_map(&project);
-        let mut workspaces_to_check: BTreeSet<Ident> = changed_workspaces.keys().cloned().collect();
-        let mut queue: Vec<Ident> = workspaces_to_check.iter().cloned().collect();
-
-        while let Some(ident) = queue.pop() {
-            if let Some(dependents) = dependent_map.get(&ident) {
-                for dep in dependents {
-                    if workspaces_to_check.insert(dep.clone()) {
-                        queue.push(dep.clone());
-                    }
-                }
-            }
-        }
+        let roots: BTreeSet<Ident> = changed_workspaces.keys().cloned().collect();
+        let workspaces_to_check = project.workspaces_with_dependents(&roots);
 
         let mut missing_bumps = Vec::new();
 
@@ -135,21 +124,3 @@ async fn collect_versioning_state(project: &Project) -> Result<VersioningState, 
     Ok(VersioningState { releases, declined })
 }
 
-fn build_dependent_map(project: &Project) -> BTreeMap<Ident, Vec<Ident>> {
-    let mut map: BTreeMap<Ident, Vec<Ident>> = BTreeMap::new();
-    let workspace_idents: BTreeSet<Ident> = project.workspaces.iter()
-        .map(|w| w.name.clone())
-        .collect();
-
-    for workspace in &project.workspaces {
-        for hard in workspace.manifest.iter_hard_dependencies() {
-            if workspace_idents.contains(&hard.descriptor.ident) {
-                map.entry(hard.descriptor.ident.clone())
-                    .or_default()
-                    .push(workspace.name.clone());
-            }
-        }
-    }
-
-    map
-}

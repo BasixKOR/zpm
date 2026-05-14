@@ -239,9 +239,6 @@ pub struct DaemonSendCommand {
 
 impl DaemonSendCommand {
     pub async fn execute(&self) -> Result<(), Error> {
-        use futures::{SinkExt, stream::StreamExt};
-        use tokio_tungstenite::tungstenite::Message;
-
         let project_cwd
             = get_final_cwd()?;
 
@@ -257,65 +254,18 @@ impl DaemonSendCommand {
             = daemons::get_daemon(&detected_root)?
                 .ok_or(Error::DaemonNotRunning)?;
 
-        let url
-            = build_ws_url(entry.port, entry.auth_token.as_deref());
-
-        let (mut ws, _) = tokio_tungstenite::connect_async(&url)
-            .await
-            .map_err(|e| Error::DaemonConnectionFailed(Arc::new(std::io::Error::new(
-                std::io::ErrorKind::ConnectionRefused,
-                e.to_string(),
-            ))))?;
-
-        let request_id: u64 = 1;
         let request_payload: serde_json::Value = serde_json::from_str(&self.send)
             .map_err(|e| Error::InvalidDaemonMessage(e.to_string()))?;
 
-        let envelope = serde_json::json!({
-            "requestId": request_id,
-            "request": request_payload,
-        });
+        let resp = crate::ipc::send_daemon_request(
+            &entry,
+            request_payload,
+            Duration::from_secs(5),
+        ).await?;
 
-        ws.send(Message::Text(envelope.to_string().into()))
-            .await
-            .map_err(|e| Error::DaemonConnectionFailed(Arc::new(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                e.to_string(),
-            ))))?;
-
-        let timeout = Duration::from_secs(5);
-        let response = tokio::time::timeout(timeout, async {
-            while let Some(Ok(msg)) = ws.next().await {
-                if let Message::Text(text) = msg {
-                    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&text) {
-                        if parsed.get("kind").and_then(|k| k.as_str()) == Some("response") {
-                            if parsed.get("requestId").and_then(|r| r.as_u64()) == Some(request_id) {
-                                if let Some(resp) = parsed.get("response") {
-                                    return Some(resp.clone());
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            None
-        }).await;
-
-        ws.close(None).await.ok();
-
-        match response {
-            Ok(Some(resp)) => {
-                println!("{}", serde_json::to_string(&resp).unwrap_or_default());
-                Ok(())
-            },
-            _ => Err(Error::DaemonStartTimeout),
-        }
+        println!("{}", serde_json::to_string(&resp).unwrap_or_default());
+        Ok(())
     }
 }
 
-pub fn build_ws_url(port: u16, token: Option<&str>) -> String {
-    match token {
-        Some(t) => format!("ws://127.0.0.1:{}/?token={}", port, t),
-        None => format!("ws://127.0.0.1:{}/", port),
-    }
-}
+pub use crate::ipc::build_ws_url;

@@ -1,11 +1,12 @@
 use std::sync::Arc;
 
 use clipanion::cli;
-use zpm_config::{Configuration, ConfigurationContext};
+use zpm_config::Configuration;
 use zpm_parsers::{DataDocument, JsonDocument, Value};
-use zpm_utils::{IoResultExt, LastModifiedAt, Path, ToFileString};
+use zpm_utils::{IoResultExt, ToFileString};
 
 use crate::{
+    commands::rc_helpers,
     error::Error,
     project::Project,
 };
@@ -46,13 +47,7 @@ pub struct ConfigUnset {
 impl ConfigUnset {
     pub async fn execute(&self) -> Result<(), Error> {
         let document_path = if self.home {
-            let user_cwd = Path::home_dir()?
-                .ok_or(Error::HomeDirectoryNotFound)?;
-
-            let rc_filename = std::env::var("YARN_RC_FILENAME")
-                .unwrap_or_else(|_| ".yarnrc.yml".to_string());
-
-            user_cwd.with_join_str(&rc_filename)
+            rc_helpers::home_rc_path()?
         } else {
             let project = Project::new(None).await?;
 
@@ -94,20 +89,7 @@ impl ConfigUnset {
             .fs_change(&updated_document, false)?;
 
         let _config: Configuration = if self.home {
-            let user_cwd = Path::home_dir()?
-                .ok_or(Error::HomeDirectoryNotFound)?;
-
-            let context = ConfigurationContext {
-                env: std::env::vars().collect(),
-                user_cwd: Some(user_cwd),
-                project_cwd: None,
-                package_cwd: None,
-            };
-
-            let mut last_modified_at = LastModifiedAt::new();
-
-            Configuration::load(&context, &mut last_modified_at)
-                .map_err(|e| Error::ConfigurationParseError(Arc::new(e)))?
+            rc_helpers::load_home_config()?
         } else {
             Project::new(None).await?.config
         };

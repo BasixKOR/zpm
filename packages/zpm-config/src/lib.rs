@@ -11,6 +11,15 @@ pub struct ConfigurationContext {
     pub package_cwd: Option<Path>,
 }
 
+impl ConfigurationContext {
+    /// Returns the most-specific cwd available — project, falling back to
+    /// package. Used by derived-path settings (cache folder, tsconfig
+    /// probes, …) to pick the right base.
+    pub fn preferred_cwd(&self) -> Option<&Path> {
+        self.project_cwd.as_ref().or(self.package_cwd.as_ref())
+    }
+}
+
 #[derive(Debug, Clone, Copy, Default)]
 pub enum Source {
     #[default]
@@ -22,6 +31,20 @@ pub enum Source {
     Mixed,
 }
 
+impl Source {
+    /// Yarn-berry-compatible label printed in `yarn config --json` output.
+    pub fn label(&self) -> &'static str {
+        match self {
+            Source::Default => "<default>",
+            Source::User => "<user>",
+            Source::Project => "<project>",
+            Source::Environment => "<environment>",
+            Source::Cli => "<cli>",
+            Source::Mixed => "<mixed>",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct Setting<T> {
     pub value: T,
@@ -31,6 +54,13 @@ pub struct Setting<T> {
 impl<T> Setting<T> {
     pub fn new(value: T, source: Source) -> Self {
         Self {value, source}
+    }
+
+    /// Overrides the setting with `value` and stamps it with `source`.
+    /// Used by `install` and friends when a CLI flag forces a setting.
+    pub fn force(&mut self, value: T, source: Source) {
+        self.value = value;
+        self.source = source;
     }
 }
 

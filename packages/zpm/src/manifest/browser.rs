@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use rkyv::Archive;
 use serde_with::serde_as;
-use zpm_utils::{Path, RawPath};
+use zpm_utils::RawPath;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Archive, rkyv::Serialize, rkyv::Deserialize)]
@@ -21,22 +21,21 @@ pub enum BrowserField {
 }
 
 impl BrowserField {
-    pub fn paths(&self) -> impl Iterator<Item = String> {
+    pub fn paths(&self) -> Box<dyn Iterator<Item = &str> + '_> {
         match self {
             BrowserField::String(path)
-                => vec![path.path.as_str().to_string()].into_iter(),
+                => Box::new(std::iter::once(path.path.as_str())),
 
             BrowserField::Map(map)
-                => map.iter()
-                    .flat_map(|(key, entry)| {
-                        let mut paths = vec![key.clone()];
-                        if let BrowserFieldEntry::Path(path) = entry {
-                            paths.push(path.path.as_str().to_string());
-                        }
-                        paths
-                    })
-                    .collect::<Vec<_>>()
-                    .into_iter(),
+                => Box::new(map.iter().flat_map(|(key, entry)| {
+                    let extra = if let BrowserFieldEntry::Path(path) = entry {
+                        Some(path.path.as_str())
+                    } else {
+                        None
+                    };
+
+                    std::iter::once(key.as_str()).chain(extra)
+                })),
         }
     }
 }

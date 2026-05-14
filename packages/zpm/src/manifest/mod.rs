@@ -316,29 +316,44 @@ impl HardDependencyKind {
 #[derive(Debug, Clone)]
 pub struct HardDependency<'a> {
     pub kind: HardDependencyKind,
+    pub ident: &'a Ident,
     pub descriptor: &'a Descriptor,
+}
+
+#[derive(Debug, Clone)]
+pub struct PeerDependency<'a> {
+    pub ident: &'a Ident,
+    pub range: &'a PeerRange,
 }
 
 impl Manifest {
     pub fn iter_hard_dependencies(&self) -> impl Iterator<Item = HardDependency<'_>> {
-        let dependencies_iter = self.remote.dependencies.values()
-            .map(|descriptor| HardDependency {
+        let dependencies_iter = self.remote.dependencies.iter()
+            .map(|(ident, descriptor)| HardDependency {
                 kind: HardDependencyKind::Dependency,
+                ident,
                 descriptor,
             });
 
-        let optional_dependencies_iter = self.remote.optional_dependencies.values()
-            .map(|descriptor| HardDependency {
+        let optional_dependencies_iter = self.remote.optional_dependencies.iter()
+            .map(|(ident, descriptor)| HardDependency {
                 kind: HardDependencyKind::OptionalDependency,
+                ident,
                 descriptor,
             });
 
-        let dev_dependencies_iter = self.dev_dependencies.values()
-            .map(|descriptor| HardDependency {
+        let dev_dependencies_iter = self.dev_dependencies.iter()
+            .map(|(ident, descriptor)| HardDependency {
                 kind: HardDependencyKind::DevDependency,
+                ident,
                 descriptor,
             });
 
         dependencies_iter.chain(optional_dependencies_iter).chain(dev_dependencies_iter)
+    }
+
+    pub fn iter_peer_dependencies(&self) -> impl Iterator<Item = PeerDependency<'_>> {
+        self.remote.peer_dependencies.iter()
+            .map(|(ident, range)| PeerDependency { ident, range })
     }
 }

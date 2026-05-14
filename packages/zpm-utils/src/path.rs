@@ -413,6 +413,22 @@ impl Path {
         Ok(())
     }
 
+    /// Changes the process cwd *and* updates `PWD` to this path (the
+    /// user-specified, possibly-symlinked form). Without the PWD update,
+    /// child processes like `pwd` resolve through the symlink and surface
+    /// the canonical path — which is the wrong answer when the user
+    /// explicitly chose the symlinked form via `--cwd`.
+    ///
+    /// # Safety
+    /// `set_var` is wrapped in an unsafe block; callers must only invoke
+    /// this during startup before any other threads exist.
+    pub unsafe fn sys_set_current_dir_with_pwd(&self) -> Result<(), PathError> {
+        self.sys_set_current_dir()?;
+        // SAFETY: caller contract guarantees single-threaded startup.
+        unsafe { std::env::set_var("PWD", self.as_str()); }
+        Ok(())
+    }
+
     pub fn fs_canonicalize(&self) -> Result<Path, PathError> {
         Ok(Path::try_from(std::fs::canonicalize(&self.path)?)?)
     }
@@ -711,6 +727,30 @@ impl Path {
             SyncEntryKind::Folder
                 => self.fs_create_dir_all(),
         }
+    }
+
+    /// Like `fs_expect`, but lets the caller build a domain-specific error
+    /// when the file is missing or its content differs from `expected_data`.
+    /// Permission bits are not checked — this is purely a content compare.
+    /// Returns `Ok(self)` on match or `Err(build_err())` on missing/mismatch.
+    pub fn fs_expect_with<T, E, F>(&self, expected_data: T, build_err: F) -> Result<&Self, E>
+    where
+        T: AsRef<[u8]>,
+        F: FnOnce() -> E,
+        E: From<PathError>,
+    {
+        let current_content = self.fs_read()
+            .ok_missing()?;
+
+        let matches = current_content.as_ref()
+            .map(|current| current.as_slice() == expected_data.as_ref())
+            .unwrap_or(false);
+
+        if !matches {
+            return Err(build_err());
+        }
+
+        Ok(self)
     }
 
     pub fn fs_expect<T: AsRef<[u8]>>(&self, expected_data: T, is_exec: bool) -> Result<&Self, PathError> {

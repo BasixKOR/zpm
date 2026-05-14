@@ -176,66 +176,71 @@ fn fs_extract_archive_impl(destination: &Path, package_data: &PackageData, mut m
     Ok(!already_extracted)
 }
 
+/// Ensures `target` is a hardlink to `source`. No-ops if both already
+/// share an inode; otherwise removes any existing `target` and creates
+/// the hardlink. `source` must already exist.
+fn ensure_hardlink(target: &Path, source: &Path) -> Result<(), Error> {
+    use std::os::unix::fs::MetadataExt;
+
+    let dest_meta = target.fs_symlink_metadata().ok();
+    let source_meta = source.fs_metadata().ok();
+
+    let already_linked = match (&dest_meta, &source_meta) {
+        (Some(d), Some(s)) => d.dev() == s.dev() && d.ino() == s.ino(),
+        _ => false,
+    };
+
+    if already_linked {
+        return Ok(());
+    }
+
+    if target.fs_exists() {
+        target.fs_rm_file().ok();
+    }
+
+    std::fs::hard_link(source.to_path_buf(), target.to_path_buf())
+        .map_err(zpm_utils::PathError::from)?;
+
+    Ok(())
+}
+
+/// Writes `data` at `target` (overwriting if present) with `mode_bits`
+/// permissions. Used as the "canonical first write" path for both the
+/// local hardlink index and the CAS.
+fn write_canonical(target: &Path, data: &[u8], mode_bits: u32) -> Result<(), Error> {
+    if target.fs_exists() {
+        target.fs_rm_file().ok();
+    }
+
+    target
+        .fs_write(data)?
+        .fs_set_permissions(Permissions::from_mode(mode_bits))?;
+
+    Ok(())
+}
+
 fn link_into_local_index(
     target_path: &Path,
     data: &[u8],
     mode: u32,
     local_index: &mut BTreeMap<zpm_utils::Hash64, Path>,
 ) -> Result<(), Error> {
-    use std::os::unix::fs::MetadataExt;
-
     let mode_bits = mode & 0o777;
     let hash = zpm_utils::Hash64::from_data(data);
 
-    // First time we see this content: write it normally and stash
-    // the location so siblings can hardlink to it later. We also
-    // remember the path so we can short-circuit subsequent writes
-    // even if they target a different folder.
-    let Some(canonical_path) = local_index.get(&hash).cloned() else {
-        if target_path.fs_exists() {
-            target_path.fs_rm_file().ok();
-        }
-        target_path
-            .fs_write(data)?
-            .fs_set_permissions(Permissions::from_mode(mode_bits))?;
+    // Hoist the existing canonical entry; if missing (or its file got
+    // blown away between installs), fall through to the "write canonical"
+    // path which both creates the file and registers it as the new home.
+    let canonical_path = local_index.get(&hash).cloned()
+        .filter(|p| p.fs_exists());
+
+    let Some(canonical_path) = canonical_path else {
+        write_canonical(target_path, data, mode_bits)?;
         local_index.insert(hash, target_path.clone());
         return Ok(());
     };
 
-    // If the canonical path got blown away between installs (user
-    // deleted node_modules, say), fall back to a fresh write at the
-    // target and treat that as the new canonical copy.
-    if !canonical_path.fs_exists() {
-        if target_path.fs_exists() {
-            target_path.fs_rm_file().ok();
-        }
-        target_path
-            .fs_write(data)?
-            .fs_set_permissions(Permissions::from_mode(mode_bits))?;
-        local_index.insert(hash, target_path.clone());
-        return Ok(());
-    }
-
-    // Skip the hardlink if the target already shares an inode with
-    // the canonical path — repeated runs on an unchanged tree are
-    // a no-op.
-    let dest_meta = target_path.fs_symlink_metadata().ok();
-    let canonical_meta = canonical_path.fs_metadata().ok();
-
-    let already_linked = match (&dest_meta, &canonical_meta) {
-        (Some(d), Some(c)) => d.dev() == c.dev() && d.ino() == c.ino(),
-        _ => false,
-    };
-
-    if !already_linked {
-        if target_path.fs_exists() {
-            target_path.fs_rm_file().ok();
-        }
-        std::fs::hard_link(canonical_path.to_path_buf(), target_path.to_path_buf())
-            .map_err(zpm_utils::PathError::from)?;
-    }
-
-    Ok(())
+    ensure_hardlink(target_path, &canonical_path)
 }
 
 /// Time marker we set on every index entry so that a later
@@ -286,37 +291,15 @@ fn link_into_cas(target_path: &Path, data: &[u8], mode: u32, index_root: &Path) 
     }
 
     if needs_rewrite {
-        if index_path.fs_exists() {
-            // Truncate in place so existing hardlinks (other projects'
-            // node_modules) inherit the repair without breaking their
-            // inode identity.
-            index_path.fs_write(data)?;
-        } else {
-            index_path.fs_write(data)?;
-        }
+        // Repair-in-place: writing through the existing path preserves
+        // any hardlinks from other projects so they inherit the repair
+        // without their inode identity changing.
+        index_path.fs_write(data)?;
         index_path.fs_set_permissions(Permissions::from_mode(mode_bits))?;
         set_safe_mtime(&index_path)?;
     }
 
-    // Decide whether to link or skip: if the destination already
-    // shares an inode with the index entry, there's nothing to do.
-    let dest_meta = target_path.fs_symlink_metadata().ok();
-    let index_meta = index_path.fs_metadata().ok();
-
-    let already_linked = match (&dest_meta, &index_meta) {
-        (Some(d), Some(i)) => d.dev() == i.dev() && d.ino() == i.ino(),
-        _ => false,
-    };
-
-    if !already_linked {
-        if target_path.fs_exists() {
-            target_path.fs_rm_file().ok();
-        }
-        std::fs::hard_link(index_path.to_path_buf(), target_path.to_path_buf())
-            .map_err(zpm_utils::PathError::from)?;
-    }
-
-    Ok(())
+    ensure_hardlink(target_path, &index_path)
 }
 
 fn set_safe_mtime(path: &Path) -> Result<(), Error> {
@@ -412,21 +395,19 @@ pub fn get_package_internal_info(project: &Project, install: &Install, dependenc
             && (locator.reference.is_workspace_reference() || scripts_allowed_by_meta);
 
     if has_build_commands && !locator.reference.is_workspace_reference() && !scripts_allowed_by_meta {
-        if let Some(report_guard) = crate::report::try_current_report() {
-            if let Some(report) = report_guard.as_ref() {
-                if package_meta.built == Some(false) {
-                    report.info(format!(
-                        "[YN0005] {} lists build scripts, but its build has been explicitly disabled through configuration.",
-                        locator.to_print_string(),
-                    ));
-                } else {
-                    report.warn(format!(
-                        "[YN0004] {} lists build scripts, but its build has been explicitly disabled through configuration.",
-                        locator.to_print_string(),
-                    ));
-                }
+        crate::report::if_active(|report| {
+            if package_meta.built == Some(false) {
+                report.info(format!(
+                    "[YN0005] {} lists build scripts, but its build has been explicitly disabled through configuration.",
+                    locator.to_print_string(),
+                ));
+            } else {
+                report.warn(format!(
+                    "[YN0004] {} lists build scripts, but its build has been explicitly disabled through configuration.",
+                    locator.to_print_string(),
+                ));
             }
-        }
+        });
     }
 
     // Optional dependencies baked by zip archives are always extracted,

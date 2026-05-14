@@ -2,7 +2,7 @@ use clipanion::cli;
 use itertools::Itertools;
 use zpm_utils::{DataType, IoResultExt, Path};
 
-use crate::{error::Error, project, report::{StreamReport, StreamReportConfig, current_report, with_report_result}};
+use crate::{error::Error, project, report::{StreamReport, StreamReportConfig, with_report_result}};
 
 /// Remove cache files
 ///
@@ -115,13 +115,13 @@ async fn clear_cache(old: bool, mirror: bool, all: bool) -> Result<(), Error> {
             }
         }
 
-        current_report().await.as_ref().map(|report| {
+        crate::report::if_active_async(|report| {
             if cleared_entries > 0 {
                 report.info(format!("Cleared {} entries from the cache.", DataType::Number.colorize(&cleared_entries.to_string())))
             } else {
                 report.info("No entries to clear from the cache.".to_string());
             }
-        });
+        }).await;
 
         Ok(())
     }).await?;

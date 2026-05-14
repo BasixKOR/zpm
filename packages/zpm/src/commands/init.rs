@@ -6,7 +6,7 @@ use serde::Deserialize;
 use std::collections::BTreeMap;
 
 use crate::{
-    commands::dlx,
+    commands::dlx::{install_and_run_single, InstallAndRunOptions},
     descriptor_loose::{self, LooseDescriptor},
     error::Error,
     install::InstallContext,
@@ -89,9 +89,6 @@ impl InitWithTemplate {
         let template
             = self.template.resolve(&install_context, &resolve_options).await?;
 
-        let preferred_name
-            = template.descriptor.ident.name().to_string();
-
         let enforced_resolutions
             = vec![template.clone()].into_iter()
                 .filter_map(|resolution| resolution.locator.map(|locator| (resolution.descriptor, Some(locator))))
@@ -104,15 +101,12 @@ impl InitWithTemplate {
 
         println!();
 
-        let dlx_project
-            = dlx::setup_project().await?;
-        let dlx_project
-            = dlx::install_dependencies(&dlx_project.project_cwd, vec![template], false).await?;
-        let bin
-            = dlx::find_binary(&dlx_project, &preferred_name, true)?;
-
-        println!();
-        dlx::run_binary(&dlx_project, bin, self.args.clone(), init_cwd.clone()).await?;
+        install_and_run_single(self.template.clone(), InstallAndRunOptions {
+            args: self.args.clone(),
+            run_cwd: Some(init_cwd.clone()),
+            fallback_binary: true,
+            ..Default::default()
+        }).await?;
 
         Ok(())
     }
@@ -176,8 +170,7 @@ struct YarnRcInit {
 }
 
 fn apply_init_fields(document: &mut JsonDocument, init_cwd: &Path) -> Result<(), Error> {
-    let rc_filename = std::env::var("YARN_RC_FILENAME")
-        .unwrap_or_else(|_| ".yarnrc.yml".to_string());
+    let rc_filename = crate::commands::rc_helpers::rc_filename();
 
     let mut current: Option<Path> = Some(init_cwd.clone());
     while let Some(dir) = current {

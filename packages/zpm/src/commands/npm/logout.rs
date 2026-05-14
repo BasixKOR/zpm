@@ -3,7 +3,7 @@ use zpm_parsers::DataDocument;
 use zpm_utils::DataType;
 
 use crate::{
-    error::Error, http_npm::get_registry, project::Project, report::{current_report, with_report_result, StreamReport, StreamReportConfig}
+    error::Error, http_npm::get_registry, project::Project, report::{with_report_result, StreamReport, StreamReportConfig}
 };
 
 /// Logout from the npm registry
@@ -69,9 +69,9 @@ impl Logout {
                     zpm_parsers::Value::Undefined,
                 )?;
 
-                current_report().await.as_ref().map(|report| {
+                crate::report::if_active_async(|report| {
                     report.info(format!("Successfully logged out from scope {}", DataType::Scope.colorize(scope)));
-                });
+                }).await;
 
                 updated
             } else {
@@ -99,9 +99,9 @@ impl Logout {
                     zpm_parsers::Value::Undefined,
                 )?;
 
-                current_report().await.as_ref().map(|report| {
+                crate::report::if_active_async(|report| {
                     report.info(format!("Successfully logged out from {}", DataType::Url.colorize(&registry)));
-                });
+                }).await;
 
                 updated
             };

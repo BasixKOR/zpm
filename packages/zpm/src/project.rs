@@ -399,14 +399,7 @@ impl Project {
             = JsonDocument::to_string_pretty(lockfile)?;
 
         if self.config.settings.enable_immutable_installs.value {
-            if !lockfile_path.fs_exists() {
-                return Err(Error::ImmutableLockfile);
-            }
-
-            let current = lockfile_path.fs_read_text()?;
-            if current != contents {
-                return Err(Error::ImmutableLockfile);
-            }
+            lockfile_path.fs_expect_with(contents.as_bytes(), || Error::ImmutableLockfile)?;
         } else {
             lockfile_path.fs_change(contents, false)?;
         }
@@ -533,6 +526,22 @@ impl Project {
             .ok_or_else(|| Error::WorkspaceNotFound(ident.clone()))?;
 
         Ok(&self.workspaces[*idx])
+    }
+
+    /// Returns the user-facing form of `locator`: workspace locators are
+    /// rewritten to their path-based form (`name@workspace:packages/foo`)
+    /// so output disambiguates between workspaces with the same ident.
+    /// Non-workspace locators pass through unchanged.
+    pub fn displayable_locator(&self, locator: &Locator) -> Locator {
+        match &locator.reference {
+            Reference::WorkspaceIdent(params) => {
+                self.workspaces_by_ident.get(&params.ident)
+                    .map(|&idx| self.workspaces[idx].locator_path())
+                    .unwrap_or_else(|| locator.clone())
+            },
+
+            _ => locator.clone(),
+        }
     }
 
     pub fn try_workspace_by_locator(&self, locator: &Locator) -> Result<Option<&Workspace>, Error> {

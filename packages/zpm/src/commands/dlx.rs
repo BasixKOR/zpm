@@ -89,38 +89,12 @@ pub struct Dlx {
 
 impl Dlx {
     pub async fn execute(&self) -> Result<ExitStatus, Error> {
-        let dlx_project
-            = setup_project().await?;
-
-        let package_cache
-            = dlx_project.package_cache()?;
-
-        let install_context = InstallContext::default()
-            .with_package_cache(Some(&package_cache))
-            .with_project(Some(&dlx_project));
-
-        let resolve_options = descriptor_loose::ResolveOptions {
-            active_workspace_ident: dlx_project.active_workspace()?.name.clone(),
-            range_kind: RangeKind::Exact,
-            resolve_tags: true,
-            allow_reuse: true,
-        };
-
-        let resolution
-            = self.package.resolve(&install_context, &resolve_options).await?;
-
-        let preferred_name
-            = resolution.descriptor.ident.name().to_string();
-
-        let dlx_project
-            = install_dependencies(&dlx_project.project_cwd, vec![resolution], self.quiet).await?;
-        let bin
-            = find_binary(&dlx_project, &preferred_name, true)?;
-
-        let run_cwd
-            = Path::current_dir()?;
-
-        run_binary(&dlx_project, bin, self.args.clone(), run_cwd).await
+        install_and_run_single(self.package.clone(), InstallAndRunOptions {
+            args: self.args.clone(),
+            quiet: self.quiet,
+            fallback_binary: true,
+            ..Default::default()
+        }).await
     }
 }
 
@@ -133,33 +107,11 @@ pub async fn setup_project() -> Result<Project, Error> {
     temp_dir.with_join_str("yarn.lock")
         .fs_write_text("{}\n")?;
 
-    let mut rc_value: serde_json::Value = serde_json::json!({
-        "enableGlobalCache": false,
-    });
-
     let calling_cwd = Path::current_dir()?;
-    let calling_rc = calling_cwd.with_join_str(".yarnrc.yml");
-    if let Ok(calling_rc_content) = calling_rc.fs_read_text() {
-        if let Ok(mut parsed) = zpm_parsers::YamlDocument::hydrate_from_str::<serde_json::Value>(&calling_rc_content) {
-            // Drop ephemeral-unfriendly keys whose targets aren't in the dlx
-            // project (would trigger spurious YN0068 warnings).
-            if let Some(map) = parsed.as_object_mut() {
-                map.remove("packageExtensions");
-                map.remove("plugins");
-            }
-
-            if let serde_json::Value::Object(entries) = parsed {
-                if let serde_json::Value::Object(target) = &mut rc_value {
-                    for (key, value) in entries {
-                        target.insert(key, value);
-                    }
-                }
-            }
-        }
-    }
+    let rc_body = crate::commands::rc_helpers::build_inherited_rc(&calling_cwd);
 
     temp_dir.with_join_str(".yarnrc.yml")
-        .fs_write_text(serde_yaml::to_string(&rc_value).unwrap_or_else(|_| "enableGlobalCache: false\n".to_string()))?;
+        .fs_write_text(&rc_body)?;
 
     let project
         = Project::new(Some(temp_dir)).await?;
@@ -239,4 +191,72 @@ pub async fn run_binary(project: &Project, bin: Binary, args: Vec<String>, curre
         .run_binary(&bin, &args)
         .await?
         .into())
+}
+
+#[derive(Default)]
+pub struct InstallAndRunOptions {
+    /// Arguments passed to the binary.
+    pub args: Vec<String>,
+    /// Suppress the install report unless it errors.
+    pub quiet: bool,
+    /// Optional `[YN0000]`-style banner to emit before the install.
+    pub banner: Option<String>,
+    /// Override the preferred binary name (defaults to the package name).
+    pub binary_name: Option<String>,
+    /// If true, fall back to the single available binary when the preferred
+    /// name isn't found (matches `yarn create`/`yarn dlx -p` semantics).
+    pub fallback_binary: bool,
+    /// Override the run cwd (defaults to the caller's current dir).
+    pub run_cwd: Option<Path>,
+}
+
+/// Installs a single package into a temporary dlx project and runs its
+/// binary. Used by `yarn dlx <pkg>`, `yarn create <starter>`, and
+/// `yarn init <template>` — same orchestration in all three.
+pub async fn install_and_run_single(
+    descriptor: LooseDescriptor,
+    options: InstallAndRunOptions,
+) -> Result<ExitStatus, Error> {
+    if let Some(banner) = options.banner.as_ref() {
+        // `yarn create` prints this synchronously before the report opens,
+        // and the tests scrape the literal "➤ YN0000:" prefix, so we keep
+        // it as a direct println rather than routing through the report.
+        println!("➤ YN0000: {}", banner);
+    }
+
+    let dlx_project
+        = setup_project().await?;
+
+    let package_cache
+        = dlx_project.package_cache()?;
+
+    let install_context = InstallContext::default()
+        .with_package_cache(Some(&package_cache))
+        .with_project(Some(&dlx_project));
+
+    let resolve_options = descriptor_loose::ResolveOptions {
+        active_workspace_ident: dlx_project.active_workspace()?.name.clone(),
+        range_kind: RangeKind::Exact,
+        resolve_tags: true,
+        allow_reuse: true,
+    };
+
+    let resolution
+        = descriptor.resolve(&install_context, &resolve_options).await?;
+
+    let binary_name = options.binary_name
+        .unwrap_or_else(|| resolution.descriptor.ident.name().to_string());
+
+    let dlx_project
+        = install_dependencies(&dlx_project.project_cwd, vec![resolution], options.quiet).await?;
+
+    let bin
+        = find_binary(&dlx_project, &binary_name, options.fallback_binary)?;
+
+    let run_cwd = match options.run_cwd {
+        Some(cwd) => cwd,
+        None => Path::current_dir()?,
+    };
+
+    run_binary(&dlx_project, bin, options.args, run_cwd).await
 }

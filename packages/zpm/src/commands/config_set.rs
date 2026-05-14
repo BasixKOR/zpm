@@ -1,11 +1,12 @@
 use std::sync::Arc;
 
 use clipanion::cli;
-use zpm_config::{Configuration, ConfigurationContext};
+use zpm_config::Configuration;
 use zpm_parsers::{DataDocument, JsonDocument, RawJsonOwnedValue};
-use zpm_utils::{IoResultExt, LastModifiedAt, Path, ToFileString, ToHumanString, set_redacted};
+use zpm_utils::{IoResultExt, RedactionScope, ToFileString};
 
 use crate::{
+    commands::rc_helpers,
     error::Error,
     project::Project,
 };
@@ -48,16 +49,9 @@ impl ConfigSet {
                 .collect::<Vec<_>>();
 
         let (config, document_path) = if self.home {
-            let config
-                = Self::load_home_config()?;
-
-            let user_cwd = Path::home_dir()?
-                .ok_or(Error::HomeDirectoryNotFound)?;
-
-            let rc_filename = std::env::var("YARN_RC_FILENAME")
-                .unwrap_or_else(|_| ".yarnrc.yml".to_string());
-
-            (config, user_cwd.with_join_str(&rc_filename))
+            let config = rc_helpers::load_home_config()?;
+            let rc_path = rc_helpers::home_rc_path()?;
+            (config, rc_path)
         } else {
             let project
                 = Project::new(None).await?;
@@ -68,45 +62,45 @@ impl ConfigSet {
             (project.config, path)
         };
 
-        set_redacted(false);
+        {
+            let _scope = RedactionScope::new(false);
 
-        let value = if self.json {
-            let json_value: RawJsonOwnedValue
-                = JsonDocument::hydrate_from_str(&self.value)?;
+            let value = if self.json {
+                let json_value: RawJsonOwnedValue
+                    = JsonDocument::hydrate_from_str(&self.value)?;
 
-            zpm_parsers::Value::from(&json_value)
-        } else {
-            let abstract_value = config.hydrate(&segments, &self.value)?;
-            let json_repr = abstract_value.export(true);
+                zpm_parsers::Value::from(&json_value)
+            } else {
+                let abstract_value = config.hydrate(&segments, &self.value)?;
+                let json_repr = abstract_value.export(true);
 
-            match JsonDocument::hydrate_from_str::<RawJsonOwnedValue>(&json_repr) {
-                Ok(parsed) => zpm_parsers::Value::from(&parsed),
-                Err(_) => zpm_parsers::Value::String(self.value.clone()),
-            }
-        };
+                match JsonDocument::hydrate_from_str::<RawJsonOwnedValue>(&json_repr) {
+                    Ok(parsed) => zpm_parsers::Value::from(&parsed),
+                    Err(_) => zpm_parsers::Value::String(self.value.clone()),
+                }
+            };
 
-        let document
-            = document_path
-                .fs_read_text()
-                .ok_missing()?
-                .unwrap_or_default();
+            let document
+                = document_path
+                    .fs_read_text()
+                    .ok_missing()?
+                    .unwrap_or_default();
 
-        let updated_document = DataDocument::update_document_field(
-            &document,
-            self.name.clone(),
-            value,
-        )?;
+            let updated_document = DataDocument::update_document_field(
+                &document,
+                self.name.clone(),
+                value,
+            )?;
 
-        Configuration::validate(&updated_document)
-            .map_err(|e| Error::ConfigurationParseError(Arc::new(e)))?;
+            Configuration::validate(&updated_document)
+                .map_err(|e| Error::ConfigurationParseError(Arc::new(e)))?;
 
-        document_path
-            .fs_change(&updated_document, false)?;
-
-        set_redacted(true);
+            document_path
+                .fs_change(&updated_document, false)?;
+        }
 
         let config = if self.home {
-            Self::load_home_config()?
+            rc_helpers::load_home_config()?
         } else {
             Project::new(None).await?.config
         };
@@ -134,24 +128,5 @@ impl ConfigSet {
         println!("Successfully set {} to {}", self.name.to_file_string(), display_value);
 
         Ok(())
-    }
-
-    fn load_home_config() -> Result<Configuration, Error> {
-        let user_cwd
-            = Path::home_dir()?
-                .ok_or(Error::HomeDirectoryNotFound)?;
-
-        let context = ConfigurationContext {
-            env: std::env::vars().collect(),
-            user_cwd: Some(user_cwd),
-            project_cwd: None,
-            package_cwd: None,
-        };
-
-        let mut last_modified_at
-            = LastModifiedAt::new();
-
-        Configuration::load(&context, &mut last_modified_at)
-            .map_err(|e| Error::ConfigurationParseError(Arc::new(e)))
     }
 }

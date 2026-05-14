@@ -779,8 +779,7 @@ async fn render_otp_notice(response: &Response) {
             DataType::Url.colorize(caps.get(0).unwrap().as_str()).to_string()
         });
 
-        current_report().await.as_ref()
-            .map(|report| report.info(formatted_notice.to_string()));
+        crate::report::if_active_async(|report| report.info(formatted_notice.to_string())).await;
     }
 }
 

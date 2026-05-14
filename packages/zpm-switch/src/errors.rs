@@ -99,6 +99,9 @@ pub enum Error {
     #[error("Daemon failed to start within timeout")]
     DaemonStartTimeout,
 
+    #[error("Daemon didn't respond within timeout")]
+    DaemonResponseTimeout,
+
     #[error("Failed to connect to daemon: {0}")]
     DaemonConnectionFailed(Arc<std::io::Error>),
 

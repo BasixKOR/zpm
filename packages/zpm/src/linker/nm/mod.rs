@@ -312,7 +312,8 @@ fn generate_workspace_node_modules(
             // by the post-hoist portal check.
             let is_symlinked
                 = matches!(package_data, Some(PackageData::Local { .. }))
-                    || matches!(child_node.locator.reference.physical_reference(), Reference::Link(_) | Reference::Portal(_));
+                    || child_node.locator.reference.physical_reference().is_link()
+                    || child_node.locator.reference.physical_reference().is_portal();
 
             if !is_symlinked {
                 workspace_queue.push((child_rel_path.with_join_str("node_modules"), *child_idx));
@@ -642,19 +643,17 @@ fn warn_about_portals_if_any(install: &Install) {
         .resolution_tree
         .locator_resolutions
         .keys()
-        .any(|locator| matches!(locator.reference.physical_reference(), Reference::Portal(_)));
+        .any(|locator| locator.reference.physical_reference().is_portal());
 
     if !has_portal {
         return;
     }
 
-    if let Some(report_guard) = crate::report::try_current_report() {
-        if let Some(report) = report_guard.as_ref() {
-            report.warn(
-                "[YN0066] Portals are in use. Make sure to set --preserve-symlinks (or NODE_PRESERVE_SYMLINKS_MAIN=1) so node can resolve hoisted dependencies through the portal symlink.".to_string(),
-            );
-        }
-    }
+    crate::report::if_active(|report| {
+        report.warn(
+            "[YN0066] Portals are in use. Make sure to set --preserve-symlinks (or NODE_PRESERVE_SYMLINKS_MAIN=1) so node can resolve hoisted dependencies through the portal symlink.".to_string(),
+        );
+    });
 }
 
 /// Walks the post-hoist work tree to find external portals whose
@@ -677,7 +676,7 @@ fn check_external_portal_conflicts(
         // `physical_reference()` unwraps that for the type check while
         // we keep the original `node.locator` around for printing the
         // user-facing context.
-        if !matches!(node.locator.reference.physical_reference(), Reference::Portal(_)) {
+        if !node.locator.reference.physical_reference().is_portal() {
             continue;
         }
 
@@ -734,11 +733,7 @@ fn check_external_portal_conflicts(
                             if sibling_idx == child_idx {
                                 return None;
                             }
-                            let sibling_is_portal = matches!(
-                                sibling.locator.reference.physical_reference(),
-                                Reference::Portal(_),
-                            );
-                            if !sibling_is_portal {
+                            if !sibling.locator.reference.physical_reference().is_portal() {
                                 return None;
                             }
                             let original = sibling.dependencies.get(child_ident)?;
@@ -751,36 +746,34 @@ fn check_external_portal_conflicts(
                         .next()
                 });
 
-            if let Some(report_guard) = crate::report::try_current_report() {
-                if let Some(report) = report_guard.as_ref() {
-                    match (parent_locator, sibling_portal) {
-                        (Some(parent_locator), Some(sibling_locator)) => {
-                            report.warn(format!(
-                                "[YN0067] {}: dependency {} conflicts with dependency {} from sibling portal {}",
-                                node.locator.to_file_string(),
-                                child_locator.to_file_string(),
-                                parent_locator.to_file_string(),
-                                sibling_locator.ident.as_str(),
-                            ));
-                        },
-                        (Some(parent_locator), None) => {
-                            report.warn(format!(
-                                "[YN0067] {}: dependency {} conflicts with parent dependency {}",
-                                node.locator.to_file_string(),
-                                child_locator.to_file_string(),
-                                parent_locator.to_file_string(),
-                            ));
-                        },
-                        (None, _) => {
-                            report.warn(format!(
-                                "[YN0067] {}: dependency {} can't be hoisted into the parent and the portal target is external",
-                                node.locator.to_file_string(),
-                                child_locator.to_file_string(),
-                            ));
-                        },
-                    }
+            crate::report::if_active(|report| {
+                match (parent_locator, sibling_portal) {
+                    (Some(parent_locator), Some(sibling_locator)) => {
+                        report.warn(format!(
+                            "[YN0067] {}: dependency {} conflicts with dependency {} from sibling portal {}",
+                            node.locator.to_file_string(),
+                            child_locator.to_file_string(),
+                            parent_locator.to_file_string(),
+                            sibling_locator.ident.as_str(),
+                        ));
+                    },
+                    (Some(parent_locator), None) => {
+                        report.warn(format!(
+                            "[YN0067] {}: dependency {} conflicts with parent dependency {}",
+                            node.locator.to_file_string(),
+                            child_locator.to_file_string(),
+                            parent_locator.to_file_string(),
+                        ));
+                    },
+                    (None, _) => {
+                        report.warn(format!(
+                            "[YN0067] {}: dependency {} can't be hoisted into the parent and the portal target is external",
+                            node.locator.to_file_string(),
+                            child_locator.to_file_string(),
+                        ));
+                    },
                 }
-            }
+            });
 
             has_conflict = true;
         }

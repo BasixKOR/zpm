@@ -209,11 +209,9 @@ impl WorkspacesList {
                     let mut matched_paths = Vec::new();
                     let mut mismatched_strs = Vec::new();
 
-                    let all_deps = workspace.manifest.remote.dependencies.iter()
-                        .chain(workspace.manifest.remote.optional_dependencies.iter())
-                        .chain(workspace.manifest.dev_dependencies.iter());
-
-                    for (ident, descriptor) in all_deps {
+                    for hard in workspace.manifest.iter_hard_dependencies() {
+                        let ident = hard.ident;
+                        let descriptor = hard.descriptor;
                         let Ok(target_workspace) = project.workspace_by_ident(ident) else {
                             continue;
                         };

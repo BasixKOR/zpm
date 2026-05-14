@@ -76,6 +76,32 @@ pub fn set_redacted(redacted: bool) {
     REDACTED.store(redacted, Ordering::Relaxed);
 }
 
+/// RAII guard that flips the global redaction flag for its lifetime and
+/// restores the previous value on drop. Use this instead of bare
+/// `set_redacted(...)` so early-returns can't leak a flipped flag.
+///
+/// ```ignore
+/// let _redacted = RedactionScope::new(false); // unredacted within scope
+/// // ... write secrets to disk ...
+/// // _redacted drop restores the previous value (true).
+/// ```
+pub struct RedactionScope {
+    previous: bool,
+}
+
+impl RedactionScope {
+    pub fn new(redacted: bool) -> Self {
+        let previous = REDACTED.swap(redacted, Ordering::Relaxed);
+        Self { previous }
+    }
+}
+
+impl Drop for RedactionScope {
+    fn drop(&mut self) {
+        REDACTED.store(self.previous, Ordering::Relaxed);
+    }
+}
+
 impl<T> Secret<T> {
     pub fn new(value: T) -> Self {
         Self {value}

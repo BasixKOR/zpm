@@ -2,14 +2,12 @@ use std::process::ExitStatus;
 
 use clipanion::cli;
 use zpm_primitives::{split_ident_and_selector, AnonymousSemverRange, Descriptor, Ident, Range, RegistryTagRange};
-use zpm_semver::RangeKind;
-use zpm_utils::{FromFileString, Path, ToFileString};
+use zpm_utils::{FromFileString, ToFileString};
 
 use crate::{
-    commands::dlx,
-    descriptor_loose::{self, DescriptorLooseDescriptor, IdentLooseDescriptor, LooseDescriptor},
+    commands::dlx::{install_and_run_single, InstallAndRunOptions},
+    descriptor_loose::{DescriptorLooseDescriptor, IdentLooseDescriptor, LooseDescriptor},
     error::Error,
-    install::InstallContext,
 };
 
 /// Create a new package from a starter kit
@@ -52,8 +50,6 @@ impl Create {
                     .unwrap_or_else(|| "unknown".to_string()),
             );
 
-        println!("➤ YN0000: Installing {}...", descriptor_print);
-
         let loose_descriptor = match parsed_range {
             Some(range) => LooseDescriptor::Descriptor(DescriptorLooseDescriptor {
                 descriptor: Descriptor::new(initializer_ident.clone(), range),
@@ -63,38 +59,13 @@ impl Create {
             }),
         };
 
-        let dlx_project
-            = dlx::setup_project().await?;
-
-        let package_cache
-            = dlx_project.package_cache()?;
-
-        let install_context = InstallContext::default()
-            .with_package_cache(Some(&package_cache))
-            .with_project(Some(&dlx_project));
-
-        let resolve_options = descriptor_loose::ResolveOptions {
-            active_workspace_ident: dlx_project.active_workspace()?.name.clone(),
-            range_kind: RangeKind::Exact,
-            resolve_tags: true,
-            allow_reuse: true,
-        };
-
-        let resolution
-            = loose_descriptor.resolve(&install_context, &resolve_options).await?;
-
-        let preferred_name
-            = resolution.descriptor.ident.name().to_string();
-
-        let dlx_project
-            = dlx::install_dependencies(&dlx_project.project_cwd, vec![resolution], self.quiet).await?;
-        let bin
-            = dlx::find_binary(&dlx_project, &preferred_name, true)?;
-
-        let run_cwd
-            = Path::current_dir()?;
-
-        dlx::run_binary(&dlx_project, bin, self.args.clone(), run_cwd).await
+        install_and_run_single(loose_descriptor, InstallAndRunOptions {
+            args: self.args.clone(),
+            quiet: self.quiet,
+            banner: Some(format!("Installing {}...", descriptor_print)),
+            fallback_binary: true,
+            ..Default::default()
+        }).await
     }
 }
 

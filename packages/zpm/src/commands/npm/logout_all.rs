@@ -3,7 +3,7 @@ use zpm_parsers::{Document, DataDocument, Value};
 
 use crate::{
     error::Error,
-    project::Project, report::{current_report, with_report_result, StreamReport, StreamReportConfig},
+    project::Project, report::{with_report_result, StreamReport, StreamReportConfig},
 };
 
 /// Logout from all npm registries
@@ -56,9 +56,9 @@ impl LogoutAll {
             config_path
                 .fs_write_text(&updated_content)?;
 
-            current_report().await.as_ref().map(|report| {
+            crate::report::if_active_async(|report| {
                 report.info("Successfully logged out from all npm registries".to_string());
-            });
+            }).await;
 
             Ok(())
         }).await

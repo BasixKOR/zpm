@@ -616,45 +616,41 @@ pub fn pack_list(project: &Project, workspace: &Workspace, manifest: &Manifest) 
         is_positive: false,
     });
 
+    let mut roots: Vec<&str> = Vec::new();
+
     if let Some(main) = &manifest.main {
-        glob_ignore.add(&Path::new(), &format!("!/{}", main))?;
+        roots.push(main.as_str());
     }
 
     if let Some(exports) = &manifest.exports {
-        for export_path in exports.paths() {
-            glob_ignore.add(&Path::new(), &format!("!/{}", export_path.path.to_file_string()))?;
-        }
+        roots.extend(exports.paths().map(|p| p.path.as_str()));
     }
 
     if let Some(imports) = &manifest.imports {
-        for import_path in imports.paths() {
-            glob_ignore.add(&Path::new(), &format!("!/{}", import_path.path.to_file_string()))?;
-        }
+        roots.extend(imports.paths().map(|p| p.path.as_str()));
     }
 
     if let Some(browser) = &manifest.browser {
-        for import_path in browser.paths() {
-            glob_ignore.add(&Path::new(), &format!("!/{}", import_path))?;
-        }
+        roots.extend(browser.paths());
     }
 
     if let Some(module) = &manifest.module {
-        glob_ignore.add(&Path::new(), &format!("!/{}", module))?;
+        roots.push(module.as_str());
     }
 
     if let Some(bin) = &manifest.bin {
-        for path in bin.paths() {
-            glob_ignore.add(&Path::new(), &format!("!/{}", path.to_file_string()))?;
-        }
+        roots.extend(bin.raw_paths().map(|p| p.path.as_str()));
     }
 
     if let Some(types) = &manifest.publish_config.types {
-        glob_ignore.add(&Path::new(), &format!("!/{}", types))?;
+        roots.push(types.as_str());
     }
 
     if let Some(typings) = &manifest.publish_config.typings {
-        glob_ignore.add(&Path::new(), &format!("!/{}", typings))?;
+        roots.push(typings.as_str());
     }
+
+    add_pack_root_paths(&mut glob_ignore, roots)?;
 
     let final_list = pack_list
         .files
@@ -663,4 +659,18 @@ pub fn pack_list(project: &Project, workspace: &Workspace, manifest: &Manifest) 
         .collect();
 
     Ok(final_list)
+}
+
+/// Adds each path as a `!/<path>` negative glob, which un-ignores the
+/// listed manifest entry (main/exports/imports/bin/etc.) even when it
+/// would otherwise be excluded by `files`. The leading `/` anchors the
+/// match at the workspace root.
+fn add_pack_root_paths<'a>(
+    glob_ignore: &mut PackIgnore,
+    paths: impl IntoIterator<Item = &'a str>,
+) -> Result<(), Error> {
+    for path in paths {
+        glob_ignore.add(&Path::new(), &format!("!/{}", path))?;
+    }
+    Ok(())
 }

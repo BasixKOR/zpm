@@ -69,14 +69,12 @@ impl BuildRequest {
             .with_env_variable("INIT_CWD", cwd_abs.as_str())
             .with_cwd(cwd_abs.clone());
 
-        if let Some(report_guard) = crate::report::try_current_report() {
-            if let Some(report) = report_guard.as_ref() {
-                report.info(format!(
-                    "[YN0007] {} must be built because it never has been before",
-                    self.locator.to_print_string(),
-                ));
-            }
-        }
+        crate::report::if_active(|report| {
+            report.info(format!(
+                "[YN0007] {} must be built because it never has been before",
+                self.locator.to_print_string(),
+            ));
+        });
 
         let inline_builds = self.inline_builds;
         let locator = self.locator.clone();
@@ -463,14 +461,12 @@ impl<'a> BuildManager<'a> {
 }
 
 fn emit_yn0009(locator: &Locator) {
-    if let Some(report_guard) = crate::report::try_current_report() {
-        if let Some(report) = report_guard.as_ref() {
-            report.warn(format!(
-                "[YN0009] {} couldn't be built successfully; please check the logs above for more information.",
-                locator.to_print_string(),
-            ));
-        }
-    }
+    crate::report::if_active(|report| {
+        report.warn(format!(
+            "[YN0009] {} couldn't be built successfully; please check the logs above for more information.",
+            locator.to_print_string(),
+        ));
+    });
 }
 
 /// Persists the build's combined stdout/stderr to a temp log file and
@@ -496,9 +492,7 @@ fn emit_success_log(locator: &Locator, stdout: &[u8], stderr: &[u8]) {
         return;
     }
 
-    if let Some(report_guard) = crate::report::try_current_report() {
-        if let Some(report) = report_guard.as_ref() {
-            report.add_log_file(log_path);
-        }
-    }
+    crate::report::if_active(|report| {
+        report.add_log_file(log_path);
+    });
 }

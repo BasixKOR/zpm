@@ -29,6 +29,40 @@ pub fn try_current_report() -> Option<RwLockReadGuard<'static, Option<StreamRepo
     REPORT.try_read().ok()
 }
 
+/// Synchronously runs `f` against the active report, if one is installed and
+/// the lock is available. Returns `true` if `f` ran. The closure can call
+/// `report.warn(...)` / `.info(...)` / `.error(...)` etc.
+pub fn if_active<F: FnOnce(&StreamReport)>(f: F) -> bool {
+    let Some(guard) = try_current_report() else {
+        return false;
+    };
+
+    let Some(report) = guard.as_ref() else {
+        return false;
+    };
+
+    f(report);
+    true
+}
+
+/// Async sibling of `if_active`: awaits the report lock and runs `f` if the
+/// report is set. Returns `true` if `f` ran.
+pub async fn if_active_async<F: FnOnce(&StreamReport)>(f: F) -> bool {
+    let guard = current_report().await;
+
+    let Some(report) = guard.as_ref() else {
+        return false;
+    };
+
+    f(report);
+    true
+}
+
+/// Convenience helper for the `[YN0000]` info banner used by `dlx`/`create`/etc.
+pub async fn yn0000(message: impl AsRef<str>) {
+    if_active_async(|r| r.info(format!("YN0000: {}", message.as_ref()))).await;
+}
+
 pub async fn async_section<F: Future>(name: &str, f: F) -> F::Output {
     current_report().await.as_ref().map(|r| {
         r.push_section(name.to_string());

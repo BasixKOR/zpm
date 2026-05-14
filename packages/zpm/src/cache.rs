@@ -1,5 +1,3 @@
-use std::fs::File;
-use std::io::Write;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::collections::HashSet;
@@ -11,10 +9,7 @@ use zpm_primitives::Locator;
 use zpm_utils::{Hash64, IoResultExt, Path, PathError};
 use futures::Future;
 
-use crate::report::current_report;
-use crate::{
-    error::Error,
-};
+use crate::error::Error;
 
 pub const CACHE_VERSION: usize = 1;
 
@@ -123,17 +118,17 @@ impl CompositeCache {
         R: Future<Output = Result<Vec<u8>, Error>>,
         F: FnOnce() -> R,
     {
-        current_report().await.as_ref().map(|report| {
+        crate::report::if_active_async(|report| {
             report.counters.fetch_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        });
+        }).await;
 
         let res
             = func().await;
 
         if let Ok(data) = res.as_ref() {
-            current_report().await.as_ref().map(|report| {
+            crate::report::if_active_async(|report| {
                 report.counters.fetch_size.fetch_add(data.len() as u32, std::sync::atomic::Ordering::Relaxed);
-            });
+            }).await;
         }
 
         res

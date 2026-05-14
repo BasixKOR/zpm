@@ -314,9 +314,9 @@ fn resolve_descriptor_impl<'a>(
                     let refresh_deps
                         = build_locator_fetch_deps(&locator, maps, ctx).await?;
 
-                    current_report().await.as_ref().map(|report| {
+                    crate::report::if_active_async(|report| {
                         report.counters.resolution_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                    });
+                    }).await;
 
                     let result = with_context_result(ReportContext::Locator(locator.clone()), async {
                         tokio::time::timeout(
@@ -397,9 +397,9 @@ fn resolve_descriptor_impl<'a>(
 
         // Phase 3: Resolve
         if !descriptor.range.details().transient_resolution {
-            current_report().await.as_ref().map(|report| {
+            crate::report::if_active_async(|report| {
                 report.counters.resolution_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-            });
+            }).await;
         }
 
         let result = with_context_result(ReportContext::Descriptor(descriptor.clone()), async {
@@ -512,9 +512,9 @@ async fn fetch_locator_impl<'a>(
         if is_mock_request {
             if let Ok(result) = future.as_ref() {
                 if let FetchResult {package_data: PackageData::Zip {..}, ..} = result {
-                    current_report().await.as_ref().map(|report| {
+                    crate::report::if_active_async(|report| {
                         report.warn(format!("Mock request for {} returned a zip package; this should not happen.", locator.to_print_string()));
-                    });
+                    }).await;
                 }
             }
         }
@@ -1041,29 +1041,29 @@ impl<'a> InstallManager<'a> {
 
             for workspace in &project.workspaces {
                 for legacy_key in &workspace.manifest.resolutions.legacy_glob_keys {
-                    if let Some(report) = current_report().await.as_ref() {
+                    crate::report::if_active_async(|report| {
                         report.warn(format!("[YN0057] Legacy glob syntax found in resolutions ({legacy_key}); the leading **/ prefix is no longer needed."));
-                    }
+                    }).await;
                 }
 
                 let has_string_bin = matches!(workspace.manifest.bin, Some(crate::manifest::bin::BinField::String(_)));
                 if has_string_bin && workspace.manifest.name.is_none() {
-                    if let Some(report) = current_report().await.as_ref() {
+                    crate::report::if_active_async(|report| {
                         report.warn(format!(
                             "[YN0057] {}: String bin field, but no attached package name",
                             workspace.pretty_name(),
                         ));
-                    }
+                    }).await;
                 }
 
                 for nohoist_pattern in &workspace.manifest.workspaces.nohoist {
-                    if let Some(report) = current_report().await.as_ref() {
+                    crate::report::if_active_async(|report| {
                         report.warn(format!(
                             "[YN0058] {}: 'nohoist' is deprecated, please use 'installConfig.hoistingLimits' instead (pattern: {})",
                             workspace.pretty_name(),
                             nohoist_pattern,
                         ));
-                    }
+                    }).await;
                 }
             }
         }

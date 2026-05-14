@@ -43,3 +43,4 @@ pub mod tasks;
 pub mod tree_resolver;
 pub mod versioning;
 pub mod workspace_glob;
+pub mod workspace_graph;

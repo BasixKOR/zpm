@@ -17,6 +17,7 @@ pub use manifest::{
     PackageManagerReference,
     VersionPackageManagerReference,
     find_closest_package_manager,
+    resolve_detected_root,
 };
 
 pub use yarn_enums::{

@@ -109,7 +109,7 @@ impl Why {
             }
 
             if !children_map.is_empty() {
-                let display_locator = display_locator_for(project, locator);
+                let display_locator = project.displayable_locator(locator);
 
                 root_children.push(tree::Node {
                     label: None,
@@ -271,7 +271,7 @@ impl Why {
             }
         }
 
-        let display_locator = display_locator_for(project, locator);
+        let display_locator = project.displayable_locator(locator);
 
         let node_value = if let Some(desc) = descriptor {
             AbstractValue::new(DescriptorResolution::new(desc.clone(), display_locator.clone()))
@@ -290,9 +290,3 @@ impl Why {
     }
 }
 
-fn display_locator_for(project: &Project, locator: &Locator) -> Locator {
-    project.workspaces.iter()
-        .find(|ws| ws.locator() == *locator)
-        .map(|ws| ws.locator_path())
-        .unwrap_or_else(|| locator.clone())
-}

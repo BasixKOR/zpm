@@ -102,8 +102,7 @@ impl Install {
         }
 
         if self.immutable == Some(true) {
-            project.config.settings.enable_immutable_installs.value = true;
-            project.config.settings.enable_immutable_installs.source = Source::Cli;
+            project.config.settings.enable_immutable_installs.force(true, Source::Cli);
         }
 
         if self.mode == Some(InstallMode::UpdateLockfile) {
@@ -111,15 +110,13 @@ impl Install {
         }
 
         if self.immutable_cache == Some(true) {
-            project.config.settings.enable_immutable_cache.value = true;
-            project.config.settings.enable_immutable_cache.source = Source::Cli;
+            project.config.settings.enable_immutable_cache.force(true, Source::Cli);
         }
 
         let mut refresh_lockfile = self.refresh_lockfile;
         if !refresh_lockfile && is_public_pr_ci() {
             refresh_lockfile = true;
-            project.config.settings.enable_immutable_installs.value = true;
-            project.config.settings.enable_immutable_installs.source = Source::Cli;
+            project.config.settings.enable_immutable_installs.force(true, Source::Cli);
         }
 
         sort_workspace_dependencies(&project)?;

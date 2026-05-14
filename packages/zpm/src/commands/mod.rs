@@ -7,6 +7,8 @@ mod debug;
 mod npm;
 mod tasks;
 
+mod rc_helpers;
+
 mod add;
 mod bin;
 mod cache_clear;
@@ -148,13 +150,11 @@ pub async fn run_default(args: Option<Vec<String>>) -> ExitCode {
                 .expect("Failed to create the requested working directory");
         }
 
-        cwd.sys_set_current_dir()
-            .expect("Failed to set current directory");
-
         // SAFETY: Configuration happens during startup before any threads are
-        // spawned. Setting PWD preserves the user-specified (logical) path so
-        // child processes like `pwd` show the symlink they were asked to use.
-        unsafe { std::env::set_var("PWD", cwd.as_str()); }
+        // spawned. `sys_set_current_dir_with_pwd` requires single-threaded
+        // execution for the `set_var("PWD", ...)` call.
+        unsafe { cwd.sys_set_current_dir_with_pwd() }
+            .expect("Failed to set current directory");
     }
 
     if args.len() == 1 && (args[0] == "--version" || args[0] == "-v") {

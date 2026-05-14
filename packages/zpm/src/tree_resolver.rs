@@ -21,6 +21,20 @@ pub struct ResolutionTree {
     pub optional_builds: BTreeSet<Locator>,
 }
 
+impl ResolutionTree {
+    /// Yields every distinct physical locator in the tree (each virtual is
+    /// collapsed to its underlying locator and yielded once). Use this
+    /// when a diagnostic or build pass cares about packages-as-they-live-
+    /// on-disk rather than per-virtual instances.
+    pub fn iter_physical(&self) -> impl Iterator<Item = Locator> {
+        let physicals: BTreeSet<Locator> = self.locator_resolutions.keys()
+            .map(|locator| locator.physical_locator())
+            .collect();
+
+        physicals.into_iter()
+    }
+}
+
 #[derive(Default)]
 pub struct TreeResolver {
     resolution_tree: ResolutionTree,
