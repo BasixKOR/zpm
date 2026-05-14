@@ -12,6 +12,15 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  # The e2e tests simulate real users running zpm from scratch (e.g.
+  # migrating from pnpm, smoke-testing a brand-new project). Because
+  # GitHub Actions exposes GITHUB_ACTIONS / GITHUB_EVENT_NAME /
+  # GITHUB_EVENT_PATH inside the Docker sandbox, zpm's
+  # `is_public_pr_ci()` heuristic would otherwise auto-flip
+  # `enableImmutableInstalls` and break those scenarios. Opt out via
+  # the YARN_* env override; the build-script-generated env wiring in
+  # zpm-config picks it up the same way an end-user yarnrc would.
+  YARN_ENABLE_IMMUTABLE_INSTALLS: "0"
 
 jobs:
   discover-e2e:

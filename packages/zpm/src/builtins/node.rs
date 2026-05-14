@@ -54,6 +54,23 @@ pub async fn resolve_nodejs_descriptor(context: &InstallContext<'_>, descriptor:
         = resolve_nodejs_version(context, &params.range).await?
             .ok_or(Error::NoCandidatesFound(descriptor.range.clone()))?;
 
+    let locator = descriptor.resolve_with(BuiltinReference {
+        version: version.clone(),
+    }.into());
+
+    build_nodejs_parent_resolution(context, locator, version)
+}
+
+/// Locator-side counterpart of [`resolve_nodejs_descriptor`]: used
+/// when zpm re-resolves a `@yarnpkg/node@builtin:<version>` entry
+/// straight from the lockfile (e.g. under `--refresh-lockfile`),
+/// where the locator is already known and the version is read off
+/// it instead of recomputing it from a range.
+pub async fn resolve_nodejs_locator(context: &InstallContext<'_>, locator: &Locator, version: &zpm_semver::Version) -> Result<ResolutionResult, Error> {
+    build_nodejs_parent_resolution(context, locator.clone(), version.clone())
+}
+
+fn build_nodejs_parent_resolution(context: &InstallContext<'_>, locator: Locator, version: zpm_semver::Version) -> Result<ResolutionResult, Error> {
     let variants = PLATFORM_VARIANTS.iter().map(|(_, file_name, _)| {
         let name
             = format!("@yarnpkg/node-{}", file_name);
@@ -62,10 +79,6 @@ pub async fn resolve_nodejs_descriptor(context: &InstallContext<'_>, descriptor:
 
         Descriptor::new(Ident::new(name), BuiltinRange {range}.into())
     }).collect_vec();
-
-    let locator = descriptor.resolve_with(BuiltinReference {
-        version: version.clone(),
-    }.into());
 
     let mut resolution
         = Resolution::new_empty(locator, version);

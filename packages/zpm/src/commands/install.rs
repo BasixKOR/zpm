@@ -101,27 +101,29 @@ impl Install {
             return Err(Error::ImmutableWithUpdateLockfile);
         }
 
-        if self.immutable == Some(true) {
-            project.config.settings.enable_immutable_installs.force(true, Source::Cli);
+        // CLI is the last layer in the cascade — both `--immutable`
+        // and `--no-immutable` must be honoured, otherwise the user
+        // can't opt back out of the context-aware default (see
+        // `zpm_config::is_public_pr_ci`).
+        match self.immutable {
+            Some(value) => project.config.settings.enable_immutable_installs.force(value, Source::Cli),
+            None => {},
         }
 
         if self.mode == Some(InstallMode::UpdateLockfile) {
-            project.config.settings.enable_immutable_installs.value = false;
+            project.config.settings.enable_immutable_installs.force(false, Source::Cli);
         }
 
         if self.immutable_cache == Some(true) {
             project.config.settings.enable_immutable_cache.force(true, Source::Cli);
         }
 
-        let mut refresh_lockfile = self.refresh_lockfile;
-        if !refresh_lockfile && is_public_pr_ci() {
-            refresh_lockfile = true;
-            // An explicit `--immutable=false` is a deliberate opt-out;
-            // don't override it even when the auto-flip kicks in.
-            if self.immutable != Some(false) {
-                project.config.settings.enable_immutable_installs.force(true, Source::Cli);
-            }
-        }
+        // `enableImmutableInstalls` already defaults to
+        // `is_public_pr_ci(context)` via the schema, so we only need
+        // to flip `refresh_lockfile` here (it's a CLI option, not a
+        // config setting).
+        let refresh_lockfile = self.refresh_lockfile
+            || zpm_config::is_public_pr_ci(&project.config.context);
 
         sort_workspace_dependencies(&project)?;
 
@@ -170,44 +172,6 @@ impl Install {
 
         Ok(())
     }
-}
-
-/// Returns true when zpm is running in a GitHub Actions pull-request
-/// workflow for a *public* repository, so we can auto-enable
-/// `--refresh-lockfile` and `--immutable` to guard against contributor
-/// supply-chain attacks.
-fn is_public_pr_ci() -> bool {
-    if std::env::var("GITHUB_ACTIONS").as_deref() != Ok("true") {
-        return false;
-    }
-
-    if std::env::var("GITHUB_EVENT_NAME").as_deref() != Ok("pull_request") {
-        return false;
-    }
-
-    let Ok(event_path) = std::env::var("GITHUB_EVENT_PATH") else {
-        return false;
-    };
-
-    #[derive(serde::Deserialize)]
-    struct Event {
-        repository: Option<Repository>,
-    }
-
-    #[derive(serde::Deserialize)]
-    struct Repository {
-        private: Option<bool>,
-    }
-
-    let Ok(text) = std::fs::read_to_string(&event_path) else {
-        return false;
-    };
-
-    let Ok(event) = serde_json::from_str::<Event>(&text) else {
-        return false;
-    };
-
-    event.repository.and_then(|r| r.private) == Some(false)
 }
 
 /// Sort dependency fields in all workspace package.json files alphabetically.

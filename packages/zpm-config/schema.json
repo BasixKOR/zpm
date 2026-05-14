@@ -81,7 +81,7 @@
     "enableImmutableInstalls": {
       "type": "boolean",
       "description": "Whether to report errors when a package would be added or removed from the cache",
-      "default": false
+      "default": "crate::is_public_pr_ci(context)"
     },
     "immutablePatterns": {
       "type": "array",

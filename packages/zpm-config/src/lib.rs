@@ -832,6 +832,11 @@ pub struct Configuration {
     pub user_config_path: Option<Path>,
     pub project_config_path: Option<Path>,
     pub env_files: BTreeMap<String, String>,
+    /// The context used to load this configuration — kept around so
+    /// downstream code (commands, helpers in `fns`) can re-evaluate
+    /// context-dependent predicates without recomputing the env/cwd
+    /// snapshot.
+    pub context: ConfigurationContext,
 }
 
 #[derive(thiserror::Error, Debug, Clone)]
@@ -1103,6 +1108,7 @@ impl Configuration {
             user_config_path,
             project_config_path,
             env_files,
+            context: enriched_context,
         })
     }
 }

@@ -23,7 +23,9 @@ pub async fn resolve_builtin_locator(context: &InstallContext<'_>, locator: &Loc
     }
 
     match locator.ident.as_str() {
-        _
-            => Err(Error::Unsupported)?,
+        "@yarnpkg/node"
+            => builtins::node::resolve_nodejs_locator(context, locator, version).await,
+
+        _ => Err(Error::Unsupported)?,
     }
 }
