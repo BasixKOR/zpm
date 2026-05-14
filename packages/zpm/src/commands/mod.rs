@@ -157,11 +157,11 @@ pub async fn run_default(args: Option<Vec<String>>) -> ExitCode {
             .expect("Failed to set current directory");
     }
 
-    if args.len() == 1 && (args[0] == "--version" || args[0] == "-v") {
-        println!("{}", workspace_version().unwrap_or_else(|| "0.0.0".to_string()));
-        return ExitCode::SUCCESS;
-    }
-
+    // `--version` / `-v` are handled by clipanion's built-in selector
+    // (which short-circuits on `args.len() == 1 && matches!(...,
+    // "--version" | "-v")` and prints `env.info.version`), so we don't
+    // need a manual short-circuit — we just need to feed it the right
+    // version via `with_version`.
     let env
         = Environment::default()
             .with_program_name("Yarn Package Manager".to_string())
@@ -170,20 +170,4 @@ pub async fn run_default(args: Option<Vec<String>>) -> ExitCode {
             .with_argv(args);
 
     YarnCli::run(env).await
-}
-
-fn workspace_version() -> Option<String> {
-    use zpm_utils::Path;
-
-    let cwd = Path::current_dir().ok()?;
-    let manifest_path = cwd.with_join_str("package.json");
-    let text = manifest_path.fs_read_text().ok()?;
-
-    #[derive(serde::Deserialize)]
-    struct VersionField {
-        version: Option<String>,
-    }
-
-    let parsed: VersionField = zpm_parsers::JsonDocument::hydrate_from_str(&text).ok()?;
-    Some(parsed.version.unwrap_or_else(|| "0.0.0".to_string()))
 }

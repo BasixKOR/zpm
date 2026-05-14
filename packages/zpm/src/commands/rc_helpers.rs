@@ -64,6 +64,12 @@ pub fn build_inherited_rc(calling_cwd: &Path) -> String {
             // ephemeral project, which would trigger spurious YN0068.
             map.remove("packageExtensions");
             map.remove("plugins");
+            // `enableGlobalCache` is forced to `false` for dlx so the
+            // ephemeral project gets its own isolated cache. Drop it
+            // from the user rc before merging, otherwise a user-set
+            // `enableGlobalCache: true` would silently override the
+            // forced default.
+            map.remove("enableGlobalCache");
         }
 
         if let (serde_json::Value::Object(entries), serde_json::Value::Object(target))
