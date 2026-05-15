@@ -598,6 +598,71 @@ enum CacheHit {
 /// matches the supply-chain attack this flag is designed to catch:
 /// someone swapping the lockfile's locator for an unrelated package
 /// or out-of-range version.
+/// Renders a single peer warning into the install-time copy berry
+/// emits via `reportWarning(MessageName.{MISSING,INCOMPATIBLE}_PEER_DEPENDENCY, ...)`.
+/// Picks the first non-satisfying request as the "named" requester
+/// (matching berry's `mapAndFind` over `allPeerRequestsWithRoot`),
+/// and rolls additional requesters into the trailing "and other
+/// dependencies" clause.
+fn render_peer_warning(
+    node: &crate::peer_requirements::PeerRequirementNode,
+    warning: &crate::peer_requirements::PeerWarning,
+) -> String {
+    use crate::peer_requirements::{PeerWarningKind, iter_requests_with_root, render_requester_label};
+
+    let all_requests = iter_requests_with_root(&node.requests);
+    let total_requests = all_requests.len();
+
+    // For the displayed requester, prefer the first request whose
+    // range doesn't satisfy the provided version (NodeNotCompatible)
+    // or just the first request (NodeNotProvided).
+    let chosen_label = match (&warning.kind, node.provided_version.as_ref()) {
+        (PeerWarningKind::NodeNotCompatible { .. }, Some(version)) => {
+            all_requests.iter()
+                .find(|(req, _)| !req.range.check(version))
+                .map(|(req, root)| render_requester_label(req, root))
+        },
+        _ => {
+            all_requests.first().map(|(req, root)| render_requester_label(req, root))
+        },
+    };
+
+    let chosen_label = chosen_label.unwrap_or_else(|| node.ident.to_print_string());
+
+    match &warning.kind {
+        PeerWarningKind::NodeNotProvided => {
+            let suffix = if total_requests > 1 { " and other dependencies" } else { "" };
+            format!(
+                "[YN0002] {} doesn't provide {} ({}), requested by {}{}.",
+                node.subject.to_print_string(),
+                node.ident.to_print_string(),
+                node.hash,
+                chosen_label,
+                suffix,
+            )
+        },
+        PeerWarningKind::NodeNotCompatible { range } => {
+            let other_packages = if total_requests > 1 { "and other dependencies request" } else { "requests" };
+            let range_desc = match range {
+                Some(r) => r.clone(),
+                None => "but they have non-overlapping ranges!".to_string(),
+            };
+            let version_str = node.provided_version.as_ref()
+                .map(|v| v.to_print_string())
+                .unwrap_or_else(|| "0.0.0".to_string());
+            format!(
+                "[YN0060] {} is listed by your project with version {} ({}), which doesn't satisfy what {} {} ({}).",
+                node.ident.to_print_string(),
+                version_str,
+                node.hash,
+                chosen_label,
+                other_packages,
+                range_desc,
+            )
+        },
+    }
+}
+
 fn verify_resolution_consistency(descriptor: &Descriptor, locator: &Locator) -> Result<(), Error> {
     let mismatch = || Error::ResolutionMismatch(descriptor.clone(), locator.clone());
 
@@ -788,44 +853,65 @@ pub struct InstallResult {
 }
 
 impl Install {
-    async fn report_missing_peer_dependencies(&self) {
+    /// Emits the install-time peer diagnostics — `YN0002`
+    /// (NodeNotProvided) and `YN0060` (NodeNotCompatible) plus the
+    /// closing CTA that points users at `yarn explain
+    /// peer-requirements`. Mirrors berry's
+    /// `emitPeerDependencyWarnings` in shape; the underlying data
+    /// model is computed once in `peer_requirements::compute` and
+    /// shared with the explain command.
+    async fn report_peer_diagnostics(&self, project: &Project) {
         let report_guard = current_report().await;
         let Some(report) = report_guard.as_ref() else {
             return;
         };
 
-        let tree = &self.install_state.resolution_tree;
-        let mut warned: BTreeSet<(Locator, Ident)> = BTreeSet::new();
+        let data = crate::peer_requirements::compute(project, &self.install_state);
+        if data.warnings.is_empty() {
+            return;
+        }
 
-        for (virtual_locator, resolution) in &tree.locator_resolutions {
-            if resolution.missing_peer_dependencies.is_empty() {
+        let mut project_lines: Vec<String> = Vec::new();
+        let mut has_transitive = false;
+
+        for warning in &data.warnings {
+            let Some(node) = data.nodes.get(&warning.hash) else {
+                continue;
+            };
+
+            // Berry splits warnings by whether the *subject* is a
+            // workspace ("project-level") or a transitive package
+            // ("transitive"). Project-level warnings are listed
+            // line-by-line; transitive ones are rolled up under a
+            // single CTA so the install output doesn't get drowned
+            // out when a deep dependency has internally-mismatched
+            // peers.
+            if !node.is_root {
+                has_transitive = true;
                 continue;
             }
 
-            let parent_locator = virtual_locator.physical_locator();
+            project_lines.push(render_peer_warning(node, warning));
+        }
 
-            for peer in &resolution.missing_peer_dependencies {
-                if resolution.optional_peer_dependencies.contains(peer) {
-                    continue;
-                }
+        project_lines.sort();
+        for line in project_lines.iter() {
+            report.warn(line.clone());
+        }
 
-                // Auto-injected @types peer deps shouldn't trigger warnings
-                // when missing — they're an implementation detail.
-                if peer.scope() == Some("@types") {
-                    continue;
-                }
+        if !project_lines.is_empty() {
+            report.warn(
+                "[YN0086] Some peer dependencies are incorrectly met by your project; \
+                 run `yarn explain peer-requirements <hash>` for details, where \
+                 <hash> is the six-letter p-prefixed code.".to_string(),
+            );
+        }
 
-                let key = (parent_locator.clone(), peer.clone());
-                if !warned.insert(key) {
-                    continue;
-                }
-
-                report.warn(format!(
-                    "[YN0002] {} doesn't provide {} (a peer dependency requested by it)",
-                    parent_locator.to_print_string(),
-                    peer.to_print_string(),
-                ));
-            }
+        if has_transitive {
+            report.warn(
+                "[YN0086] Some peer dependencies are incorrectly met by dependencies; \
+                 run `yarn explain peer-requirements` for details.".to_string(),
+            );
         }
     }
 
@@ -935,7 +1021,7 @@ impl Install {
     }
 
     pub async fn link_and_build(mut self, project: &mut Project) -> Result<InstallResult, Error> {
-        self.report_missing_peer_dependencies().await;
+        self.report_peer_diagnostics(project).await;
         self.report_disabled_build_scripts(project).await;
         self.report_package_extension_diagnostics(project).await;
 

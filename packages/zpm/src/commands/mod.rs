@@ -22,6 +22,7 @@ mod constraints;
 mod dedupe;
 mod dlx;
 mod exec;
+mod explain;
 mod info;
 mod init;
 mod install;
@@ -103,6 +104,7 @@ pub enum YarnCli {
     DlxWithPackages(dlx::DlxWithPackages),
     Dlx(dlx::Dlx),
     Exec(exec::Exec),
+    ExplainPeerRequirements(explain::peer_requirements::ExplainPeerRequirements),
     Info(info::Info),
     InitWithTemplate(init::InitWithTemplate),
     Init(init::Init),
