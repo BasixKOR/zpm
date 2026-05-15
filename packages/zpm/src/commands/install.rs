@@ -103,8 +103,8 @@ impl Install {
 
         // CLI is the last layer in the cascade — both `--immutable`
         // and `--no-immutable` must be honoured, otherwise the user
-        // can't opt back out of the context-aware default (see
-        // `zpm_config::is_public_pr_ci`).
+        // can't opt back out of the hardened-mode default applied in
+        // `Configuration::load`.
         match self.immutable {
             Some(value) => project.config.settings.enable_immutable_installs.force(value, Source::Cli),
             None => {},
@@ -118,12 +118,8 @@ impl Install {
             project.config.settings.enable_immutable_cache.force(true, Source::Cli);
         }
 
-        // `enableImmutableInstalls` already defaults to
-        // `is_public_pr_ci(context)` via the schema, so we only need
-        // to flip `refresh_lockfile` here (it's a CLI option, not a
-        // config setting).
         let refresh_lockfile = self.refresh_lockfile
-            || zpm_config::is_public_pr_ci(&project.config.context);
+            || project.config.settings.enable_hardened_mode.value;
 
         sort_workspace_dependencies(&project)?;
 

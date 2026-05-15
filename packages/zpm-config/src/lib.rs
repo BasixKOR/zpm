@@ -28,6 +28,7 @@ pub enum Source {
     Project,
     Environment,
     Cli,
+    Hardened,
     Mixed,
 }
 
@@ -40,6 +41,7 @@ impl Source {
             Source::Project => "<project>",
             Source::Environment => "<environment>",
             Source::Cli => "<cli>",
+            Source::Hardened => "<hardened>",
             Source::Mixed => "<mixed>",
         }
     }
@@ -1103,6 +1105,8 @@ impl Configuration {
             .or_default()
             .extend(std::mem::take(&mut settings.catalog));
 
+        apply_hardened_mode(&mut settings);
+
         Ok(Configuration {
             settings,
             user_config_path,
@@ -1110,6 +1114,23 @@ impl Configuration {
             env_files,
             context: enriched_context,
         })
+    }
+}
+
+/// Hardened mode auto-enables stricter checks (immutable installs,
+/// lockfile refresh during install) in untrusted CI contexts. It
+/// kicks in only when no source higher than `Default` has spoken —
+/// users who explicitly set `enableHardenedMode` (rc file, env var,
+/// CLI) keep full control. Cascaded overrides are stamped with
+/// `Source::Hardened` so they can be distinguished from real defaults
+/// in `yarn config` and friends.
+fn apply_hardened_mode(settings: &mut Settings) {
+    if !settings.enable_hardened_mode.value {
+        return;
+    }
+
+    if matches!(settings.enable_immutable_installs.source, Source::Default) {
+        settings.enable_immutable_installs.force(true, Source::Hardened);
     }
 }
 

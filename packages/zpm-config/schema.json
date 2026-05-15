@@ -78,10 +78,15 @@
       "description": "Whether to report errors when a package would be added or removed from the cache",
       "default": false
     },
+    "enableHardenedMode": {
+      "type": "boolean",
+      "description": "Whether to enable hardened mode, which forces stricter integrity checks (immutable installs, lockfile refresh) intended for untrusted contexts. Defaults to true when zpm detects it runs within a public GitHub Actions pull-request workflow; can be opted out via `YARN_ENABLE_HARDENED_MODE=0`.",
+      "default": "crate::is_public_pr_ci(context)"
+    },
     "enableImmutableInstalls": {
       "type": "boolean",
       "description": "Whether to report errors when a package would be added or removed from the cache",
-      "default": "crate::is_public_pr_ci(context)"
+      "default": false
     },
     "immutablePatterns": {
       "type": "array",

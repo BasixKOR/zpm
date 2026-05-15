@@ -20,9 +20,9 @@ pub fn check_tsconfig(context: &ConfigurationContext) -> bool {
 }
 
 /// Returns true when zpm is running in a GitHub Actions pull-request
-/// workflow for a *public* repository. Used as the default for
-/// `enableImmutableInstalls` (so contributors can't sneak in lockfile
-/// changes during install) and to auto-enable `--refresh-lockfile`.
+/// workflow for a *public* repository. Used to auto-enable
+/// `enableHardenedMode` (see `Configuration::load`) so contributors
+/// can't sneak in lockfile changes from forks.
 ///
 /// Reads from `context.env` rather than `std::env::var` so test
 /// harnesses can stub the value without globally mutating the

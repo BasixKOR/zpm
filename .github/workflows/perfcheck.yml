@@ -68,6 +68,9 @@ jobs:
           echo "YARN_NPM_REGISTRY_SERVER=http://localhost:4873" >> $GITHUB_ENV
           echo "YARN_UNSAFE_HTTP_WHITELIST=localhost" >> $GITHUB_ENV
 
+      - name: Various other environment variables
+          echo "YARN_ENABLE_HARDENED_MODE=0" >> $GITHUB_ENV
+
       - name: Run benchmark cold (base)
         working-directory: ../base
         run: ./target/release-lto/yarn-bin debug bench gatsby install-full-cold
