@@ -43,6 +43,11 @@ pub struct InstallContext<'a> {
     pub mode: Option<InstallMode>,
     pub inline_builds: bool,
     pub extension_tracking: Arc<Mutex<ExtensionTracking>>,
+    /// Off-thread tracker for metadata cache writes. When present,
+    /// `get_package_metadata` offloads the disk write via spawn_blocking
+    /// and the owner is expected to call `drain` before returning so
+    /// the runtime doesn't drop pending writes.
+    pub background_writes: Option<Arc<http_npm::BackgroundWrites>>,
 }
 
 /// Tracks how user-configured `packageExtensions` rules behaved during
@@ -90,6 +95,7 @@ impl<'a> Default for InstallContext<'a> {
             mode: None,
             inline_builds: false,
             extension_tracking: Arc::new(Mutex::new(ExtensionTracking::default())),
+            background_writes: None,
         }
     }
 }
@@ -142,6 +148,11 @@ impl<'a> InstallContext<'a> {
 
     pub fn with_systems(mut self, systems: Option<&'a Vec<System>>) -> Self {
         self.systems = systems;
+        self
+    }
+
+    pub fn with_background_writes(mut self, background_writes: Option<Arc<http_npm::BackgroundWrites>>) -> Self {
+        self.background_writes = background_writes;
         self
     }
 }

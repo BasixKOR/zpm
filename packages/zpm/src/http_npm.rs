@@ -1,5 +1,5 @@
 use std::collections::HashSet;
-use std::sync::{Arc, LazyLock};
+use std::sync::{Arc, LazyLock, Mutex};
 
 use bytes::Bytes;
 use dashmap::DashMap;
@@ -8,6 +8,7 @@ use reqwest::Response;
 use serde::Deserialize;
 use sha2::{Sha256, Digest};
 use tokio::sync::OnceCell;
+use tokio::task::JoinHandle;
 use zpm_config::Configuration;
 use zpm_parsers::JsonDocument;
 use zpm_primitives::Ident;
@@ -406,6 +407,45 @@ pub struct GetPackageMetadataParams<'a> {
     pub authorization: Option<&'a str>,
     pub global_folder: &'a Path,
     pub refresh_lockfile: bool,
+    /// When set, the on-disk metadata cache write is offloaded to a
+    /// blocking task tracked by the tracker; callers must `drain` the
+    /// tracker before the runtime is dropped or the entry is lost.
+    /// `None` falls back to a synchronous inline write — slower under
+    /// parallel fetches, but safe for one-shot subcommands that don't
+    /// own a drain point.
+    pub background_writes: Option<&'a BackgroundWrites>,
+}
+
+/// Tracks the cache-write tasks fired off by `get_package_metadata`
+/// so an install (or other long-lived operation) can await them all
+/// before returning. `tokio::main` drops the runtime as soon as the
+/// outermost future resolves, so without an explicit join the pending
+/// `spawn_blocking` writes would be racing the process exit — that's
+/// the regression the inline write in commit 47a1509 papered over.
+#[derive(Default)]
+pub struct BackgroundWrites {
+    handles: Mutex<Vec<JoinHandle<()>>>,
+}
+
+impl BackgroundWrites {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    fn track<F>(&self, f: F)
+    where
+        F: FnOnce() + Send + 'static,
+    {
+        let handle = tokio::task::spawn_blocking(f);
+        self.handles.lock().unwrap().push(handle);
+    }
+
+    pub async fn drain(&self) {
+        let handles = std::mem::take(&mut *self.handles.lock().unwrap());
+        for handle in handles {
+            let _ = handle.await;
+        }
+    }
 }
 
 pub async fn get_package_metadata(params: &GetPackageMetadataParams<'_>) -> Result<Bytes, Error> {
@@ -572,11 +612,20 @@ async fn fetch_metadata_with_disk_cache(params: &GetPackageMetadataParams<'_>) -
     let cache_file_for_disk
         = cache_file.clone();
 
-    // We write inline (synchronously inside the async future) instead
-    // of spawn_blocking because tokio::main drops the runtime as soon
-    // as `main` returns. Any orphan spawn_blocking tasks racy-lose the
-    // cache entry on quick subprocess exits.
-    write_cache_to_disk(&cache_file_for_disk, &body_for_disk, etag, last_modified);
+    // Offload the trim/encode/write off the async runtime worker when
+    // the caller gave us a tracker — the install path drains it before
+    // returning, so the write completes without blocking the future
+    // and without leaking past `tokio::main`. Without a tracker we
+    // fall back to writing inline; that's slower under parallel
+    // metadata fetches, but it's the only safe option for one-shot
+    // subcommands that have no drain point.
+    if let Some(background_writes) = params.background_writes {
+        background_writes.track(move || {
+            write_cache_to_disk(&cache_file_for_disk, &body_for_disk, etag, last_modified);
+        });
+    } else {
+        write_cache_to_disk(&cache_file_for_disk, &body_for_disk, etag, last_modified);
+    }
 
     Ok(merged_body)
 }

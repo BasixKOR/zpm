@@ -67,6 +67,7 @@ impl Info {
                 authorization: authorization.as_deref(),
                 global_folder: &project.config.settings.global_folder.value,
                 refresh_lockfile: false,
+                background_writes: None,
             }).await?;
 
         #[derive(Deserialize)]

@@ -181,6 +181,7 @@ pub async fn resolve_semver_descriptor(context: &InstallContext<'_>, descriptor:
             authorization: authorization.as_deref(),
             global_folder: &project.config.settings.global_folder.value,
             refresh_lockfile: context.refresh_lockfile,
+            background_writes: context.background_writes.as_deref(),
         }).await?;
 
     #[serde_as]
@@ -249,6 +250,7 @@ pub async fn resolve_tag_descriptor(context: &InstallContext<'_>, descriptor: &D
             authorization: authorization.as_deref(),
             global_folder: &project.config.settings.global_folder.value,
             refresh_lockfile: context.refresh_lockfile,
+            background_writes: context.background_writes.as_deref(),
         }).await?;
 
     #[serde_as]

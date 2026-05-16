@@ -348,6 +348,7 @@ pub async fn resolve_versions(context: &InstallContext<'_>, registry: &Registry)
                     authorization: authorization.as_deref(),
                     global_folder: &project.config.settings.global_folder.value,
                     refresh_lockfile: context.refresh_lockfile,
+                    background_writes: context.background_writes.as_deref(),
                 }).await?;
 
             #[derive(Deserialize)]

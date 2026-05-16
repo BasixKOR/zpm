@@ -17,6 +17,7 @@ use crate::{
     error::Error,
     git::{GitOperation, detect_git_operation},
     http::HttpClient,
+    http_npm,
     install::{InstallContext, InstallManager, InstallResult, InstallState},
     lockfile::{Lockfile, from_legacy_berry_lockfile, from_pnpm_node_modules},
     manifest::{Manifest, helpers::read_manifest_with_size},
@@ -857,7 +858,13 @@ impl Project {
         let systems
             = self.config.settings.supported_architectures.to_systems();
 
-        with_report_result(report, async {
+        let background_writes
+            = Arc::new(http_npm::BackgroundWrites::new());
+
+        let drain_background_writes
+            = background_writes.clone();
+
+        let install_outcome = with_report_result(report, async {
             let package_cache
                 = self.package_cache()?;
 
@@ -904,7 +911,8 @@ impl Project {
                     .set_refresh_lockfile(options.refresh_lockfile)
                     .set_mode(options.mode)
                     .set_inline_builds(options.inline_builds)
-                    .with_systems(Some(&systems));
+                    .with_systems(Some(&systems))
+                    .with_background_writes(Some(background_writes.clone()));
 
             let roots
                 = self.workspaces.iter()
@@ -925,7 +933,14 @@ impl Project {
                     .link_and_build(self).await?;
 
             Ok(install_result)
-        }).await
+        }).await;
+
+        // Drain even on error so the cache writes don't outlive
+        // the tokio runtime — same correctness goal as the original
+        // inline write, but without serialising the hot install path.
+        drain_background_writes.drain().await;
+
+        install_outcome
     }
 
     /// Resolve a task and all its dependencies.
