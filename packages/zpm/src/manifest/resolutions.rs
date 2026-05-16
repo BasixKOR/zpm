@@ -172,14 +172,12 @@ impl Serialize for ResolutionsField {
     }
 }
 
-// Parse a resolution selector by inspecting the structure of the key
-// directly, so we don't get tripped up by the Range parser picking
-// Git/PypiSpecifier/etc. for ambiguous values like `1.0.0/no-deps`.
+// Parse structurally rather than through the Range parser, which
+// would misclassify ambiguous values like `1.0.0/no-deps` as Git etc.
 fn parse_selector(key: &str) -> Option<ResolutionSelector> {
     use zpm_primitives::AnonymousSemverRange;
 
-    // Find the slash that separates the parent from the child, ignoring
-    // the scope prefix (e.g. `@scope/name`).
+    // Skip the `@scope/` slash when locating the parent/child split.
     let slash_search_start = if key.starts_with('@') {
         key.find('/').map_or(0, |idx| idx + 1)
     } else {
@@ -202,10 +200,9 @@ fn parse_selector(key: &str) -> Option<ResolutionSelector> {
         descriptor
     };
 
-    // True when `parent_part` contains an explicit `@<range>` selector
-    // (i.e. is shaped like a descriptor rather than just an ident). We
-    // handle the two ident forms explicitly so the `@` of a scope isn't
-    // confused with the descriptor separator.
+    // True when `parent_part` has an explicit `@<range>`. Strip a
+    // leading `@scope` first so a scope's `@` doesn't masquerade as
+    // the descriptor separator.
     let has_range_separator = if let Some(rest) = parent_part.strip_prefix('@') {
         rest.contains('@')
     } else {

@@ -529,10 +529,9 @@ impl Project {
         Ok(&self.workspaces[*idx])
     }
 
-    /// Returns the user-facing form of `locator`: workspace locators are
-    /// rewritten to their path-based form (`name@workspace:packages/foo`)
-    /// so output disambiguates between workspaces with the same ident.
-    /// Non-workspace locators pass through unchanged.
+    /// Rewrites workspace locators to their path form
+    /// (`name@workspace:packages/foo`) so same-ident workspaces are
+    /// distinguishable. Non-workspace locators pass through.
     pub fn displayable_locator(&self, locator: &Locator) -> Locator {
         match &locator.reference {
             Reference::WorkspaceIdent(params) => {
@@ -935,9 +934,7 @@ impl Project {
             Ok(install_result)
         }).await;
 
-        // Drain even on error so the cache writes don't outlive
-        // the tokio runtime — same correctness goal as the original
-        // inline write, but without serialising the hot install path.
+        // Always drain so the cache writes don't outlive the runtime.
         drain_background_writes.drain().await;
 
         install_outcome
@@ -1092,9 +1089,8 @@ impl Workspace {
         }.into())
     }
 
-    /// Human-readable name for the workspace, matching berry's prettyWorkspace
-    /// format. For unnamed workspaces, appends a 6-hex-char sha512 of the
-    /// relative cwd so collisions are visible to the user.
+    /// Berry-compatible `prettyWorkspace`: unnamed workspaces append
+    /// a 6-hex sha512 of the relative cwd so collisions are visible.
     pub fn pretty_name(&self) -> String {
         use sha2::{Digest, Sha512};
 

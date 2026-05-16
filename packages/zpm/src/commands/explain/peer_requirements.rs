@@ -63,9 +63,6 @@ impl ExplainPeerRequirements {
         );
         println!();
 
-        // Render the request tree rooted at the subject. Each direct
-        // request becomes a top-level child; transitive requests sit
-        // under their respective parent.
         let mut root_children: Vec<tree::Node<'_>> = Vec::new();
         root_children.push(tree::Node {
             label: Some(node.subject.to_print_string()),
@@ -125,9 +122,7 @@ impl ExplainPeerRequirements {
     }
 
     fn explain_all(&self, data: &peer_requirements::PeerData) -> Result<(), Error> {
-        // Sort by subject locator then ident, matching berry's
-        // `miscUtils.sortMap` call so the output is stable across
-        // invocations.
+        // Stable order: subject locator, then ident.
         let mut entries: Vec<&peer_requirements::PeerRequirementNode> = data.nodes.values().collect();
         entries.sort_by(|a, b| {
             use zpm_utils::ToFileString;
@@ -150,10 +145,8 @@ impl ExplainPeerRequirements {
                 n => format!(" and {} other dependencies", n - 1),
             };
 
-            // Pick a stable "first" request — direct requests sorted
-            // by physical locator. Falls back to the subject when no
-            // explicit request has been recorded (shouldn't happen
-            // for legitimate requirement nodes, but guard anyway).
+            // Falls back to the subject if no explicit request is
+            // recorded (shouldn't happen for a legitimate node).
             let first_requester_label = node.requests.values().next()
                 .map(|r| r.requester.to_print_string())
                 .unwrap_or_else(|| node.subject.to_print_string());

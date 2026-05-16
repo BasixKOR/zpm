@@ -203,24 +203,22 @@ pub struct InstallAndRunOptions {
     pub banner: Option<String>,
     /// Override the preferred binary name (defaults to the package name).
     pub binary_name: Option<String>,
-    /// If true, fall back to the single available binary when the preferred
-    /// name isn't found (matches `yarn create`/`yarn dlx -p` semantics).
+    /// Fall back to the sole available binary when the preferred name
+    /// isn't found (matches `yarn create` / `yarn dlx -p`).
     pub fallback_binary: bool,
     /// Override the run cwd (defaults to the caller's current dir).
     pub run_cwd: Option<Path>,
 }
 
-/// Installs a single package into a temporary dlx project and runs its
-/// binary. Used by `yarn dlx <pkg>`, `yarn create <starter>`, and
-/// `yarn init <template>` — same orchestration in all three.
+/// Installs `descriptor` into a temp dlx project and runs its binary —
+/// shared backbone for `yarn dlx`, `yarn create`, and `yarn init`.
 pub async fn install_and_run_single(
     descriptor: LooseDescriptor,
     options: InstallAndRunOptions,
 ) -> Result<ExitStatus, Error> {
     if let Some(banner) = options.banner.as_ref() {
-        // `yarn create` prints this synchronously before the report opens,
-        // and the tests scrape the literal "➤ YN0000:" prefix, so we keep
-        // it as a direct println rather than routing through the report.
+        // Direct println so the literal "➤ YN0000:" prefix lands
+        // before the report opens (tests scrape it).
         println!("➤ YN0000: {}", banner);
     }
 

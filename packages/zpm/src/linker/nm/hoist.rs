@@ -28,13 +28,10 @@ fn convert_workspace_to_link(project: &Project, locator: Locator) -> Locator {
     }
 }
 
-/// A locator is "workspace-backed" if it's either a real workspace
-/// reference or a Link reference whose target is one of the project's
-/// workspace directories. We convert workspace deps to Link refs
-/// before hoisting (so the hoister doesn't need to special-case
-/// workspaces in its main path), but the hoister still needs to refuse
-/// to lift these synthetic Links — moving them would break the peer
-/// dependency context they inherit from their filesystem parent.
+/// True for real workspace refs and for Links pointing at workspace
+/// dirs. Workspace deps get converted to Links before hoisting; the
+/// hoister still refuses to lift those synthetic Links because their
+/// peer-dep context comes from the filesystem parent.
 fn is_workspace_backed_locator(project: &Project, locator: &Locator) -> bool {
     if locator.reference.is_workspace_reference() {
         return true;
@@ -164,11 +161,9 @@ impl<'a> WorkTree<'a> {
             = (!physical_locator.reference.is_workspace_reference() || !terminal_workspaces) && !physical_locator.reference.is_link();
 
         if may_have_dependencies {
-            // Workspaces excluded from a `workspaces focus` run drop
-            // out of the resolution tree entirely. Treat them as
-            // dependency-less so they still get a node we can decide
-            // to skip later on, instead of panicking on the missing
-            // BTreeMap key.
+            // `workspaces focus`-excluded workspaces aren't in the
+            // resolution tree; treat them as dep-less so we still get
+            // a node (we'll decide to skip it later).
             match self.install_state.resolution_tree.locator_resolutions.get(&locator) {
                 Some(resolution) => {
                     dependencies = resolution.dependencies.iter()
@@ -198,9 +193,8 @@ impl<'a> WorkTree<'a> {
         node_idx
     }
 
-    /// Effective `hoistingLimits` value for `node_idx`: workspace-side
-    /// `installConfig.hoistingLimits` wins over the project-wide
-    /// `nmHoistingLimits` setting.
+    /// Workspace-side `installConfig.hoistingLimits` overrides the
+    /// project-wide `nmHoistingLimits`.
     fn effective_hoisting_limit(&self, node_idx: usize) -> NmHoistingLimits {
         let node = &self.nodes[node_idx];
 
@@ -215,16 +209,10 @@ impl<'a> WorkTree<'a> {
         per_workspace_limit.unwrap_or(global_limit)
     }
 
-    /// Returns true when the node's children's transitive dependencies
-    /// should NOT bubble up past this node when its parent processes
-    /// hoisting candidates.
-    ///
-    /// For `workspaces`, only workspace nodes act as borders; for
-    /// `dependencies`, every node with that limit blocks outbound.
-    /// Portals are always transparent: their direct deps need to hoist
-    /// into the parent so consumers reach them via the portal symlink
-    /// (Node walks up from the symlink target, not from the portal's
-    /// position in `node_modules`).
+    /// True when transitives of this node's children must not bubble
+    /// past it. `workspaces` blocks only at workspace nodes;
+    /// `dependencies` blocks at any node with that limit. Portals are
+    /// transparent — Node walks up from the symlink target.
     pub fn blocks_outbound_hoisting(&self, node_idx: usize) -> bool {
         if self.nodes[node_idx].locator.reference.physical_reference().is_portal() {
             return false;
@@ -241,10 +229,8 @@ impl<'a> WorkTree<'a> {
         }
     }
 
-    /// Returns true when this node should NOT accept any of its
-    /// children's transitive dependencies as hoist candidates of its
-    /// own — i.e. only direct children land in this node, transitives
-    /// stay nested. Triggered by the `dependencies` limit.
+    /// True under the `dependencies` limit: only direct children land
+    /// here; transitives stay nested.
     pub fn blocks_inbound_transitives(&self, node_idx: usize) -> bool {
         matches!(self.effective_hoisting_limit(node_idx), NmHoistingLimits::Dependencies)
     }
@@ -279,10 +265,9 @@ impl<'a> WorkTree<'a> {
             = node.dependencies.clone()
                 .into_iter()
                 .filter(|(_, dependency)| peer_dependencies.map_or(true, |peers| !peers.contains_key(&dependency.ident)))
-                // Don't recurse into a non-workspace dep that's already in our
-                // parent chain — that's a true cycle and would loop forever.
-                // Workspace deps are fine because we'll soon convert them into
-                // terminal Link nodes that don't expand further.
+                // Skip non-workspace deps already in our parent chain
+                // (true cycle). Workspace deps are fine — they become
+                // terminal Link nodes that don't expand.
                 .filter(|(_, dependency)| !parent_chain.contains(&dependency) || dependency.reference.is_workspace_reference())
                 .map(|(ident, dependency)| (ident, convert_workspace_to_link(self.project, dependency)))
                 .map(|(ident, dependency)| (ident, self.create_node(dependency, Some(node_idx), true)))
@@ -473,27 +458,18 @@ impl<'a, 'b> Hoister<'a, 'b> {
         let mut hoist_candidates_with_parents: BTreeMap<Locator, Vec<(usize, Ident, usize)>>
             = BTreeMap::new();
 
-        // If this node's effective `hoistingLimits` is `dependencies`,
-        // it refuses to accept any transitive child as its own — only
-        // its direct dependencies land here. Skip gathering candidates
-        // entirely.
+        // `dependencies` limit: only direct deps land here, no
+        // transitives — skip gathering hoist candidates.
         let host_blocks_inbound
             = self.work_tree.blocks_inbound_transitives(node_idx);
 
         for &child_idx in node_children.iter() {
             self.work_tree.expand_node(child_idx);
 
-            // Hoist-border check: if this child says "don't let your
-            // transitive dependencies escape me", skip its children
-            // entirely when collecting candidates to hoist INTO the
-            // current node. The child still gets hoisted itself (one
-            // level up), but its grandchildren stay put.
-            //
-            // Portals are transparent for this check: their direct
-            // deps must reach the parent (the portal target sees its
-            // deps through the symlink it lives at), so we treat them
-            // as if the host had `none` inbound when this child is a
-            // portal.
+            // Hoist-border check: if the child blocks outbound, its
+            // grandchildren stay put (the child itself still hoists).
+            // Portals are transparent — their direct deps need to
+            // reach the parent through the symlink.
             let child_is_portal
                 = self.work_tree.nodes[child_idx].locator.reference.physical_reference().is_portal();
 
@@ -627,17 +603,10 @@ impl<'a, 'b> Hoister<'a, 'b> {
                     scc_hoisting_requirements.push((package, package_dependencies));
                 }
 
-                // The SCC cannot be hoisted if the dependency is a workspace. Note that we will only
-                // ever encounter this situation for workspaces under their top-level view - if a
-                // package depends on a workspace, we will have turned that dependency into a link
-                // prior to hoisting. We still need to refuse to hoist those synthetic Links — a
-                // nested workspace relies on its filesystem parent to satisfy its peer deps, and
-                // bubbling it up to the root would silently switch those resolutions.
-                //
-                // Portals get the same treatment: berry keeps portal nodes pinned at their
-                // declared parent so the portal's own deps can be checked against that parent
-                // (and only that parent) for conflicts, instead of bubbling up indefinitely.
-
+                // Workspaces and portals stay pinned: workspaces
+                // inherit peer-dep context from their filesystem
+                // parent, and portals must keep their dep checks
+                // against the declared parent (berry's invariant).
                 let is_workspace
                     = scc.iter().any(|&scc_locator| {
                         is_workspace_backed_locator(self.work_tree.project, scc_locator)

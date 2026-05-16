@@ -131,12 +131,9 @@ impl BuildRequest {
                 if !script_result.success() {
                     return match self.allowed_to_fail {
                         true => {
-                            // The error is suppressed, so the
-                            // `ChildProcessFailedWithLog` summary
-                            // never reaches the user. Inline builds
-                            // would otherwise lose the output for
-                            // these failures — emit the captured log
-                            // explicitly to preserve it.
+                            // Error is suppressed; emit the captured
+                            // log explicitly so inline-builds output
+                            // isn't lost.
                             if inline_builds {
                                 emit_success_log(&locator, &combined_stdout, &combined_stderr);
                             }
@@ -145,11 +142,8 @@ impl BuildRequest {
 
                         false => {
                             // `script_result.ok()` writes the captured
-                            // stdout/stderr into an `error.log` and
-                            // returns `ChildProcessFailedWithLog`, which
-                            // the report layer surfaces under the
-                            // install summary — emitting a duplicate
-                            // success log here would print it twice.
+                            // log itself; emitting a success log here
+                            // would print it twice.
                             Err(script_result.ok().unwrap_err())
                         },
                     };
@@ -480,10 +474,9 @@ fn emit_yn0009(locator: &Locator) {
     });
 }
 
-/// Persists the build's combined stdout/stderr to a temp log file and
-/// asks the active report to dump it under the install summary.
-/// Mirrors the failure path's \`ChildProcessFailedWithLog\` flow so
-/// --inline-builds users see the same shape for successful builds.
+/// Dumps the build's stdout/stderr to a temp log and surfaces it via
+/// the active report. Mirrors the failure-path `ChildProcessFailedWithLog`
+/// flow so `--inline-builds` reads the same for successful builds.
 fn emit_success_log(locator: &Locator, stdout: &[u8], stderr: &[u8]) {
     let Ok(temp_dir) = Path::temp_dir() else {
         return;

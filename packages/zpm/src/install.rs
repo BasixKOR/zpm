@@ -43,16 +43,15 @@ pub struct InstallContext<'a> {
     pub mode: Option<InstallMode>,
     pub inline_builds: bool,
     pub extension_tracking: Arc<Mutex<ExtensionTracking>>,
-    /// Off-thread tracker for metadata cache writes. When present,
-    /// `get_package_metadata` offloads the disk write via spawn_blocking
-    /// and the owner is expected to call `drain` before returning so
-    /// the runtime doesn't drop pending writes.
+    /// Off-thread tracker for metadata cache writes. The owner must
+    /// call `drain` before returning so pending writes aren't dropped
+    /// when the runtime shuts down.
     pub background_writes: Option<Arc<http_npm::BackgroundWrites>>,
 }
 
-/// Tracks how user-configured `packageExtensions` rules behaved during
-/// resolution, so we can warn about rules that never matched (unused) or
-/// rules whose added field was already present upstream (redundant).
+/// Tracks `packageExtensions` rule behavior so we can warn about
+/// rules that never matched, or whose added field was already present
+/// upstream (redundant).
 #[derive(Debug, Default)]
 pub struct ExtensionTracking {
     pub matched: BTreeSet<SemverDescriptor>,
@@ -446,12 +445,8 @@ async fn start_fetch<'a>(
     let locator
         = result.resolution.locator.clone();
 
-    // --check-cache cares about every cached zip, not just those
-    // compatible with the current `supportedArchitectures`. If a stale
-    // arch's cache file is still on disk, we want to refetch + verify
-    // it the same way as an in-scope package. Leave the mock flag
-    // alone when no cache file exists — refetching a never-cached
-    // arch would do the user no favors.
+    // Under --check-cache, refetch + verify stale-arch zips that still
+    // sit on disk; leave never-cached archs alone.
     if is_mock_request && ctx.check_checksums {
         if let Some(cache) = ctx.package_cache {
             if let Ok(Some(_)) = cache.check_cache_entry(locator.clone(), ".zip") {
@@ -600,21 +595,10 @@ enum CacheHit {
     Pinned(Locator),
 }
 
-/// `--check-resolutions` sanity check: re-derive whether the locator
-/// the lockfile has handed us is still a plausible answer to the
-/// descriptor's range. The check is intentionally structural — it
-/// doesn't redo resolution from scratch — so that the lockfile can
-/// keep pinning a lower compatible version than what fresh resolution
-/// would pick. We only fail when the pin is *out of range*, which
-/// matches the supply-chain attack this flag is designed to catch:
-/// someone swapping the lockfile's locator for an unrelated package
-/// or out-of-range version.
-/// Renders a single peer warning into the install-time copy berry
-/// emits via `reportWarning(MessageName.{MISSING,INCOMPATIBLE}_PEER_DEPENDENCY, ...)`.
-/// Picks the first non-satisfying request as the "named" requester
-/// (matching berry's `mapAndFind` over `allPeerRequestsWithRoot`),
-/// and rolls additional requesters into the trailing "and other
-/// dependencies" clause.
+/// Renders a single peer warning matching berry's
+/// `MISSING_PEER_DEPENDENCY` / `INCOMPATIBLE_PEER_DEPENDENCY` copy.
+/// The "named" requester is the first non-satisfying request; any
+/// others roll up into the trailing "and other dependencies" clause.
 fn render_peer_warning(
     node: &crate::peer_requirements::PeerRequirementNode,
     warning: &crate::peer_requirements::PeerWarning,
@@ -624,9 +608,6 @@ fn render_peer_warning(
     let all_requests = iter_requests_with_root(&node.requests);
     let total_requests = all_requests.len();
 
-    // For the displayed requester, prefer the first request whose
-    // range doesn't satisfy the provided version (NodeNotCompatible)
-    // or just the first request (NodeNotProvided).
     let chosen_label = match (&warning.kind, node.provided_version.as_ref()) {
         (PeerWarningKind::NodeNotCompatible { .. }, Some(version)) => {
             all_requests.iter()
@@ -674,6 +655,11 @@ fn render_peer_warning(
     }
 }
 
+/// Structural check for `--check-resolutions`: confirm the lockfile's
+/// locator is still in-range for the descriptor without redoing
+/// resolution. We allow a lower compatible pin (lockfile lag is fine)
+/// and only fail when the pin is *out of range* — the supply-chain
+/// case the flag is designed to catch.
 fn verify_resolution_consistency(descriptor: &Descriptor, locator: &Locator) -> Result<(), Error> {
     let mismatch = || Error::ResolutionMismatch(descriptor.clone(), locator.clone());
 
@@ -683,9 +669,7 @@ fn verify_resolution_consistency(descriptor: &Descriptor, locator: &Locator) -> 
 
             let (resolved_ident, resolved_version) = match physical_reference {
                 Reference::Registry(ref_params) => (&ref_params.ident, &ref_params.version),
-                // Shorthand drops the redundant `ident@` prefix when
-                // it matches the locator's own ident, so we read the
-                // effective ident off the locator itself.
+                // Shorthand drops the `ident@` prefix — read it off the locator.
                 Reference::Shorthand(ref_params) => (&locator.ident, &ref_params.version),
                 _ => return Err(mismatch()),
             };
@@ -710,12 +694,9 @@ fn verify_resolution_consistency(descriptor: &Descriptor, locator: &Locator) -> 
                 return Err(mismatch());
             }
 
-            // A `commit=X` request only accepts a locator pinned at
-            // the same commit. Other treeish kinds (tags, semver,
-            // HEAD) get resolved upstream so we have no cheap way to
-            // verify them here — let those through and rely on the
-            // normal install path to fail if the fetch returns the
-            // wrong tree.
+            // We can only cheaply verify exact-commit pins; other
+            // treeishes (tags, semver, HEAD) fall through to the
+            // normal fetch path, which fails if the tree is wrong.
             if let zpm_git::GitTreeish::Commit(expected_commit) = &range_params.git.treeish {
                 if ref_params.git.commit != *expected_commit {
                     return Err(mismatch());
@@ -738,11 +719,9 @@ fn check_resolution_cache(ctx: &InstallContext<'_>, lockfile: &Lockfile, descrip
         return Ok(None);
     }
 
-    // --check-resolutions runs the cache hit as normal (the lockfile
-    // is the source of truth for what we install), but the descriptor
-    // → locator binding gets verified before being accepted. The check
-    // lives in `resolve_descriptor_impl` to keep the flag's effect
-    // localized.
+    // --check-resolutions still uses the cached locator; the
+    // descriptor→locator binding is verified in resolve_descriptor_impl
+    // before we accept the hit.
 
     // enforced_resolutions semantics:
     // - None (not in map): use lockfile resolution if available
@@ -823,21 +802,16 @@ pub struct InstallState {
     pub island_descriptor_to_locator: BTreeMap<String, BTreeMap<Descriptor, Locator>>,
     pub island_normalized_resolutions: BTreeMap<String, BTreeMap<Locator, Resolution>>,
 
-    /// Per-locator zip checksums. The lockfile strips checksums from
-    /// conditional locators so the file stays stable across
-    /// architectures, but `--check-cache` still wants to detect
-    /// tampering of cached native packages — so we keep a parallel
-    /// record in install state, where cross-arch determinism doesn't
-    /// matter.
+    /// Per-locator zip checksums for `--check-cache`. The lockfile
+    /// strips them from conditional locators (to stay arch-stable), so
+    /// we shadow them here where cross-arch determinism doesn't matter.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub cache_checksums: BTreeMap<Locator, Hash64>,
 
-    /// The `nmMode` value the last install ran under, stored verbatim
-    /// (lower-case kebab). On the next install, the nm linker checks
-    /// for a transition and rebuilds the affected files — switching
-    /// from hardlinks-* back to classic, for instance, has to break
-    /// any existing hardlinks so the on-disk files end up regular
-    /// again. Optional so older install states (pre-tracking) deserialize.
+    /// The `nmMode` of the last install, lower-case kebab. The nm
+    /// linker checks for a transition and breaks existing hardlinks
+    /// when switching back to classic. Optional so pre-tracking
+    /// install states deserialize.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub nm_mode: Option<String>,
 }
@@ -864,13 +838,9 @@ pub struct InstallResult {
 }
 
 impl Install {
-    /// Emits the install-time peer diagnostics — `YN0002`
-    /// (NodeNotProvided) and `YN0060` (NodeNotCompatible) plus the
-    /// closing CTA that points users at `yarn explain
-    /// peer-requirements`. Mirrors berry's
-    /// `emitPeerDependencyWarnings` in shape; the underlying data
-    /// model is computed once in `peer_requirements::compute` and
-    /// shared with the explain command.
+    /// Emits `YN0002`/`YN0060` peer warnings plus the closing CTA
+    /// pointing at `yarn explain peer-requirements`. Mirrors berry's
+    /// `emitPeerDependencyWarnings`.
     async fn report_peer_diagnostics(&self, project: &Project) {
         let report_guard = current_report().await;
         let Some(report) = report_guard.as_ref() else {
@@ -890,13 +860,9 @@ impl Install {
                 continue;
             };
 
-            // Berry splits warnings by whether the *subject* is a
-            // workspace ("project-level") or a transitive package
-            // ("transitive"). Project-level warnings are listed
-            // line-by-line; transitive ones are rolled up under a
-            // single CTA so the install output doesn't get drowned
-            // out when a deep dependency has internally-mismatched
-            // peers.
+            // Project-level (workspace subject) warnings list inline;
+            // transitive ones roll up under one CTA so a deep dep with
+            // mismatched peers can't drown the install output.
             if !node.is_root {
                 has_transitive = true;
                 continue;
@@ -926,10 +892,9 @@ impl Install {
         }
     }
 
-    /// Emits YN0004 / YN0005 once per *physical* locator that lists
-    /// build commands but has scripts disabled. Without this dedup the
-    /// same package would surface a warning per virtualised locator,
-    /// which can mean dozens of identical lines for a single package.
+    /// Emits YN0004 / YN0005 once per *physical* locator with build
+    /// commands but scripts disabled. Deduping avoids repeating the
+    /// same line for every virtualised instance.
     async fn report_disabled_build_scripts(&self, project: &Project) {
         let report_guard = current_report().await;
         let Some(report) = report_guard.as_ref() else {
@@ -946,8 +911,7 @@ impl Install {
                 continue;
             }
 
-            // Workspaces are always allowed to run their own scripts,
-            // so they're never the source of this warning. Bail early.
+            // Workspaces are always allowed to run their own scripts.
             if physical_locator.reference.is_workspace_reference() {
                 continue;
             }
@@ -1349,9 +1313,8 @@ impl<'a> InstallManager<'a> {
 
         let missing_checksums = self.result.lockfile.entries.values()
             .filter(|entry| {
-                // --check-cache asks us to re-verify every entry on disk,
-                // so don't trust the previously-recorded checksum: force
-                // a fresh hash even when the lockfile had one.
+                // --check-cache forces a fresh hash even when the
+                // lockfile already had one, so on-disk tampering shows.
                 if check_checksums {
                     return true;
                 }
@@ -1406,9 +1369,8 @@ impl<'a> InstallManager<'a> {
             let previous_cache_checksum = self.previous_state
                 .and_then(|state| state.cache_checksums.get(&entry.resolution.locator));
 
-            // Under --check-cache we trust late_checksums (freshly hashed
-            // from disk) over the previously-recorded lockfile checksum,
-            // so a tampered cache file fails the comparison below.
+            // Under --check-cache, prefer freshly-hashed late_checksums
+            // over the lockfile's record so tampered files surface.
             let mut checksum = package_data.checksum()
                 .or_else(|| if self.context.check_checksums {
                     late_checksums.get(&entry.resolution.locator).cloned()
@@ -1422,10 +1384,9 @@ impl<'a> InstallManager<'a> {
                 = self.result.install_state.conditional_locators
                     .contains(&entry.resolution.locator);
 
-            // Stash the (possibly fresh) checksum in install state
-            // before the conditional-locator scrub clears it from the
-            // lockfile entry — that's the copy --check-cache compares
-            // against to detect tampering of native packages.
+            // Shadow the checksum in install state before the
+            // conditional-locator scrub clears it from the lockfile;
+            // this shadow is what --check-cache compares against.
             if let Some(cs) = &checksum {
                 self.result.install_state.cache_checksums
                     .insert(entry.resolution.locator.clone(), cs.clone());
@@ -1435,11 +1396,9 @@ impl<'a> InstallManager<'a> {
                 checksum = None;
             }
 
-            // Conditional locators (native variants) don't carry a
-            // checksum in the lockfile because that would make the
-            // lockfile arch-dependent. We keep one in install state
-            // instead; --check-cache compares the freshly-hashed cache
-            // file against that prior install's record.
+            // Conditional locators keep their checksum in install
+            // state (not the lockfile, which has to stay arch-stable);
+            // here we compare the fresh hash to that shadow.
             if self.context.check_checksums && is_conditional_locator {
                 let recomputed = late_checksums.get(&entry.resolution.locator);
                 if let (Some(recomputed), Some(previous_cache_checksum)) = (recomputed, previous_cache_checksum) {
@@ -1907,10 +1866,8 @@ pub fn normalize_resolutions(context: &InstallContext<'_>, resolution: &Resoluti
                     if resolution.optional_peer_dependencies.contains(peer_dependency) {
                         tracking.redundant.insert((descriptor.clone(), key));
                     } else {
-                        // We just need to flag it as applied here — the
-                        // actual `optional_peer_dependencies` set comes
-                        // from the original manifest and is not mutable
-                        // through this code path.
+                        // Flag-only: `optional_peer_dependencies` comes
+                        // from the original manifest and isn't mutated here.
                         tracking.applied.insert((descriptor.clone(), key));
                     }
                 }

@@ -12,9 +12,7 @@ pub struct ConfigurationContext {
 }
 
 impl ConfigurationContext {
-    /// Returns the most-specific cwd available — project, falling back to
-    /// package. Used by derived-path settings (cache folder, tsconfig
-    /// probes, …) to pick the right base.
+    /// Most-specific cwd available: project, falling back to package.
     pub fn preferred_cwd(&self) -> Option<&Path> {
         self.project_cwd.as_ref().or(self.package_cwd.as_ref())
     }
@@ -33,7 +31,7 @@ pub enum Source {
 }
 
 impl Source {
-    /// Yarn-berry-compatible label printed in `yarn config --json` output.
+    /// Berry-compatible label for `yarn config --json` output.
     pub fn label(&self) -> &'static str {
         match self {
             Source::Default => "<default>",
@@ -59,7 +57,6 @@ impl<T> Setting<T> {
     }
 
     /// Overrides the setting with `value` and stamps it with `source`.
-    /// Used by `install` and friends when a CLI flag forces a setting.
     pub fn force(&mut self, value: T, source: Source) {
         self.value = value;
         self.source = source;
@@ -834,10 +831,8 @@ pub struct Configuration {
     pub user_config_path: Option<Path>,
     pub project_config_path: Option<Path>,
     pub env_files: BTreeMap<String, String>,
-    /// The context used to load this configuration — kept around so
-    /// downstream code (commands, helpers in `fns`) can re-evaluate
-    /// context-dependent predicates without recomputing the env/cwd
-    /// snapshot.
+    /// Retained so downstream predicates can re-evaluate without
+    /// recomputing the env/cwd snapshot.
     pub context: ConfigurationContext,
 }
 
@@ -1117,13 +1112,10 @@ impl Configuration {
     }
 }
 
-/// Hardened mode auto-enables stricter checks (immutable installs,
-/// lockfile refresh during install) in untrusted CI contexts. It
-/// kicks in only when no source higher than `Default` has spoken —
-/// users who explicitly set `enableHardenedMode` (rc file, env var,
-/// CLI) keep full control. Cascaded overrides are stamped with
-/// `Source::Hardened` so they can be distinguished from real defaults
-/// in `yarn config` and friends.
+/// Cascades stricter defaults (immutable installs, lockfile refresh)
+/// when hardened mode is on. Only overrides settings still at
+/// `Source::Default`; explicit user values keep precedence. Cascaded
+/// overrides are stamped `Source::Hardened` for `yarn config`.
 fn apply_hardened_mode(settings: &mut Settings) {
     if !settings.enable_hardened_mode.value {
         return;

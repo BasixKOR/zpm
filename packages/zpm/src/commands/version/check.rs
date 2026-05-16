@@ -32,8 +32,8 @@ impl VersionCheck {
         let raw_changed_workspaces = fetch_changed_workspaces(&project, None).await?;
         let versioning_dir = project.versioning_path();
 
-        // Exclude workspaces whose only changes are inside the versioning
-        // folder (those changes are bookkeeping for version bumps themselves).
+        // Bookkeeping-only changes in the versioning folder don't
+        // require a bump.
         let mut changed_workspaces = BTreeMap::new();
         for (ident, paths) in raw_changed_workspaces {
             let project_paths: BTreeSet<_> = paths.iter()
@@ -94,9 +94,8 @@ async fn collect_versioning_state(project: &Project) -> Result<VersioningState, 
     let mut releases = BTreeSet::new();
     let mut declined = BTreeSet::new();
 
-    // Only consider versioning files that were added/changed on this branch.
-    // Files committed on the base branch shouldn't satisfy bumps required
-    // by the current branch's changes.
+    // Only branch-local versioning files count — base-branch entries
+    // can't satisfy bumps required by this branch.
     let base = match fetch_branch_base(project).await {
         Ok(base) => base,
         Err(_) => return Ok(VersioningState { releases, declined }),

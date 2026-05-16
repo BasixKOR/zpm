@@ -157,9 +157,7 @@ impl CompositeCache {
     }
 
     /// Force-refetch variant of [`ensure_blob`]: always invokes the
-    /// fetcher, overwriting any existing cache entry. Used under
-    /// `--check-cache` so the npm fetcher can compare what the
-    /// registry currently serves against what's on disk.
+    /// fetcher and overwrites any existing entry.
     pub async fn refetch_blob<R, F>(&self, key: Locator, ext: &str, func: F) -> Result<CacheEntry, Error>
     where
         R: Future<Output = Result<Vec<u8>, Error>>,
@@ -274,9 +272,7 @@ impl DiskCache {
         self.ensure_blob_inner(key, ext, func, false).await
     }
 
-    /// Same as [`ensure_blob`], but always invokes the fetcher even if
-    /// the cache already holds the file. Used by `--check-cache` to
-    /// round-trip cached zips through the registry for verification.
+    /// Like [`ensure_blob`] but always invokes the fetcher, even on hit.
     pub async fn refetch_blob<R, F>(&self, key: Locator, ext: &str, func: F) -> Result<CacheEntry, Error>
     where
         R: Future<Output = Result<Vec<u8>, Error>>,
@@ -336,8 +332,7 @@ impl DiskCache {
     }
 
     /// Force-refetch variant of [`upsert_blob`]: always invokes the
-    /// fetcher, returning the freshly downloaded bytes (and writing
-    /// them through to the on-disk cache).
+    /// fetcher and writes the bytes through.
     pub async fn refetch_blob_data<R, F>(&self, key: Locator, ext: &str, func: F) -> Result<DataCacheEntry, Error>
     where
         R: Future<Output = Result<Vec<u8>, Error>>,
@@ -367,11 +362,8 @@ impl DiskCache {
                         data,
                     });
                 },
-                // Only treat a missing entry as "cache miss, fall through
-                // to refetch". Any other IO error (permission denied,
-                // interrupted read, …) must be surfaced — silently
-                // refetching+overwriting would defeat any protection the
-                // user set on the cache files.
+                // Only NotFound counts as a cache miss; other IO errors
+                // must surface so we don't blow past user-set permissions.
                 Err(err) if err.kind() == std::io::ErrorKind::NotFound => {},
                 Err(err) => return Err(err.into()),
             }

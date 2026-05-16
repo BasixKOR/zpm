@@ -101,10 +101,8 @@ impl Install {
             return Err(Error::ImmutableWithUpdateLockfile);
         }
 
-        // CLI is the last layer in the cascade — both `--immutable`
-        // and `--no-immutable` must be honoured, otherwise the user
-        // can't opt back out of the hardened-mode default applied in
-        // `Configuration::load`.
+        // Honour both `--immutable` and `--no-immutable` so users can
+        // opt out of the hardened-mode default.
         match self.immutable {
             Some(value) => project.config.settings.enable_immutable_installs.force(value, Source::Cli),
             None => {},
@@ -123,9 +121,8 @@ impl Install {
 
         sort_workspace_dependencies(&project)?;
 
-        // Snapshot pre-install state for each `immutablePatterns` glob
-        // so we can fail loudly if --immutable nevertheless changed
-        // one of the user's pinned paths.
+        // Snapshot each `immutablePatterns` glob so we can fail loudly
+        // if --immutable later changes a pinned path.
         let immutable_patterns: Vec<_> = project.config.settings.immutable_patterns
             .iter()
             .map(|setting| setting.value.clone())

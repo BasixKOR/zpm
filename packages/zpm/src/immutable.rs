@@ -4,14 +4,11 @@ use zpm_utils::{Glob, Hash64, Hash64Writer, Path, ToFileString};
 
 use crate::error::Error;
 
-/// Hash whatever the user has pinned via `immutablePatterns` so the
-/// install command can compare before/after and fail with YN0036 if a
-/// pinned path moved.
-///
-/// Matched files contribute their content; matched directories
-/// contribute a deterministic hash of every file inside (skipping
-/// `.git` and `.yarn` at the project root so we don't drown in cache
-/// contents the user never put under that pattern's purview anyway).
+/// Hashes the paths matched by an `immutablePatterns` entry so
+/// install can compare before/after and raise YN0036 on drift.
+/// Files hash to their content; directories hash to a deterministic
+/// digest of their tree, with `.git`/`.yarn` at the project root
+/// excluded.
 pub fn snapshot_pattern(project_cwd: &Path, pattern: &Glob) -> Result<Hash64, Error> {
     let mut entries: BTreeMap<String, Hash64> = BTreeMap::new();
     let mut stack: Vec<Path> = vec![Path::new()];
@@ -33,8 +30,7 @@ pub fn snapshot_pattern(project_cwd: &Path, pattern: &Glob) -> Result<Hash64, Er
                 Hash64::from_data(&[])
             };
             entries.insert(rel_str, content_hash);
-            // We've folded the entire subtree into one entry — don't
-            // also walk into it, that would double-count.
+            // Subtree folded into one entry; don't double-count it.
             continue;
         }
 
@@ -45,9 +41,8 @@ pub fn snapshot_pattern(project_cwd: &Path, pattern: &Glob) -> Result<Hash64, Er
         for entry in abs.fs_read_dir()? {
             let entry = entry?;
             let name = entry.file_name().to_string_lossy().to_string();
-            // We never want immutablePatterns to surf into the
-            // user's git history or zpm's own scratch space —
-            // those churn for unrelated reasons.
+            // Skip git history and zpm's scratch space at the root —
+            // they churn for unrelated reasons.
             if rel.is_empty() && matches!(name.as_str(), ".git" | ".yarn") {
                 continue;
             }
@@ -55,8 +50,7 @@ pub fn snapshot_pattern(project_cwd: &Path, pattern: &Glob) -> Result<Hash64, Er
         }
     }
 
-    // Record "missing" patterns deterministically so create/delete
-    // counts as a change.
+    // Deterministic "missing" marker so create/delete shows as drift.
     if entries.is_empty() {
         return Ok(Hash64::from_data(b"<missing>"));
     }

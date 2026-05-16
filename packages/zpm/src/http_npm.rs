@@ -407,21 +407,17 @@ pub struct GetPackageMetadataParams<'a> {
     pub authorization: Option<&'a str>,
     pub global_folder: &'a Path,
     pub refresh_lockfile: bool,
-    /// When set, the on-disk metadata cache write is offloaded to a
-    /// blocking task tracked by the tracker; callers must `drain` the
-    /// tracker before the runtime is dropped or the entry is lost.
-    /// `None` falls back to a synchronous inline write — slower under
-    /// parallel fetches, but safe for one-shot subcommands that don't
-    /// own a drain point.
+    /// Offloads the on-disk metadata cache write to a `spawn_blocking`
+    /// task; the owner must `drain` before the runtime exits. `None`
+    /// falls back to an inline write (slower under parallel fetches,
+    /// but safe for one-shot subcommands with no drain point).
     pub background_writes: Option<&'a BackgroundWrites>,
 }
 
-/// Tracks the cache-write tasks fired off by `get_package_metadata`
-/// so an install (or other long-lived operation) can await them all
-/// before returning. `tokio::main` drops the runtime as soon as the
-/// outermost future resolves, so without an explicit join the pending
-/// `spawn_blocking` writes would be racing the process exit — that's
-/// the regression the inline write in commit 47a1509 papered over.
+/// Tracks `spawn_blocking` cache-write tasks so the install can await
+/// them before returning. Without an explicit join, `tokio::main`
+/// drops the runtime out from under the writes when the outer future
+/// resolves.
 #[derive(Default)]
 pub struct BackgroundWrites {
     handles: Mutex<Vec<JoinHandle<()>>>,
@@ -598,10 +594,9 @@ async fn fetch_metadata_with_disk_cache(params: &GetPackageMetadataParams<'_>) -
     let fresh_body
         = response.error_for_status()?.bytes().await?;
 
-    // Resolution-cache fallback: merge any version entries we previously
-    // cached but the new response omits. Lets resolution continue working
-    // when a fixed version was once published but is later removed (or
-    // hidden by an allow-list, as the test exercises).
+    // Keep stale version entries the fresh response omits so
+    // resolution still works when a published version is later
+    // removed or hidden behind an allow-list.
     let merged_body = match &cached {
         Some(cached) => Bytes::from(merge_versions_into_fresh(&cached.metadata, &fresh_body)),
         None => fresh_body,
@@ -612,13 +607,9 @@ async fn fetch_metadata_with_disk_cache(params: &GetPackageMetadataParams<'_>) -
     let cache_file_for_disk
         = cache_file.clone();
 
-    // Offload the trim/encode/write off the async runtime worker when
-    // the caller gave us a tracker — the install path drains it before
-    // returning, so the write completes without blocking the future
-    // and without leaking past `tokio::main`. Without a tracker we
-    // fall back to writing inline; that's slower under parallel
-    // metadata fetches, but it's the only safe option for one-shot
-    // subcommands that have no drain point.
+    // Offload the trim/encode/write when the caller passes a tracker;
+    // otherwise fall back to an inline write (safe for one-shot
+    // subcommands with no drain point).
     if let Some(background_writes) = params.background_writes {
         background_writes.track(move || {
             write_cache_to_disk(&cache_file_for_disk, &body_for_disk, etag, last_modified);
@@ -630,10 +621,8 @@ async fn fetch_metadata_with_disk_cache(params: &GetPackageMetadataParams<'_>) -
     Ok(merged_body)
 }
 
-/// Layer any version entries from the stale on-disk metadata into the
-/// fresh registry response when the fresh response no longer carries
-/// them. Fresh values always win on conflicts; only the version-map is
-/// merged (top-level fields like `dist-tags` stay authoritative).
+/// Reintroduces stale `versions` entries the fresh response dropped.
+/// Fresh always wins on conflicts; only the version-map is merged.
 fn merge_versions_into_fresh(stale: &[u8], fresh: &[u8]) -> Vec<u8> {
     let Ok(mut fresh_json) = serde_json::from_slice::<serde_json::Value>(fresh) else {
         return fresh.to_vec();
@@ -647,11 +636,8 @@ fn merge_versions_into_fresh(stale: &[u8], fresh: &[u8]) -> Vec<u8> {
         return fresh.to_vec();
     };
 
-    // Fast-path: if every stale version is already present in fresh,
-    // the merge would be a no-op. Skip the JSON re-serialisation —
-    // popular packages produce hundreds of KBs of registry metadata
-    // and the server returns 200 on every cache miss even when the
-    // version list hasn't shrunk.
+    // Fast-path: skip re-serialising hundreds of KBs of metadata when
+    // every stale version is already in the fresh response.
     if let Some(fresh_versions) = fresh_json.get("versions").and_then(|v| v.as_object()) {
         if stale_versions.keys().all(|k| fresh_versions.contains_key(k)) {
             return fresh.to_vec();

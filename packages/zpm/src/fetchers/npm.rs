@@ -22,10 +22,8 @@ pub fn try_fetch_locator_sync(context: &InstallContext, locator: &Locator, param
         return Ok(Some(FetchResult::new_mock(archive_path, package_directory)));
     }
 
-    // --check-cache requires us to round-trip every cache entry
-    // through the registry so we can compare what's on disk against
-    // what the registry currently serves. Force the async path so the
-    // refetch + tamper-detection logic in `fetch_locator` runs.
+    // Force the async path so `fetch_locator`'s refetch + tamper
+    // detection runs under `--check-cache`.
     if context.check_checksums {
         return Ok(None);
     }
@@ -116,10 +114,8 @@ pub async fn fetch_locator<'a>(context: &InstallContext<'a>, locator: &Locator, 
         Ok(archive)
     };
 
-    // --check-cache wants every cached zip round-tripped through the
-    // registry so we can detect tampering. Compare the on-disk file
-    // (if any) against what the registry serves and bail out on
-    // mismatch before the atomic rename clobbers the evidence.
+    // Under --check-cache, hash the on-disk file before the refetch
+    // overwrites it so we can compare against the fresh download.
     let pre_existing_hash = if context.check_checksums {
         package_cache
             .check_cache_entry(locator.clone(), ".zip")?

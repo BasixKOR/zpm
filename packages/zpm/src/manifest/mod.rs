@@ -26,11 +26,9 @@ pub struct DistManifest {
     pub tarball: String,
 }
 
-/// Accepts both the modern array form (`workspaces: ["foo/*"]`) and the
-/// deprecated object form (`workspaces: { packages: [...], nohoist: [...] }`).
-///
-/// We keep `nohoist` around even though zpm doesn't honor it, so the
-/// install pass can emit a deprecation warning naming each pattern.
+/// Accepts the array form and the deprecated object form
+/// (`{ packages, nohoist }`). `nohoist` is retained so install can
+/// warn about each pattern even though zpm doesn't honor it.
 #[derive(Clone, Debug, Default, Archive, rkyv::Serialize, rkyv::Deserialize)]
 pub struct WorkspacesField {
     pub packages: Vec<String>,
@@ -66,9 +64,8 @@ impl<'de> Deserialize<'de> for WorkspacesField {
 
 impl Serialize for WorkspacesField {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        // We only ever serialize back the packages array; the nohoist
-        // round-trip would otherwise pin the deprecated shape into
-        // manifests that didn't ask for it.
+        // Only emit the packages array — round-tripping `nohoist`
+        // would pin the deprecated shape into manifests.
         self.packages.serialize(serializer)
     }
 }
@@ -83,8 +80,8 @@ pub struct InstallConfig {
     pub self_references: Option<bool>,
 }
 
-/// Mirror of `zpm_config::NmHoistingLimits` that derives the rkyv traits
-/// the manifest archive requires (zpm-config doesn't depend on rkyv).
+/// Rkyv-aware mirror of `zpm_config::NmHoistingLimits` (zpm-config
+/// doesn't pull in rkyv).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize, Archive, rkyv::Serialize, rkyv::Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum HoistingLimitsValue {

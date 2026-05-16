@@ -413,15 +413,13 @@ impl Path {
         Ok(())
     }
 
-    /// Changes the process cwd *and* updates `PWD` to this path (the
-    /// user-specified, possibly-symlinked form). Without the PWD update,
-    /// child processes like `pwd` resolve through the symlink and surface
-    /// the canonical path — which is the wrong answer when the user
-    /// explicitly chose the symlinked form via `--cwd`.
+    /// Sets cwd *and* `PWD` to this path's symlinked form. Without
+    /// updating `PWD`, child processes (`pwd` etc.) report the
+    /// canonical path instead of what the user typed.
     ///
     /// # Safety
-    /// `set_var` is wrapped in an unsafe block; callers must only invoke
-    /// this during startup before any other threads exist.
+    /// Must be called single-threaded during startup; `set_var` is
+    /// unsafe in a multi-threaded process.
     pub unsafe fn sys_set_current_dir_with_pwd(&self) -> Result<(), PathError> {
         self.sys_set_current_dir()?;
         // SAFETY: caller contract guarantees single-threaded startup.
@@ -729,10 +727,8 @@ impl Path {
         }
     }
 
-    /// Like `fs_expect`, but lets the caller build a domain-specific error
-    /// when the file is missing or its content differs from `expected_data`.
-    /// Permission bits are not checked — this is purely a content compare.
-    /// Returns `Ok(self)` on match or `Err(build_err())` on missing/mismatch.
+    /// Like `fs_expect` but with a caller-supplied error on
+    /// missing/mismatch. Compares content only (no permission bits).
     pub fn fs_expect_with<T, E, F>(&self, expected_data: T, build_err: F) -> Result<&Self, E>
     where
         T: AsRef<[u8]>,

@@ -22,8 +22,8 @@ pub fn home_rc_path() -> Result<Path, Error> {
     Ok(home.with_join_str(&rc_filename()))
 }
 
-/// Loads a `Configuration` rooted at the user's home directory, with no
-/// project rc layered on top. Used by `config set`/`config unset --home`.
+/// Loads a `Configuration` rooted at the user's home directory, with
+/// no project rc layered on top.
 pub fn load_home_config() -> Result<Configuration, Error> {
     let user_cwd = Path::home_dir()?
         .ok_or(Error::HomeDirectoryNotFound)?;
@@ -41,10 +41,9 @@ pub fn load_home_config() -> Result<Configuration, Error> {
         .map_err(|e| Error::ConfigurationParseError(Arc::new(e)))
 }
 
-/// Reads the rc file in `calling_cwd` (if any) and returns a YAML-serialized
-/// rc body suitable for writing into an ephemeral project (e.g. `dlx`).
-/// Drops `packageExtensions`/`plugins` since those reference packages
-/// outside the ephemeral project and would emit spurious YN0068 warnings.
+/// Builds a YAML rc body for an ephemeral project (e.g. `dlx`) from
+/// the caller's rc. Drops keys whose targets aren't in the ephemeral
+/// project (`packageExtensions`, `plugins`, `enableGlobalCache`).
 pub fn build_inherited_rc(calling_cwd: &Path) -> String {
     let base: serde_json::Value = serde_json::json!({
         "enableGlobalCache": false,
@@ -60,15 +59,11 @@ pub fn build_inherited_rc(calling_cwd: &Path) -> String {
 
     if let Some(mut parsed) = parsed {
         if let Some(map) = parsed.as_object_mut() {
-            // Ephemeral-unfriendly keys: their targets aren't in the
-            // ephemeral project, which would trigger spurious YN0068.
+            // Targets these keys reference aren't in the ephemeral
+            // project; user-set values would surface as YN0068 or
+            // override our forced `enableGlobalCache: false`.
             map.remove("packageExtensions");
             map.remove("plugins");
-            // `enableGlobalCache` is forced to `false` for dlx so the
-            // ephemeral project gets its own isolated cache. Drop it
-            // from the user rc before merging, otherwise a user-set
-            // `enableGlobalCache: true` would silently override the
-            // forced default.
             map.remove("enableGlobalCache");
         }
 

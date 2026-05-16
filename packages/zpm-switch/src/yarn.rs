@@ -147,9 +147,9 @@ pub fn extract_bin_meta(args: Option<Vec<String>>) -> BinMeta {
 
     while let Some(first_arg) = args.first() {
         if first_arg == "--cwd" {
-            // The next arg has to actually be a path, not another flag
-            // or the end of the arg list — otherwise we'd silently
-            // capture e.g. `yarn --cwd --immutable` as cwd=--immutable.
+            // Reject when the next token is a flag or missing,
+            // otherwise `yarn --cwd --immutable` captures `--immutable`
+            // as the path.
             let raw = match args.get(1) {
                 Some(next) if !next.starts_with('-') => next.clone(),
                 _ => {

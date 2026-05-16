@@ -14,15 +14,12 @@ pub mod zip;
 
 pub use error::Error;
 
-/// Compresses `input` using libdeflate's raw DEFLATE stream at `level`.
-///
-/// We use libdeflate instead of flate2's `zlib-rs` backend because the
-/// latter dispatches to per-arch SIMD code paths that produce
-/// bit-different (still-valid) deflate streams for the same input on
-/// x86_64 vs aarch64. The cache packer hashes the resulting zip, so any
-/// per-arch drift surfaces as lockfile checksum mismatches under
-/// `--refresh-lockfile` in hardened-mode CI. libdeflate's output is
-/// version-deterministic across architectures.
+/// Compresses `input` as a raw DEFLATE stream at `level`. We use
+/// libdeflate (not flate2's `zlib-rs` backend) because zlib-rs's
+/// per-arch SIMD paths produce bit-different — still valid — output
+/// on x86_64 vs aarch64. The cache packer hashes the resulting zip,
+/// so drift would surface as lockfile checksum mismatches under
+/// `--refresh-lockfile` in hardened-mode CI.
 pub(crate) fn deflate_compress(input: &[u8], level: usize) -> Vec<u8> {
     let mut compressor
         = Compressor::new(CompressionLvl::new(level as i32).expect("compression level out of range"));

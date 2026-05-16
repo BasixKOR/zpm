@@ -172,15 +172,10 @@ struct YarnRcInit {
 fn apply_init_fields(document: &mut JsonDocument, init_cwd: &Path) -> Result<(), Error> {
     let rc_filename = crate::commands::rc_helpers::rc_filename();
 
-    // Collect every rc on the way up from `init_cwd`, plus the home rc
-    // if it isn't already on that walk. We want the same cascade that
-    // `Configuration::load` produces — most-general (user) first,
-    // most-specific (closest to `init_cwd`) last — so that the values
-    // written into the new manifest reflect what the user would have
-    // gotten from the merged configuration. Returning on the first
-    // match would silently drop a `initFields` defined in the user rc
-    // when *any* parent rc also exists, even if it doesn't set
-    // `initFields` at all.
+    // Walk every rc on the way up from `init_cwd`, plus the home rc,
+    // so the manifest reflects the same cascade `Configuration::load`
+    // would produce. Stopping at the first hit would silently drop an
+    // `initFields` set higher up the chain.
     let mut rc_paths: Vec<Path> = Vec::new();
     let mut current: Option<Path> = Some(init_cwd.clone());
     while let Some(dir) = current {
@@ -197,8 +192,7 @@ fn apply_init_fields(document: &mut JsonDocument, init_cwd: &Path) -> Result<(),
         }
     }
 
-    // `rc_paths` is currently innermost-first; reverse so we write
-    // outermost first and let inner rcs override.
+    // Reverse to apply outermost first so inner rcs override.
     for rc_path in rc_paths.into_iter().rev() {
         let Ok(text) = rc_path.fs_read_text() else { continue };
         let Ok(parsed) = zpm_parsers::YamlDocument::hydrate_from_str::<YarnRcInit>(&text) else { continue };

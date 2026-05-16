@@ -86,23 +86,17 @@ pub fn fs_extract_archive(destination: &Path, package_data: &PackageData) -> Res
     fs_extract_archive_impl(destination, package_data, ExtractMode::Classic)
 }
 
-/// Same as [`fs_extract_archive`], but routes every extracted file
-/// through a content-addressed index stored at `index_root`. Identical
-/// file contents (across packages or projects) share one inode, and
-/// modifications to any hardlinked copy are detected on the next install
-/// and repaired in place — matching berry's pnpm content-addressed
-/// store (PR yarnpkg/berry#4586).
+/// Like [`fs_extract_archive`] but hardlinks each file through a
+/// content-addressed index at `index_root` so identical contents share
+/// one inode across packages and projects. Modified hardlinks are
+/// detected via the mtime stamp and repaired in place.
 pub fn fs_extract_archive_with_cas(destination: &Path, package_data: &PackageData, index_root: &Path) -> Result<bool, Error> {
     fs_extract_archive_impl(destination, package_data, ExtractMode::Cas { index_root })
 }
 
-/// Project-local dedup: like CAS but without a side-channel index
-/// file. The first destination that asks for a given content is
-/// written normally and stashed in `local_index`; later destinations
-/// asking for the same hash are hardlinked to that first path
-/// instead. That matches berry's `nmMode: hardlinks-local`, where the
-/// inode count reflects only the on-disk consumers (no extra index
-/// file to inflate it).
+/// Project-local dedup with no side-channel index. The first
+/// destination for a given content hash is written normally and
+/// recorded in `local_index`; later destinations hardlink to it.
 pub fn fs_extract_archive_with_local_dedup(
     destination: &Path,
     package_data: &PackageData,
@@ -123,11 +117,8 @@ fn fs_extract_archive_impl(destination: &Path, package_data: &PackageData, mut m
 
     let already_extracted = ready_path.fs_exists();
 
-    // Without CAS, the .ready marker is enough — we trust the
-    // extraction was correct and skip the (expensive) zip walk.
-    // With CAS or local-dedup, we still re-walk so we can repair
-    // any index entry whose mtime drifted from SAFE_TIME (CAS) or
-    // re-hardlink any destination that's been overwritten in place.
+    // Classic mode trusts the .ready marker and skips the zip walk.
+    // CAS / local-dedup re-walk so out-of-band edits can be repaired.
     let skip_for_classic = matches!(mode, ExtractMode::Classic) && already_extracted;
     if skip_for_classic || matches!(package_data, &PackageData::MissingZip {..}) {
         return Ok(false);
@@ -176,9 +167,8 @@ fn fs_extract_archive_impl(destination: &Path, package_data: &PackageData, mut m
     Ok(!already_extracted)
 }
 
-/// Ensures `target` is a hardlink to `source`. No-ops if both already
-/// share an inode; otherwise removes any existing `target` and creates
-/// the hardlink. `source` must already exist.
+/// Ensures `target` is a hardlink to `source` (no-op if they already
+/// share an inode). `source` must exist.
 fn ensure_hardlink(target: &Path, source: &Path) -> Result<(), Error> {
     use std::os::unix::fs::MetadataExt;
 
@@ -204,9 +194,8 @@ fn ensure_hardlink(target: &Path, source: &Path) -> Result<(), Error> {
     Ok(())
 }
 
-/// Writes `data` at `target` (overwriting if present) with `mode_bits`
-/// permissions. Used as the "canonical first write" path for both the
-/// local hardlink index and the CAS.
+/// Writes `data` at `target` with `mode_bits` permissions, overwriting
+/// if present.
 fn write_canonical(target: &Path, data: &[u8], mode_bits: u32) -> Result<(), Error> {
     if target.fs_exists() {
         target.fs_rm_file().ok();
@@ -228,9 +217,8 @@ fn link_into_local_index(
     let mode_bits = mode & 0o777;
     let hash = zpm_utils::Hash64::from_data(data);
 
-    // Hoist the existing canonical entry; if missing (or its file got
-    // blown away between installs), fall through to the "write canonical"
-    // path which both creates the file and registers it as the new home.
+    // Fall through to write_canonical when the recorded path is gone;
+    // that re-registers a new home for this hash.
     let canonical_path = local_index.get(&hash).cloned()
         .filter(|p| p.fs_exists());
 
@@ -243,10 +231,8 @@ fn link_into_local_index(
     ensure_hardlink(target_path, &canonical_path)
 }
 
-/// Time marker we set on every index entry so that a later
-/// `os.stat().mtime != SAFE_TIME` reading flags the entry as having
-/// been modified out-of-band — at which point we restore its contents
-/// from the (still trusted) source zip.
+/// Stamped on every CAS entry. An mtime that doesn't match flags
+/// out-of-band modification and triggers a repair on the next install.
 const CAS_SAFE_TIME_SECS: i64 = 456_789_000;
 
 const CAS_DEFAULT_MODE: u32 = 0o644;
@@ -279,10 +265,7 @@ fn link_into_cas(target_path: &Path, data: &[u8], mode: u32, index_root: &Path) 
     let mut needs_rewrite = !index_path.fs_exists();
 
     if !needs_rewrite {
-        // mtime invariant: a fresh index entry is stamped at
-        // SAFE_TIME, so anything else means an external write since
-        // the last install and we should restore the canonical
-        // contents.
+        // mtime != SAFE_TIME ⇒ external write since the last install.
         if let Ok(metadata) = index_path.fs_metadata() {
             if metadata.mtime() != CAS_SAFE_TIME_SECS {
                 needs_rewrite = true;
@@ -291,9 +274,8 @@ fn link_into_cas(target_path: &Path, data: &[u8], mode: u32, index_root: &Path) 
     }
 
     if needs_rewrite {
-        // Repair-in-place: writing through the existing path preserves
-        // any hardlinks from other projects so they inherit the repair
-        // without their inode identity changing.
+        // Write through the existing path: cross-project hardlinks
+        // inherit the repair without losing inode identity.
         index_path.fs_write(data)?;
         index_path.fs_set_permissions(Permissions::from_mode(mode_bits))?;
         set_safe_mtime(&index_path)?;
@@ -393,13 +375,6 @@ pub fn get_package_internal_info(project: &Project, install: &Install, dependenc
     let should_build_if_compatible
         = has_build_commands
             && (locator.reference.is_workspace_reference() || scripts_allowed_by_meta);
-
-    // YN0004/YN0005 used to be emitted from this function. Because the
-    // linker can call us multiple times per physical package (once per
-    // virtualised locator), the warning would print N copies of the
-    // same line. The diagnostic now lives in
-    // `Install::report_disabled_build_scripts`, which dedupes by
-    // physical locator the same way the YN0002 path does.
 
     // Optional dependencies baked by zip archives are always extracted,
     // as we have no way to know whether they would be extracted if we

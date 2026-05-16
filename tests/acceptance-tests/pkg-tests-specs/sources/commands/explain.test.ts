@@ -40,7 +40,7 @@ describe(`Commands`, () => {
           if (!match)
             throw new Error(`Expected a peer-requirement hash in install output: ${installOut}`);
 
-          const {stdout} = await run(`explain`, `peer-requirements`, match[1]);
+          const {stdout} = await run(`explain`, `peer-requirements`, match[1]!);
 
           // Header line.
           expect(stdout).toContain(`is requested to provide no-deps by its descendants`);

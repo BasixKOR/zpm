@@ -16,9 +16,8 @@ pub enum WorkspaceMatch {
 }
 
 impl Project {
-    /// Returns the workspaces that declare `ident` as a direct dependency
-    /// (any hard kind, plus peerDependencies). Order matches declaration
-    /// order across workspaces; duplicates are deduped via a set.
+    /// Workspaces declaring `ident` as a hard or peer dep, deduped,
+    /// in declaration order.
     pub fn workspaces_depending_on(&self, ident: &Ident) -> Vec<&Ident> {
         let mut out = Vec::new();
         let mut seen = BTreeSet::new();
@@ -73,9 +72,8 @@ impl Project {
         seen
     }
 
-    /// `Ident → workspaces that depend on it (any hard or peer dep, only
-    /// considering deps that target a workspace ident)`. Cached form of the
-    /// "reverse workspace edges" map.
+    /// Reverse workspace edges: `ident → workspaces depending on it`
+    /// (hard + peer, workspace-targeting deps only).
     pub fn build_workspace_dependent_map(&self) -> BTreeMap<Ident, BTreeSet<Ident>> {
         let workspace_idents: BTreeSet<&Ident> = self.workspaces.iter()
             .map(|w| &w.name)
@@ -104,9 +102,8 @@ impl Project {
         map
     }
 
-    /// Classifies whether `descriptor` resolves to `target` and, if so,
-    /// whether the range satisfies the workspace's manifest version.
-    /// Mirrors the workspaces-list `-v` classifier.
+    /// Classifies `descriptor` against `target`: same ident, range
+    /// compatible with manifest version, or unrelated.
     pub fn workspace_satisfies(&self, target: &Workspace, descriptor: &Descriptor) -> WorkspaceMatch {
         if &descriptor.ident != &target.name {
             return WorkspaceMatch::Unrelated;

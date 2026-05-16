@@ -77,15 +77,11 @@ fn register_bin_symlinks_at_path(workspace_nm_tree: &mut SyncTree, node_rel_path
     Ok(())
 }
 
-/// When a workspace's effective `selfReferences` setting is `true`,
-/// register a `<host>/node_modules/<workspace-name>` symlink pointing at
-/// that workspace's source dir, so dependents (and the workspace
-/// itself, when `host` is the workspace) can require it by name.
-///
-/// Skipped when the workspace name collides with one of `host`'s
-/// direct hoisted children (the dependency wins), when the workspace
-/// is anonymous, or when its resolution was dropped from the tree
-/// (e.g. `yarn workspaces focus` exclusions).
+/// Registers `<host>/node_modules/<workspace-name>` symlinks for
+/// workspaces with `selfReferences` enabled so they can be required
+/// by name. Skipped on name collisions (dep wins), anonymous
+/// workspaces, and resolutions dropped from the tree (e.g. via
+/// `workspaces focus`).
 fn register_workspace_symlinks_at(
     project: &Project,
     install: &Install,
@@ -112,12 +108,10 @@ fn register_workspace_symlinks_at(
             continue;
         }
 
-        // Workspaces excluded from a `workspaces focus` run don't have
-        // an entry in the resolution tree; we don't symlink them so
-        // their incomplete state doesn't leak into the project root.
-        // Note that `project.install_state` isn't attached yet at link
-        // time, so we look the resolution tree up via the Install we
-        // were handed.
+        // Skip workspaces excluded by `workspaces focus` so their
+        // incomplete state doesn't leak into the project root.
+        // `project.install_state` isn't attached yet, so consult the
+        // Install we were handed.
         let target_locator = target_workspace.locator();
         if !install.install_state.resolution_tree.locator_resolutions.contains_key(&target_locator) {
             continue;
@@ -131,9 +125,8 @@ fn register_workspace_symlinks_at(
             continue;
         }
 
-        // A workspace whose effective hoistingLimits says "stay inside
-        // your own border" also doesn't want its locator surfaced in
-        // the project root's node_modules.
+        // Hoisting-limited workspaces shouldn't surface in the project
+        // root either — their packages stay inside their own border.
         let install_limit = target_workspace.manifest.install_config
             .as_ref()
             .and_then(|cfg| cfg.hoisting_limits)
@@ -234,20 +227,16 @@ fn generate_workspace_node_modules(
 
     register_workspace_bin_symlinks(&mut workspace_nm_tree, &workspace_dir, &workspace_binaries)?;
 
-    // Berry's `nmSelfReferences` puts every workspace into the project
-    // root's node_modules so that any code in the project can require
-    // it by name. Nested workspaces don't get a self-symlink in their
-    // own node_modules (the "no circular self-references" rule).
+    // Berry's `nmSelfReferences` puts every workspace into the
+    // project root's node_modules. Nested workspaces don't get a
+    // self-symlink in their own node_modules (no circular refs).
     let is_root_workspace
         = workspace.rel_path == Path::new();
 
     if is_root_workspace {
-        // Nested workspaces (those living inside another workspace's
-        // directory) resolve their peer dependencies through their
-        // parent's node_modules, so surfacing them at the project root
-        // would point consumers at a sibling subtree that doesn't share
-        // the same parent context. Restrict the root self-references
-        // to top-level workspaces.
+        // Only top-level workspaces self-reference: nested ones
+        // resolve peers through their parent's node_modules, so
+        // surfacing them at the root would mislead consumers.
         let non_root_workspace_paths: std::collections::BTreeSet<&Path> = project.workspaces.iter()
             .map(|ws| &ws.rel_path)
             .filter(|rel_path| !rel_path.is_empty())
@@ -290,11 +279,9 @@ fn generate_workspace_node_modules(
             let child_rel_path
                 = node_rel_path.with_join_str(&ident.as_str());
 
-            // `child_rel_path` already includes `node_rel_path` (see
-            // `node_rel_path.with_join_str` above) — joining
-            // `node_rel_path` again would double-prepend it for any
-            // nested entry, e.g. `foo/node_modules/foo/node_modules/bar`
-            // instead of `foo/node_modules/bar`.
+            // `child_rel_path` already includes `node_rel_path` —
+            // joining it again would double-prepend (`foo/node_modules/
+            // foo/node_modules/bar`).
             let abs_path
                 = workspace_abs_path.with_join(&child_rel_path);
 
@@ -308,11 +295,8 @@ fn generate_workspace_node_modules(
                 = install.package_data.get(&child_node.locator.physical_locator());
 
             // Symlinked children (portals, links, file:) can't host a
-            // nested `node_modules` in the sync tree — the sync layer
-            // refuses to descend through a Symlink node. The
-            // dependencies of those packages either hoisted to the
-            // current node already or will be reported as a conflict
-            // by the post-hoist portal check.
+            // nested `node_modules`; their deps either hoisted up
+            // already or surface in the post-hoist portal check.
             let is_symlinked
                 = matches!(package_data, Some(PackageData::Local { .. }))
                     || child_node.locator.reference.physical_reference().is_link()
@@ -344,22 +328,14 @@ fn generate_workspace_node_modules(
                 },
 
                 Some(PackageData::Zip {archive_path, package_directory, ..}) => {
-                    // The SyncTree only re-extracts when the destination
-                    // is missing. A user-deleted package therefore gets
-                    // re-extracted automatically; we just need to flag
-                    // it for rebuild so the build cache doesn't short-
-                    // circuit the matching tree-hash entry.
-                    //
-                    // Same caveat as `abs_path` above: `child_rel_path`
-                    // already starts with `node_rel_path`, so we only
-                    // join once.
+                    // SyncTree re-extracts user-deleted destinations
+                    // automatically; we just need to flag for rebuild
+                    // so the build cache doesn't short-circuit.
                     let dest_abs_path = abs_path.clone();
 
-                    // Switching back to nmMode: classic from a hardlinks
-                    // mode needs to break the inode sharing the previous
-                    // install left behind. Drop the folder here so the
-                    // SyncTree treats it as missing and writes regular
-                    // (nlink=1) files.
+                    // Transitioning back to classic nmMode: drop the
+                    // folder so SyncTree rewrites regular (nlink=1)
+                    // files instead of reusing existing hardlinks.
                     if force_wipe_before_extract && dest_abs_path.fs_exists() {
                         let _ = dest_abs_path.fs_rm().ok_missing();
                     }
@@ -369,11 +345,9 @@ fn generate_workspace_node_modules(
                     }
 
                     if hardlinks_mode {
-                        // Hand the package off to the CAS extractor;
-                        // SyncTree's `Any` placeholder keeps the
-                        // parent's walk from treating the folder as
-                        // extraneous without trying to manage its
-                        // contents.
+                        // Hand off to the CAS extractor; `Any` keeps
+                        // the parent walk from treating the folder as
+                        // extraneous while leaving its contents alone.
                         workspace_nm_tree.register_entry(child_rel_path, SyncItem::Any)?;
                         cas_extractions.push((dest_abs_path.clone(), child_node.locator.clone()));
                     } else {
@@ -429,9 +403,8 @@ fn generate_workspace_node_modules(
     workspace_nm_tree
         .run(workspace_abs_path.clone())?;
 
-    // Tests (and tools) reach for `workspace/node_modules` without
-    // checking that it exists. Make sure we always materialize the
-    // directory, even when the workspace has no deps or symlinks.
+    // Always materialize node_modules: tools (and tests) expect the
+    // directory to exist even when the workspace has no deps.
     workspace_abs_path.fs_create_dir_all()?;
 
     Ok(())
@@ -574,10 +547,8 @@ fn nm_mode_token(mode: zpm_config::NmMode) -> &'static str {
     }
 }
 
-/// Returns true when the user has flipped `nmMode` since the previous
-/// install — switching from `hardlinks-*` back to `classic`, for
-/// example, has to break any existing hardlinks so the on-disk files
-/// end up regular again.
+/// True when `nmMode` differs from the previous install — switching
+/// `hardlinks-*` → `classic` has to break existing hardlinks.
 fn nm_mode_transitioned(project: &Project) -> bool {
     let current = nm_mode_token(project.config.settings.nm_mode.value);
     let previous = project.install_state.as_ref()
@@ -588,12 +559,10 @@ fn nm_mode_transitioned(project: &Project) -> bool {
     }
 }
 
-/// When `nmMode` asks for hardlinks, route every extracted zip
-/// through a content-aware extractor so identical files share inodes.
-/// `hardlinks-local` keeps the dedup table in-memory (the first
-/// extracted destination doubles as the canonical copy, no separate
-/// index file inflating the link count). `hardlinks-global` lands
-/// every file in the shared global CAS so dedup spans projects.
+/// Routes hardlink-mode extractions through a content-aware extractor.
+/// `hardlinks-local` keeps the dedup table in memory (first
+/// destination doubles as canonical copy); `hardlinks-global` shares
+/// the dedup index across projects via the global CAS.
 fn run_cas_extractions(
     project: &Project,
     install: &Install,
@@ -636,12 +605,9 @@ fn run_cas_extractions(
     Ok(())
 }
 
-/// When any locator in the resolution uses a portal protocol, the
-/// node-modules linker emits a warning telling the user to launch Node
-/// with `--preserve-symlinks` (or the per-module variant). Without it,
-/// dependencies hoisted into the parent's node_modules wouldn't be
-/// reachable from the portal target — Node walks up from the symlink's
-/// resolved location, not from where the symlink was instantiated.
+/// Warns when portals are present. Node resolves through the
+/// symlink's target, so without `--preserve-symlinks` it can't see
+/// dependencies hoisted into the parent's node_modules.
 fn warn_about_portals_if_any(install: &Install) {
     let has_portal = install.install_state
         .resolution_tree
@@ -660,14 +626,11 @@ fn warn_about_portals_if_any(install: &Install) {
     });
 }
 
-/// Walks the post-hoist work tree to find external portals whose
-/// direct dependencies couldn't hoist into the portal's immediate
-/// parent (the parent already had a conflicting locator under that
-/// name). Berry refuses to silently lose those resolutions on disk —
-/// the portal target is read-only by convention — so we surface the
-/// conflict and fail the install. Internal portals (relative paths
-/// that resolve inside the project) are exempt: the user owns those
-/// directories and we can let the dep stay nested under the symlink.
+/// Fails the install when an external portal has direct deps that
+/// couldn't hoist into the portal's parent (a conflicting locator is
+/// already there). Portal targets are read-only by convention, so we
+/// can't write the dep nested under them. Internal portals
+/// (project-relative paths) are exempt.
 fn check_external_portal_conflicts(
     project: &Project,
     install: &Install,
@@ -676,10 +639,8 @@ fn check_external_portal_conflicts(
     let mut has_conflict = false;
 
     for node in &work_tree.nodes {
-        // A portal with peer deps gets wrapped in a Virtual reference;
-        // `physical_reference()` unwraps that for the type check while
-        // we keep the original `node.locator` around for printing the
-        // user-facing context.
+        // Peer-bearing portals wear a Virtual reference; unwrap for
+        // the type check and keep `node.locator` for display.
         if !node.locator.reference.physical_reference().is_portal() {
             continue;
         }
@@ -724,11 +685,9 @@ fn check_external_portal_conflicts(
             let parent_locator = parent_children.get(child_ident)
                 .map(|&idx| &work_tree.nodes[idx].locator);
 
-            // Look for a sibling portal under the same parent whose
-            // original dependency map already declared the conflicting
-            // version — that means the hoister picked the sibling's
-            // copy first, and the user gets a clearer error pointing
-            // at which sibling caused it.
+            // If a sibling portal under the same parent originally
+            // declared the conflicting version, blame it explicitly —
+            // the hoister picked its copy first.
             let sibling_portal = parent_locator
                 .and_then(|parent_loc| {
                     parent_children.iter()

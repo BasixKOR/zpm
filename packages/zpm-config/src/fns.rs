@@ -9,23 +9,16 @@ pub fn compute_cache_folder(context: &ConfigurationContext) -> Path {
 }
 
 pub fn check_tsconfig(context: &ConfigurationContext) -> bool {
-    // We probe both the project root and the active package: in a
-    // monorepo, only the workspace under operation typically owns a
-    // `tsconfig.json`, while the project root often has none.
-    // Collapsing to `preferred_cwd()` (project-first, single dir)
-    // would miss the workspace-level config.
+    // Probe project root and active package — monorepo workspaces
+    // usually own the `tsconfig.json`, the root often doesn't.
     context.project_cwd.iter()
         .chain(context.package_cwd.iter())
         .any(|cwd| cwd.with_join_str("tsconfig.json").fs_exists())
 }
 
-/// Returns true when zpm is running in a GitHub Actions pull-request
-/// workflow for a *public* repository. Used to auto-enable
-/// `enableHardenedMode` (see `Configuration::load`) so contributors
-/// can't sneak in lockfile changes from forks.
-///
-/// Reads from `context.env` rather than `std::env::var` so test
-/// harnesses can stub the value without globally mutating the
+/// True when running in a public-repo GitHub Actions PR workflow.
+/// Drives the auto-enable of `enableHardenedMode` against fork PRs.
+/// Reads from `context.env` so tests can stub without mutating the
 /// process environment.
 pub fn is_public_pr_ci(context: &ConfigurationContext) -> bool {
     if context.env.get("GITHUB_ACTIONS").map(String::as_str) != Some("true") {
