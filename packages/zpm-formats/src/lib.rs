@@ -1,6 +1,6 @@
-use std::{borrow::Cow, io::Write, os::unix::fs::PermissionsExt};
+use std::{borrow::Cow, os::unix::fs::PermissionsExt};
 
-use flate2::write::DeflateEncoder;
+use libdeflater::{CompressionLvl, Compressor};
 use zpm_utils::{FromFileString, impl_file_string_from_str, Path, ToFileString, ToHumanString};
 
 pub(crate) mod zip_structs;
@@ -13,6 +13,45 @@ pub mod zip_iter;
 pub mod zip;
 
 pub use error::Error;
+
+/// Compresses `input` using libdeflate's raw DEFLATE stream at `level`.
+///
+/// We use libdeflate instead of flate2's `zlib-rs` backend because the
+/// latter dispatches to per-arch SIMD code paths that produce
+/// bit-different (still-valid) deflate streams for the same input on
+/// x86_64 vs aarch64. The cache packer hashes the resulting zip, so any
+/// per-arch drift surfaces as lockfile checksum mismatches under
+/// `--refresh-lockfile` in hardened-mode CI. libdeflate's output is
+/// version-deterministic across architectures.
+pub(crate) fn deflate_compress(input: &[u8], level: usize) -> Vec<u8> {
+    let mut compressor
+        = Compressor::new(CompressionLvl::new(level as i32).expect("compression level out of range"));
+
+    let bound
+        = compressor.deflate_compress_bound(input.len());
+
+    let mut out = vec![0u8; bound];
+    let n = compressor.deflate_compress(input, &mut out)
+        .expect("output buffer sized via deflate_compress_bound");
+
+    out.truncate(n);
+    out
+}
+
+pub(crate) fn gzip_compress(input: &[u8], level: usize) -> Vec<u8> {
+    let mut compressor
+        = Compressor::new(CompressionLvl::new(level as i32).expect("compression level out of range"));
+
+    let bound
+        = compressor.gzip_compress_bound(input.len());
+
+    let mut out = vec![0u8; bound];
+    let n = compressor.gzip_compress(input, &mut out)
+        .expect("output buffer sized via gzip_compress_bound");
+
+    out.truncate(n);
+    out
+}
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum CompressionAlgorithm {
@@ -114,11 +153,7 @@ impl<'a> Entry<'a> {
     pub fn compress_in_place(&mut self, algorithm: CompressionAlgorithm) {
         let compressed_data = match algorithm {
             CompressionAlgorithm::Deflate(level) => {
-                let mut encoder
-                    = DeflateEncoder::new(Vec::with_capacity(self.data.len()), flate2::Compression::new(level as u32));
-
-                encoder.write_all(&self.data).unwrap();
-                encoder.finish().unwrap()
+                deflate_compress(&self.data, level)
             },
         };
 
