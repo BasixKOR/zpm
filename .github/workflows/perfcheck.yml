@@ -69,6 +69,7 @@ jobs:
           echo "YARN_UNSAFE_HTTP_WHITELIST=localhost" >> $GITHUB_ENV
 
       - name: Various other environment variables
+        run: |
           echo "YARN_ENABLE_HARDENED_MODE=0" >> $GITHUB_ENV
 
       - name: Run benchmark cold (base)
