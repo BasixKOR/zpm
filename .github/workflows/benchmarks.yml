@@ -96,3 +96,4 @@ jobs:
       env:
         DD_API_KEY: ${{secrets.DD_API_KEY}}
         HYPERFINE_OPTIONS: ${{github.event.inputs.hyperfineOptions}}
+        YARN_ENABLE_HARDENED_MODE: '0'
