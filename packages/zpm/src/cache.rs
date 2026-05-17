@@ -11,7 +11,7 @@ use futures::Future;
 
 use crate::error::Error;
 
-pub const CACHE_VERSION: usize = 1;
+pub const CACHE_VERSION: usize = 2;
 
 #[zpm_enum]
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
