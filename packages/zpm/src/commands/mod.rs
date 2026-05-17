@@ -7,17 +7,22 @@ mod debug;
 mod npm;
 mod tasks;
 
+mod rc_helpers;
+
 mod add;
 mod bin;
 mod cache_clear;
 mod config;
 mod config_get;
 mod config_set;
+mod config_unset;
+mod create;
 mod daemon;
 mod constraints;
 mod dedupe;
 mod dlx;
 mod exec;
+mod explain;
 mod info;
 mod init;
 mod install;
@@ -36,7 +41,6 @@ mod set_version_from_sources;
 mod unlink;
 mod unplug;
 mod up;
-mod up_recursive;
 mod version;
 mod workspaces_focus;
 mod workspaces_foreach;
@@ -70,6 +74,8 @@ pub enum YarnCli {
     ResolveTask(debug::resolve_task::ResolveTask),
     SyncFs(debug::sync_fs::SyncFs),
 
+    Audit(npm::audit::Audit),
+    NpmInfo(npm::info::Info),
     Login(npm::login::Login),
     LogoutAll(npm::logout_all::LogoutAll),
     Logout(npm::logout::Logout),
@@ -77,6 +83,7 @@ pub enum YarnCli {
     Whoami(npm::whoami::Whoami),
 
     VersionApply(version::apply::VersionApply),
+    VersionCheck(version::check::VersionCheck),
     Version(version::immediate::Version),
     VersionDeferred(version::deferred::VersionDeferred),
 
@@ -90,11 +97,14 @@ pub enum YarnCli {
     Daemon(debug::daemon::Daemon),
     DaemonStub(daemon::DaemonStub),
     ConfigSet(config_set::ConfigSet),
+    ConfigUnset(config_unset::ConfigUnset),
     Constraints(constraints::Constraints),
+    Create(create::Create),
     Dedupe(dedupe::Dedupe),
     DlxWithPackages(dlx::DlxWithPackages),
     Dlx(dlx::Dlx),
     Exec(exec::Exec),
+    ExplainPeerRequirements(explain::peer_requirements::ExplainPeerRequirements),
     Info(info::Info),
     InitWithTemplate(init::InitWithTemplate),
     Init(init::Init),
@@ -122,7 +132,6 @@ pub enum YarnCli {
     Unlink(unlink::Unlink),
     Unplug(unplug::Unplug),
     Up(up::Up),
-    UpRecursive(up_recursive::UpRecursive),
     WorkspacesFocus(workspaces_focus::WorkspacesFocus),
     WorkspacesForeach(workspaces_foreach::WorkspacesForeach),
     WorkspacesList(workspaces_list::WorkspacesList),
@@ -138,10 +147,23 @@ pub async fn run_default(args: Option<Vec<String>>) -> ExitCode {
     } = extract_bin_meta(args);
 
     if let Some(cwd) = cwd {
-        cwd.sys_set_current_dir()
+        if !cwd.fs_exists() {
+            cwd.fs_create_dir_all()
+                .expect("Failed to create the requested working directory");
+        }
+
+        // SAFETY: Configuration happens during startup before any threads are
+        // spawned. `sys_set_current_dir_with_pwd` requires single-threaded
+        // execution for the `set_var("PWD", ...)` call.
+        unsafe { cwd.sys_set_current_dir_with_pwd() }
             .expect("Failed to set current directory");
     }
 
+    // `--version` / `-v` are handled by clipanion's built-in selector
+    // (which short-circuits on `args.len() == 1 && matches!(...,
+    // "--version" | "-v")` and prints `env.info.version`), so we don't
+    // need a manual short-circuit — we just need to feed it the right
+    // version via `with_version`.
     let env
         = Environment::default()
             .with_program_name("Yarn Package Manager".to_string())

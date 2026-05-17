@@ -212,8 +212,58 @@ describe(`Commands`, () => {
 
           await expect(run(`workspace`, `pkg-primary`, `version`, `patch`)).resolves.toMatchObject({
             code: 0,
-            stdout: expect.stringContaining(`Couldn't auto-upgrade range * (in pkg-dependant@workspace:packages/pkg-dependant)`),
+            stdout: expect.stringContaining(`Couldn't auto-upgrade range workspace:* (in pkg-dependant@workspace:packages/pkg-dependant)`),
           });
+        }),
+    );
+
+    test(
+      `it should also report workspace:^/~ ranges and explicit workspace semver ranges`,
+      makeTemporaryEnv(
+        {
+          private: true,
+          workspaces: [
+            `packages/*`,
+          ],
+        },
+        async ({path, run, source}) => {
+          const pkgPrimary = ppath.join(path, `packages/pkg-primary`);
+          await xfs.mkdirpPromise(pkgPrimary);
+          await xfs.writeJsonPromise(ppath.join(pkgPrimary, Filename.manifest), {
+            name: `pkg-primary`,
+            version: `1.0.0`,
+          });
+
+          const caretWs = ppath.join(path, `packages/pkg-caret`);
+          await xfs.mkdirpPromise(caretWs);
+          await xfs.writeJsonPromise(ppath.join(caretWs, Filename.manifest), {
+            name: `pkg-caret`,
+            version: `1.0.0`,
+            dependencies: {[`pkg-primary`]: `workspace:^`},
+          });
+
+          const semverWs = ppath.join(path, `packages/pkg-semver`);
+          await xfs.mkdirpPromise(semverWs);
+          await xfs.writeJsonPromise(ppath.join(semverWs, Filename.manifest), {
+            name: `pkg-semver`,
+            version: `1.0.0`,
+            dependencies: {[`pkg-primary`]: `workspace:^1.0.0`},
+          });
+
+          const peerWs = ppath.join(path, `packages/pkg-peer`);
+          await xfs.mkdirpPromise(peerWs);
+          await xfs.writeJsonPromise(ppath.join(peerWs, Filename.manifest), {
+            name: `pkg-peer`,
+            version: `1.0.0`,
+            peerDependencies: {[`pkg-primary`]: `workspace:~1.0.0`},
+          });
+
+          await run(`install`);
+
+          const {stdout} = await run(`workspace`, `pkg-primary`, `version`, `major`);
+          expect(stdout).toContain(`Couldn't auto-upgrade range workspace:^ (in pkg-caret@workspace:packages/pkg-caret)`);
+          expect(stdout).toContain(`Couldn't auto-upgrade range workspace:^1.0.0 (in pkg-semver@workspace:packages/pkg-semver)`);
+          expect(stdout).toContain(`Couldn't auto-upgrade range workspace:~1.0.0 (in pkg-peer@workspace:packages/pkg-peer)`);
         }),
     );
 

@@ -93,6 +93,76 @@ describe(`Features`, () => {
     );
 
     test(
+      `it should cascade initFields across rc files (user-rc + project-rc)`,
+      makeTemporaryEnv(
+        {},
+        async ({path, run, source}) => {
+          // Two rc files: an outer one supplies `homepage`, an inner
+          // one supplies `license`. The inner one should NOT mask the
+          // outer one — both fields must end up on the manifest.
+          const outer = await xfs.mktempPromise();
+          await yarn.writeConfiguration(outer, {
+            initFields: {
+              homepage: `https://yarnpkg.com`,
+            },
+          });
+
+          const inner = `${outer}/inner` as PortablePath;
+          await xfs.mkdirpPromise(inner);
+          await yarn.writeConfiguration(inner, {
+            initFields: {
+              license: `MIT`,
+            },
+          });
+
+          const cwd = `${inner}/my-package` as PortablePath;
+          await xfs.mkdirpPromise(cwd);
+
+          await run(`init`, {cwd});
+
+          await expect(xfs.readJsonPromise(`${cwd}/package.json` as PortablePath)).resolves.toMatchObject({
+            name: `my-package`,
+            homepage: `https://yarnpkg.com`,
+            license: `MIT`,
+          });
+        },
+      ),
+    );
+
+    test(
+      `it should let inner rc override outer rc on conflicting fields`,
+      makeTemporaryEnv(
+        {},
+        async ({path, run, source}) => {
+          const outer = await xfs.mktempPromise();
+          await yarn.writeConfiguration(outer, {
+            initFields: {
+              license: `Apache-2.0`,
+            },
+          });
+
+          const inner = `${outer}/inner` as PortablePath;
+          await xfs.mkdirpPromise(inner);
+          await yarn.writeConfiguration(inner, {
+            initFields: {
+              license: `MIT`,
+            },
+          });
+
+          const cwd = `${inner}/my-package` as PortablePath;
+          await xfs.mkdirpPromise(cwd);
+
+          await run(`init`, {cwd});
+
+          await expect(xfs.readJsonPromise(`${cwd}/package.json` as PortablePath)).resolves.toMatchObject({
+            name: `my-package`,
+            license: `MIT`,
+          });
+        },
+      ),
+    );
+
+    test(
       `it should add the license field to the generated manifest`,
       makeTemporaryEnv(
         {},

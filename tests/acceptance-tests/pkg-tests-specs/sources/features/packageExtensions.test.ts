@@ -55,7 +55,7 @@ describe(`Features`, () => {
           await expect(run(`install`)).resolves.toMatchObject({
             // Makes sure that the packageExtension peerDependency range hasn't accidentally
             // been altered / normalized and that the installed package is compatible with it.
-            stdout: expect.not.stringContaining(`YN0060`),
+            stdout: expect.not.stringContaining(`which doesn't satisfy`),
           });
 
           await expect(source(`require('various-requires/invalid-require')`)).resolves.toMatchObject({

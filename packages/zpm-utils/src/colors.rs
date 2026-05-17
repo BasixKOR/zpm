@@ -4,10 +4,10 @@ const INFO_COLOR: Color
     = Color::TrueColor { r: 87, g: 163, b: 255 };
 
 const WARNING_COLOR: Color
-    = Color::TrueColor { r: 255, g: 87, b: 51 };
+    = Color::TrueColor { r: 235, g: 208, b: 143 };
 
 const ERROR_COLOR: Color
-    = Color::TrueColor { r: 200, g: 100, b: 100 };
+    = Color::TrueColor { r: 209, g: 53, b: 85 };
 
 const SUCCESS_COLOR: Color
     = Color::BrightGreen;

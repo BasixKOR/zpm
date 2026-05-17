@@ -9,7 +9,7 @@ describe(`Features`, () => {
         async ({path, run, source}) => {
           const {stdout} = await run(`install`);
 
-          expect(stdout).toContain(`YN0002`);
+          expect(stdout).toContain(`doesn't provide`);
         },
       ),
     );
@@ -23,7 +23,7 @@ describe(`Features`, () => {
         async ({path, run, source}) => {
           const {stdout} = await run(`install`);
 
-          expect(stdout).not.toContain(`YN0002`);
+          expect(stdout).not.toContain(`doesn't provide`);
         },
       ),
     );

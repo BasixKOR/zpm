@@ -91,6 +91,20 @@ impl AsRef<str> for Ident {
     }
 }
 
+/// Splits an `ident@selector`-shaped string at the separator that follows the ident.
+///
+/// The leading `@` of a scoped package (`@scope/name`) is preserved on the ident side; the
+/// search for the separator skips that leading `@`.
+pub fn split_ident_and_selector(input: &str) -> (&str, Option<&str>) {
+    let at_split = input.strip_prefix('@')
+        .map_or_else(|| input.find('@'), |rest| rest.find('@').map(|x| x + 1));
+
+    match at_split {
+        Some(idx) => (&input[..idx], Some(&input[idx + 1..])),
+        None => (input, None),
+    }
+}
+
 static IDENT_REGEX: LazyLock<regex::Regex> = LazyLock::new(|| {
     regex::Regex::new(r"^(?:@[^/]*/)?([^@/]+)$").unwrap()
 });
@@ -141,7 +155,7 @@ impl_file_string_serialization!(Ident);
 
 #[cfg(test)]
 mod tests {
-    use super::Ident;
+    use super::{Ident, split_ident_and_selector};
 
     #[test]
     fn ident_rkyv_roundtrip() {
@@ -152,5 +166,30 @@ mod tests {
             rkyv::from_bytes::<Ident, rkyv::rancor::BoxedError>(&bytes)
                 .unwrap();
         assert_eq!(ident, decoded);
+    }
+
+    #[test]
+    fn split_unscoped_with_selector() {
+        assert_eq!(split_ident_and_selector("lodash@^4.0.0"), ("lodash", Some("^4.0.0")));
+    }
+
+    #[test]
+    fn split_unscoped_without_selector() {
+        assert_eq!(split_ident_and_selector("lodash"), ("lodash", None));
+    }
+
+    #[test]
+    fn split_scoped_with_selector() {
+        assert_eq!(split_ident_and_selector("@scope/foo@npm:1.0.0"), ("@scope/foo", Some("npm:1.0.0")));
+    }
+
+    #[test]
+    fn split_scoped_without_selector() {
+        assert_eq!(split_ident_and_selector("@scope/foo"), ("@scope/foo", None));
+    }
+
+    #[test]
+    fn split_trailing_at_yields_empty_selector() {
+        assert_eq!(split_ident_and_selector("lodash@"), ("lodash", Some("")));
     }
 }

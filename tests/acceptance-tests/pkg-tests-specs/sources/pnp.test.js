@@ -386,7 +386,7 @@ describe(`Plug'n'Play`, () => {
       },
       async ({path, run, source}) => {
         const {stdout} = await run(`install`);
-        expect(stdout).not.toEqual(expect.stringContaining(`YN0060`));
+        expect(stdout).not.toEqual(expect.stringContaining(`which doesn't satisfy`));
       },
     ),
   );
@@ -402,7 +402,7 @@ describe(`Plug'n'Play`, () => {
       },
       async ({path, run, source}) => {
         const {stdout} = await run(`install`);
-        expect(stdout).toEqual(expect.stringContaining(`YN0060`));
+        expect(stdout).toEqual(expect.stringContaining(`which doesn't satisfy`));
       },
     ),
   );
@@ -1107,11 +1107,11 @@ describe(`Plug'n'Play`, () => {
       async ({path, run, source}) => {
         await run(`install`);
 
-        const listing = await xfs.readdirPromise(`${path}/.yarn/ignore/unplugged`);
+        const listing = await xfs.readdirPromise(`${path}/.yarn/unplugged`);
         expect(listing).toHaveLength(1);
 
         await writeFile(
-          `${path}/.yarn/ignore/unplugged/${listing[0]}/node_modules/no-deps/index.js`,
+          `${path}/.yarn/unplugged/${listing[0]}/node_modules/no-deps/index.js`,
           `module.exports = "unplugged";\n`,
         );
 
@@ -1136,11 +1136,11 @@ describe(`Plug'n'Play`, () => {
       async ({path, run, source}) => {
         await run(`install`);
 
-        const listing = await xfs.readdirPromise(`${path}/.yarn/ignore/unplugged`);
+        const listing = await xfs.readdirPromise(`${path}/.yarn/unplugged`);
         expect(listing).toHaveLength(1);
 
         await writeFile(
-          `${path}/.yarn/ignore/unplugged/${listing[0]}/node_modules/no-deps/index.js`,
+          `${path}/.yarn/unplugged/${listing[0]}/node_modules/no-deps/index.js`,
           `module.exports = "unplugged";\n`,
         );
 
@@ -1170,7 +1170,7 @@ describe(`Plug'n'Play`, () => {
       async ({path, run, source}) => {
         await run(`install`);
 
-        const listing = await xfs.readdirPromise(`${path}/.yarn/ignore/unplugged`);
+        const listing = await xfs.readdirPromise(`${path}/.yarn/unplugged`);
         expect(listing).toHaveLength(2);
       },
     ),
@@ -1193,7 +1193,7 @@ describe(`Plug'n'Play`, () => {
       async ({path, run, source}) => {
         await run(`install`);
 
-        const listing = await xfs.readdirPromise(`${path}/.yarn/ignore/unplugged`);
+        const listing = await xfs.readdirPromise(`${path}/.yarn/unplugged`);
         expect(listing).toHaveLength(1);
 
         expect(listing[0]).toMatch(/1.0.0/);
@@ -1307,7 +1307,7 @@ describe(`Plug'n'Play`, () => {
       async ({path, run, source}) => {
         await run(`install`);
 
-        expect(xfs.existsSync(`${path}/.yarn/ignore/unplugged`)).toEqual(false);
+        expect(xfs.existsSync(`${path}/.yarn/unplugged`)).toEqual(false);
       },
     ),
   );
@@ -1321,7 +1321,7 @@ describe(`Plug'n'Play`, () => {
       async ({path, run, source}) => {
         await run(`install`);
 
-        const listing = await xfs.readdirPromise(`${path}/.yarn/ignore/unplugged`);
+        const listing = await xfs.readdirPromise(`${path}/.yarn/unplugged`);
         expect(listing).toHaveLength(1);
       },
     ),
@@ -1341,7 +1341,7 @@ describe(`Plug'n'Play`, () => {
       async ({path, run, source}) => {
         await run(`install`);
 
-        expect(xfs.existsSync(`${path}/.yarn/ignore/unplugged`)).toEqual(false);
+        expect(xfs.existsSync(`${path}/.yarn/unplugged`)).toEqual(false);
       },
     ),
   );
@@ -1355,7 +1355,7 @@ describe(`Plug'n'Play`, () => {
       async ({path, run, source}) => {
         await run(`install`);
 
-        const listing = await xfs.readdirPromise(`${path}/.yarn/ignore/unplugged`);
+        const listing = await xfs.readdirPromise(`${path}/.yarn/unplugged`);
         expect(listing).toHaveLength(1);
       },
     ),
@@ -1370,7 +1370,7 @@ describe(`Plug'n'Play`, () => {
       async ({path, run, source}) => {
         await run(`install`);
 
-        expect(xfs.existsSync(`${path}/.yarn/ignore/unplugged`)).toEqual(false);
+        expect(xfs.existsSync(`${path}/.yarn/unplugged`)).toEqual(false);
       },
     ),
   );
@@ -1948,7 +1948,7 @@ describe(`Plug'n'Play`, () => {
       async ({path, run, source}) => {
         await run(`install`);
 
-        await xfs.removePromise(ppath.join(path, `.yarn/ignore/unplugged`));
+        await xfs.removePromise(ppath.join(path, `.yarn/unplugged`));
 
         await run(`install`);
 

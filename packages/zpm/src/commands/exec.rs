@@ -1,6 +1,7 @@
 use std::process::ExitStatus;
 
 use clipanion::cli;
+use zpm_utils::Path;
 
 use crate::{error::Error, project, script::ScriptEnvironment};
 
@@ -33,7 +34,9 @@ impl Exec {
         Ok(ScriptEnvironment::new()?
             .with_project(&project)
             .with_package(&project, &project.active_package()?)?
+            .with_cwd(Path::current_dir()?)
             .enable_shell_forwarding()
+            .enable_signal_delegation()
             .run_script(&self.script, &self.args)
             .await?
             .into())

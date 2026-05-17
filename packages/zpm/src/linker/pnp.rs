@@ -391,6 +391,12 @@ pub async fn link_project_pnp<'a>(project: &'a Project, install: &'a Install) ->
                 discard_from_lookup,
             });
 
+        // Virtualized locators share their build with the physical
+        // counterpart — only the physical entry should drive a build.
+        if locator.reference.is_virtual_reference() {
+            continue;
+        }
+
         if let Some(build_commands) = package_build_info.build_commands {
             let build_cwd = match is_physically_on_disk {
                 true => {
@@ -423,6 +429,7 @@ pub async fn link_project_pnp<'a>(project: &'a Project, install: &'a Install) ->
                 commands: build_commands,
                 allowed_to_fail: install.install_state.resolution_tree.optional_builds.contains(locator),
                 force_rebuild: is_freshly_unplugged,
+                inline_builds: install.inline_builds,
             });
         }
     }

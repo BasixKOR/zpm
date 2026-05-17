@@ -1,9 +1,8 @@
-use std::{borrow::Cow, io::Write};
+use std::borrow::Cow;
 
-use flate2::write::DeflateEncoder;
 use zpm_utils::Path;
 
-use crate::{Compression, CompressionAlgorithm, Entry};
+use crate::{deflate_compress, Compression, CompressionAlgorithm, Entry};
 
 pub trait IterExt<'a> {
     fn strip_first_segment(self) -> StripFirstSegment<Self> where Self: Sized;
@@ -188,11 +187,7 @@ impl<'a, T> Iterator for Compress<T> where T: Iterator<Item = Entry<'a>> {
 
         let compressed_data = match algorithm {
             CompressionAlgorithm::Deflate(level) => {
-                let mut encoder
-                    = DeflateEncoder::new(Vec::with_capacity(next.data.len()), flate2::Compression::new(level as u32));
-
-                encoder.write_all(&next.data).unwrap();
-                encoder.finish().unwrap()
+                deflate_compress(&next.data, level)
             },
         };
 

@@ -20,7 +20,7 @@ use crate::{
 #[cli::category("Daemon management")]
 #[derive(Debug)]
 pub struct DaemonOpenCommand {
-    #[cli::option("--open")]
+    #[cli::option("--open,--start")]
     open: bool,
 }
 
@@ -49,7 +49,10 @@ impl DaemonOpenCommand {
             if daemons::is_process_alive(existing.pid) {
                 let token = existing.auth_token.as_deref();
                 if self.check_daemon_ready(existing.port, token).await.is_ok() {
+                    // The first line must remain the WS URL.
                     println!("{}", build_ws_url(existing.port, token));
+                    println!("Daemon already running for project {}", detected_root.to_file_string());
+                    println!("PID: {}", existing.pid);
                     return Ok(());
                 }
 
@@ -146,7 +149,11 @@ impl DaemonOpenCommand {
             return Err(e);
         }
 
+        // The first line must remain the WS URL (yarn-bin reads it back to
+        // know where to send IPC requests).
         println!("{}", build_ws_url(port, Some(&auth_token)));
+        println!("Started daemon for project {}", detected_root.to_file_string());
+        println!("PID: {}", pid);
 
         Ok(())
     }
@@ -217,11 +224,48 @@ impl DaemonOpenCommand {
 
         Ok(())
     }
+
 }
 
-pub fn build_ws_url(port: u16, token: Option<&str>) -> String {
-    match token {
-        Some(t) => format!("ws://127.0.0.1:{}/?token={}", port, t),
-        None => format!("ws://127.0.0.1:{}/", port),
+#[cli::command]
+#[cli::path("switch", "daemon")]
+#[cli::category("Daemon management")]
+#[derive(Debug)]
+pub struct DaemonSendCommand {
+    /// Send a raw JSON message to the running daemon and print the response.
+    #[cli::option("--send")]
+    send: String,
+}
+
+impl DaemonSendCommand {
+    pub async fn execute(&self) -> Result<(), Error> {
+        let project_cwd
+            = get_final_cwd()?;
+
+        let find_result
+            = find_closest_package_manager(&project_cwd)?;
+
+        let detected_root
+            = find_result
+                .detected_root_path
+                .ok_or(Error::NoProjectFound)?;
+
+        let entry
+            = daemons::get_daemon(&detected_root)?
+                .ok_or(Error::DaemonNotRunning)?;
+
+        let request_payload: serde_json::Value = serde_json::from_str(&self.send)
+            .map_err(|e| Error::InvalidDaemonMessage(e.to_string()))?;
+
+        let resp = crate::ipc::send_daemon_request(
+            &entry,
+            request_payload,
+            Duration::from_secs(5),
+        ).await?;
+
+        println!("{}", serde_json::to_string(&resp).unwrap_or_default());
+        Ok(())
     }
 }
+
+pub use crate::ipc::build_ws_url;

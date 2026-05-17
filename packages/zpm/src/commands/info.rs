@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use clipanion::cli;
 use indexmap::IndexMap;
-use zpm_primitives::{DescriptorResolution, IdentGlob, IdentResolution, Locator, Reference};
+use zpm_primitives::{DescriptorResolution, IdentResolution, Locator, Reference, ReferenceFilter};
 use zpm_utils::{tree, AbstractValue, Unit, ToFileString};
 
 use crate::{
@@ -73,7 +73,7 @@ pub struct Info {
     json: bool,
 
     /// The patterns to match
-    patterns: Vec<IdentGlob>,
+    patterns: Vec<ReferenceFilter>,
 }
 
 impl Info {
@@ -463,8 +463,14 @@ impl Info {
     }
 
     fn get_filter(&self) -> Result<impl Fn(&Locator) -> bool, Error> {
+        let patterns = self.patterns.clone();
+
         Ok(move |locator: &Locator| {
-            self.patterns.is_empty() || self.patterns.iter().any(|matcher| matcher.check(&locator.ident))
+            if patterns.is_empty() {
+                return true;
+            }
+
+            patterns.iter().any(|p| p.check(locator))
         })
     }
 

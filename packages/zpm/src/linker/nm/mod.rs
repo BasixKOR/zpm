@@ -1,11 +1,11 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
-use zpm_primitives::{Ident, Reference};
+use zpm_primitives::{VersionFilter, Ident, Locator, Reference};
 use zpm_sync::{SyncItem, SyncTemplate, SyncTree};
-use zpm_utils::{FromFileString, Path, ToHumanString};
+use zpm_utils::{FromFileString, IoResultExt, Path, ToHumanString};
 
 use crate::{
-    build::BuildRequests, content_flags, error::Error, fetchers::PackageData, install::Install, linker::{LinkResult, nm::hoist::{Hoister, WorkTree}}, project::Project
+    build::{self, BuildRequest, BuildRequests}, content_flags, error::Error, fetchers::PackageData, install::Install, linker::{self, LinkResult, helpers::PackageMeta, nm::hoist::{Hoister, WorkTree}}, project::Project
 };
 
 pub mod hoist;
@@ -77,6 +77,84 @@ fn register_bin_symlinks_at_path(workspace_nm_tree: &mut SyncTree, node_rel_path
     Ok(())
 }
 
+/// Registers `<host>/node_modules/<workspace-name>` symlinks for
+/// workspaces with `selfReferences` enabled so they can be required
+/// by name. Skipped on name collisions (dep wins), anonymous
+/// workspaces, and resolutions dropped from the tree (e.g. via
+/// `workspaces focus`).
+fn register_workspace_symlinks_at(
+    project: &Project,
+    install: &Install,
+    workspace_nm_tree: &mut SyncTree,
+    host_node: &hoist::WorkNode,
+    host_abs_path: &Path,
+    candidate_workspaces: impl IntoIterator<Item = (Ident, Path)>,
+) -> Result<(), Error> {
+    let global_default = project.config.settings.nm_self_references.value;
+    let host_children = host_node.children.as_ref();
+
+    for (workspace_ident, workspace_dir) in candidate_workspaces {
+        if host_children.map_or(false, |children| children.contains_key(&workspace_ident)) {
+            continue;
+        }
+
+        let target_workspace = project.workspace_by_ident(&workspace_ident).ok();
+
+        let Some(target_workspace) = target_workspace else {
+            continue;
+        };
+
+        if target_workspace.manifest.name.is_none() {
+            continue;
+        }
+
+        // Skip workspaces excluded by `workspaces focus` so their
+        // incomplete state doesn't leak into the project root.
+        // `project.install_state` isn't attached yet, so consult the
+        // Install we were handed.
+        let target_locator = target_workspace.locator();
+        if !install.install_state.resolution_tree.locator_resolutions.contains_key(&target_locator) {
+            continue;
+        }
+
+        let per_workspace = target_workspace.manifest.install_config
+            .as_ref()
+            .and_then(|cfg| cfg.self_references);
+
+        if !per_workspace.unwrap_or(global_default) {
+            continue;
+        }
+
+        // Hoisting-limited workspaces shouldn't surface in the project
+        // root either — their packages stay inside their own border.
+        let install_limit = target_workspace.manifest.install_config
+            .as_ref()
+            .and_then(|cfg| cfg.hoisting_limits)
+            .map(zpm_config::NmHoistingLimits::from)
+            .unwrap_or(project.config.settings.nm_hoisting_limits.value);
+
+        if install_limit != zpm_config::NmHoistingLimits::None
+            && target_workspace.rel_path != Path::new()
+        {
+            continue;
+        }
+
+        let symlink_path
+            = Path::new()
+                .with_join_str(workspace_ident.as_str());
+
+        let target_path
+            = workspace_dir
+                .relative_to(&host_abs_path.with_join(&symlink_path).dirname().unwrap_or_default());
+
+        workspace_nm_tree.register_entry(symlink_path, SyncItem::Symlink {
+            target_path,
+        })?;
+    }
+
+    Ok(())
+}
+
 fn register_workspace_bin_symlinks(workspace_nm_tree: &mut SyncTree, workspace_path: &Path, binaries: &BTreeMap<String, (Ident, Path)>) -> Result<(), Error> {
     for (bin_name, (_ident, bin_path)) in binaries {
         let target_abs_path
@@ -110,7 +188,19 @@ fn generate_workspace_node_modules(
     work_tree: &WorkTree,
     workspace_node_idx: usize,
     packages_by_location: &mut BTreeMap<Path, zpm_primitives::Locator>,
+    canonical_build_locations: &mut BTreeMap<Locator, Path>,
+    force_rebuild_locators: &mut BTreeSet<Locator>,
+    cas_extractions: &mut Vec<(Path, Locator)>,
 ) -> Result<(), Error> {
+    let hardlinks_mode = matches!(
+        project.config.settings.nm_mode.value,
+        zpm_config::NmMode::HardlinksLocal | zpm_config::NmMode::HardlinksGlobal,
+    );
+
+    let nm_mode_changed = nm_mode_transitioned(project);
+    let force_wipe_before_extract = nm_mode_changed
+        && project.config.settings.nm_mode.value == zpm_config::NmMode::Classic;
+
     let workspace_node
         = &work_tree.nodes[workspace_node_idx];
 
@@ -137,6 +227,40 @@ fn generate_workspace_node_modules(
 
     register_workspace_bin_symlinks(&mut workspace_nm_tree, &workspace_dir, &workspace_binaries)?;
 
+    // Berry's `nmSelfReferences` puts every workspace into the
+    // project root's node_modules. Nested workspaces don't get a
+    // self-symlink in their own node_modules (no circular refs).
+    let is_root_workspace
+        = workspace.rel_path == Path::new();
+
+    if is_root_workspace {
+        // Only top-level workspaces self-reference: nested ones
+        // resolve peers through their parent's node_modules, so
+        // surfacing them at the root would mislead consumers.
+        let non_root_workspace_paths: std::collections::BTreeSet<&Path> = project.workspaces.iter()
+            .map(|ws| &ws.rel_path)
+            .filter(|rel_path| !rel_path.is_empty())
+            .collect();
+
+        let candidate_workspaces: Vec<(Ident, Path)> = project.workspaces.iter()
+            .filter(|ws| {
+                ws.rel_path.iter_path().rev()
+                    .skip(1)
+                    .all(|ancestor| !non_root_workspace_paths.contains(&ancestor))
+            })
+            .map(|ws| (ws.name.clone(), project.project_cwd.with_join(&ws.rel_path)))
+            .collect();
+
+        register_workspace_symlinks_at(
+            project,
+            install,
+            &mut workspace_nm_tree,
+            &work_tree.nodes[workspace_node_idx],
+            &workspace_abs_path,
+            candidate_workspaces,
+        )?;
+    }
+
     let mut workspace_queue
         = vec![(Path::new(), workspace_node_idx)];
 
@@ -155,12 +279,11 @@ fn generate_workspace_node_modules(
             let child_rel_path
                 = node_rel_path.with_join_str(&ident.as_str());
 
-            workspace_queue.push((child_rel_path.with_join_str("node_modules"), *child_idx));
-
+            // `child_rel_path` already includes `node_rel_path` —
+            // joining it again would double-prepend (`foo/node_modules/
+            // foo/node_modules/bar`).
             let abs_path
-                = workspace_abs_path
-                    .with_join(&node_rel_path)
-                    .with_join(&child_rel_path);
+                = workspace_abs_path.with_join(&child_rel_path);
 
             let rel_path
                 = abs_path
@@ -170,6 +293,18 @@ fn generate_workspace_node_modules(
 
             let package_data
                 = install.package_data.get(&child_node.locator.physical_locator());
+
+            // Symlinked children (portals, links, file:) can't host a
+            // nested `node_modules`; their deps either hoisted up
+            // already or surface in the post-hoist portal check.
+            let is_symlinked
+                = matches!(package_data, Some(PackageData::Local { .. }))
+                    || child_node.locator.reference.physical_reference().is_link()
+                    || child_node.locator.reference.physical_reference().is_portal();
+
+            if !is_symlinked {
+                workspace_queue.push((child_rel_path.with_join_str("node_modules"), *child_idx));
+            }
 
             match package_data {
                 Some(PackageData::Abstract) => {
@@ -186,15 +321,47 @@ fn generate_workspace_node_modules(
                     workspace_nm_tree.register_entry(child_rel_path, SyncItem::Symlink {
                         target_path: target_path.clone(),
                     })?;
+
+                    canonical_build_locations
+                        .entry(child_node.locator.clone())
+                        .or_insert_with(|| package_directory.relative_to(&project.project_cwd));
                 },
 
                 Some(PackageData::Zip {archive_path, package_directory, ..}) => {
-                    workspace_nm_tree.register_entry(child_rel_path, SyncItem::Folder {
-                        template: Some(SyncTemplate::Zip {
-                            archive_path: archive_path.clone(),
-                            inner_path: package_directory.relative_to(&archive_path),
-                        }),
-                    })?;
+                    // SyncTree re-extracts user-deleted destinations
+                    // automatically; we just need to flag for rebuild
+                    // so the build cache doesn't short-circuit.
+                    let dest_abs_path = abs_path.clone();
+
+                    // Transitioning back to classic nmMode: drop the
+                    // folder so SyncTree rewrites regular (nlink=1)
+                    // files instead of reusing existing hardlinks.
+                    if force_wipe_before_extract && dest_abs_path.fs_exists() {
+                        let _ = dest_abs_path.fs_rm().ok_missing();
+                    }
+
+                    if !dest_abs_path.fs_exists() {
+                        force_rebuild_locators.insert(child_node.locator.clone());
+                    }
+
+                    if hardlinks_mode {
+                        // Hand off to the CAS extractor; `Any` keeps
+                        // the parent walk from treating the folder as
+                        // extraneous while leaving its contents alone.
+                        workspace_nm_tree.register_entry(child_rel_path, SyncItem::Any)?;
+                        cas_extractions.push((dest_abs_path.clone(), child_node.locator.clone()));
+                    } else {
+                        workspace_nm_tree.register_entry(child_rel_path, SyncItem::Folder {
+                            template: Some(SyncTemplate::Zip {
+                                archive_path: archive_path.clone(),
+                                inner_path: package_directory.relative_to(&archive_path),
+                            }),
+                        })?;
+                    }
+
+                    canonical_build_locations
+                        .entry(child_node.locator.clone())
+                        .or_insert_with(|| dest_abs_path.relative_to(&project.project_cwd));
                 },
 
                 Some(PackageData::MissingZip {..}) => {
@@ -234,9 +401,81 @@ fn generate_workspace_node_modules(
     }
 
     workspace_nm_tree
-        .run(workspace_abs_path)?;
+        .run(workspace_abs_path.clone())?;
+
+    // Always materialize node_modules: tools (and tests) expect the
+    // directory to exist even when the workspace has no deps.
+    workspace_abs_path.fs_create_dir_all()?;
 
     Ok(())
+}
+
+fn build_requests_from_locations(
+    project: &Project,
+    install: &Install,
+    canonical_build_locations: &BTreeMap<Locator, Path>,
+    force_rebuild_locators: &BTreeSet<Locator>,
+    dependencies_meta: &Vec<(VersionFilter, PackageMeta)>,
+) -> Result<BuildRequests, Error> {
+    let tree
+        = &install.install_state.resolution_tree;
+
+    let mut all_build_entries
+        = Vec::<BuildRequest>::new();
+    let mut package_build_entries
+        = BTreeMap::<Locator, usize>::new();
+
+    for (locator, build_cwd) in canonical_build_locations {
+        // Virtual locators share their build with the physical one.
+        if locator.reference.is_virtual_reference() {
+            continue;
+        }
+
+        let physical = locator.physical_locator();
+
+        let Some(physical_package_data) = install.package_data.get(&physical) else {
+            continue;
+        };
+
+        let Some(resolution) = tree.locator_resolutions.get(locator) else {
+            continue;
+        };
+
+        let info = linker::helpers::get_package_internal_info(
+            project,
+            install,
+            dependencies_meta,
+            locator,
+            resolution,
+            physical_package_data,
+        );
+
+        let Some(build_commands) = info.build_commands else {
+            continue;
+        };
+
+        package_build_entries.insert(locator.clone(), all_build_entries.len());
+
+        all_build_entries.push(build::BuildRequest {
+            cwd: build_cwd.clone(),
+            locator: locator.clone(),
+            commands: build_commands,
+            allowed_to_fail: tree.optional_builds.contains(locator),
+            force_rebuild: force_rebuild_locators.contains(locator),
+            inline_builds: install.inline_builds,
+        });
+    }
+
+    let dependencies = linker::helpers::populate_build_entry_dependencies(
+        &package_build_entries,
+        &tree.locator_resolutions,
+        &tree.descriptor_to_locator,
+    )?;
+
+    Ok(BuildRequests {
+        entries: all_build_entries,
+        dependencies,
+    })
 }
 
 pub async fn link_island_nm(
@@ -246,6 +485,13 @@ pub async fn link_island_nm(
 ) -> Result<LinkResult, Error> {
     let mut packages_by_location
         = BTreeMap::new();
+
+    let mut canonical_build_locations
+        = BTreeMap::new();
+    let mut force_rebuild_locators
+        = BTreeSet::new();
+    let mut cas_extractions
+        = Vec::new();
 
     for workspace_ident in &island.workspace_idents {
         let workspace = project.workspace_by_ident(workspace_ident)?;
@@ -268,19 +514,244 @@ pub async fn link_island_nm(
             &work_tree,
             0,
             &mut packages_by_location,
+            &mut canonical_build_locations,
+            &mut force_rebuild_locators,
+            &mut cas_extractions,
         )?;
     }
 
+    run_cas_extractions(project, install, &cas_extractions)?;
+
+    let dependencies_meta
+        = linker::helpers::TopLevelConfiguration::from_project(project);
+
+    let build_requests = build_requests_from_locations(
+        project,
+        install,
+        &canonical_build_locations,
+        &force_rebuild_locators,
+        &dependencies_meta,
+    )?;
+
     Ok(LinkResult {
         packages_by_location,
-        build_requests: BuildRequests {
-            entries: vec![],
-            dependencies: BTreeMap::new(),
-        },
+        build_requests,
     })
 }
 
+fn nm_mode_token(mode: zpm_config::NmMode) -> &'static str {
+    match mode {
+        zpm_config::NmMode::Classic => "classic",
+        zpm_config::NmMode::HardlinksLocal => "hardlinks-local",
+        zpm_config::NmMode::HardlinksGlobal => "hardlinks-global",
+    }
+}
+
+/// True when `nmMode` differs from the previous install — switching
+/// `hardlinks-*` → `classic` has to break existing hardlinks.
+fn nm_mode_transitioned(project: &Project) -> bool {
+    let current = nm_mode_token(project.config.settings.nm_mode.value);
+    let previous = project.install_state.as_ref()
+        .and_then(|state| state.nm_mode.as_deref());
+    match previous {
+        None => false,
+        Some(prev) => prev != current,
+    }
+}
+
+/// Routes hardlink-mode extractions through a content-aware extractor.
+/// `hardlinks-local` keeps the dedup table in memory (first
+/// destination doubles as canonical copy); `hardlinks-global` shares
+/// the dedup index across projects via the global CAS.
+fn run_cas_extractions(
+    project: &Project,
+    install: &Install,
+    cas_extractions: &[(Path, Locator)],
+) -> Result<(), Error> {
+    if cas_extractions.is_empty() {
+        return Ok(());
+    }
+
+    match project.config.settings.nm_mode.value {
+        zpm_config::NmMode::HardlinksLocal => {
+            let mut local_index = BTreeMap::new();
+            for (dest_abs_path, locator) in cas_extractions {
+                let package_data = install.package_data
+                    .get(&locator.physical_locator())
+                    .unwrap_or_else(|| panic!("Expected package_data for {}", locator.to_print_string()));
+
+                linker::helpers::fs_extract_archive_with_local_dedup(
+                    dest_abs_path,
+                    package_data,
+                    &mut local_index,
+                )?;
+            }
+        },
+        zpm_config::NmMode::HardlinksGlobal => {
+            let index_root = project.config.settings.global_folder.value
+                .with_join_str("index");
+
+            for (dest_abs_path, locator) in cas_extractions {
+                let package_data = install.package_data
+                    .get(&locator.physical_locator())
+                    .unwrap_or_else(|| panic!("Expected package_data for {}", locator.to_print_string()));
+
+                linker::helpers::fs_extract_archive_with_cas(dest_abs_path, package_data, &index_root)?;
+            }
+        },
+        zpm_config::NmMode::Classic => {},
+    }
+
+    Ok(())
+}
+
+/// Warns when portals are present. Node resolves through the
+/// symlink's target, so without `--preserve-symlinks` it can't see
+/// dependencies hoisted into the parent's node_modules.
+fn warn_about_portals_if_any(install: &Install) {
+    let has_portal = install.install_state
+        .resolution_tree
+        .locator_resolutions
+        .keys()
+        .any(|locator| locator.reference.physical_reference().is_portal());
+
+    if !has_portal {
+        return;
+    }
+
+    crate::report::if_active(|report| {
+        report.warn(
+            "Portals are in use. Make sure to set --preserve-symlinks (or NODE_PRESERVE_SYMLINKS_MAIN=1) so node can resolve hoisted dependencies through the portal symlink.".to_string(),
+        );
+    });
+}
+
+/// Fails the install when an external portal has direct deps that
+/// couldn't hoist into the portal's parent (a conflicting locator is
+/// already there). Portal targets are read-only by convention, so we
+/// can't write the dep nested under them. Internal portals
+/// (project-relative paths) are exempt.
+fn check_external_portal_conflicts(
+    project: &Project,
+    install: &Install,
+    work_tree: &hoist::WorkTree,
+) -> Result<(), Error> {
+    let mut has_conflict = false;
+
+    for node in &work_tree.nodes {
+        // Peer-bearing portals wear a Virtual reference; unwrap for
+        // the type check and keep `node.locator` for display.
+        if !node.locator.reference.physical_reference().is_portal() {
+            continue;
+        }
+
+        let Some(children) = &node.children else {
+            continue;
+        };
+
+        if children.is_empty() {
+            continue;
+        }
+
+        let Some(parent_idx) = node.parent_idx else {
+            continue;
+        };
+
+        let parent_node = &work_tree.nodes[parent_idx];
+
+        let Some(parent_children) = parent_node.children.as_ref() else {
+            continue;
+        };
+
+        let package_directory = install.package_data
+            .get(&node.locator.physical_locator())
+            .and_then(|pd| match pd {
+                PackageData::Local { package_directory, .. } => Some(package_directory),
+                _ => None,
+            });
+
+        let is_internal = package_directory
+            .map(|pd| project.project_cwd.contains(pd))
+            .unwrap_or(false);
+
+        if is_internal {
+            continue;
+        }
+
+        for (child_ident, &child_idx) in children {
+            let child_locator
+                = &work_tree.nodes[child_idx].locator;
+
+            let parent_locator = parent_children.get(child_ident)
+                .map(|&idx| &work_tree.nodes[idx].locator);
+
+            // If a sibling portal under the same parent originally
+            // declared the conflicting version, blame it explicitly —
+            // the hoister picked its copy first.
+            let sibling_portal = parent_locator
+                .and_then(|parent_loc| {
+                    parent_children.iter()
+                        .filter_map(|(_, &sibling_idx)| {
+                            let sibling = &work_tree.nodes[sibling_idx];
+                            if sibling_idx == child_idx {
+                                return None;
+                            }
+                            if !sibling.locator.reference.physical_reference().is_portal() {
+                                return None;
+                            }
+                            let original = sibling.dependencies.get(child_ident)?;
+                            if original == parent_loc {
+                                Some(&sibling.locator)
+                            } else {
+                                None
+                            }
+                        })
+                        .next()
+                });
+
+            crate::report::if_active(|report| {
+                match (parent_locator, sibling_portal) {
+                    (Some(parent_locator), Some(sibling_locator)) => {
+                        report.warn(format!(
+                            "{}: dependency {} conflicts with dependency {} from sibling portal {}",
+                            node.locator.to_print_string(),
+                            child_locator.to_print_string(),
+                            parent_locator.to_print_string(),
+                            sibling_locator.ident.to_print_string(),
+                        ));
+                    },
+                    (Some(parent_locator), None) => {
+                        report.warn(format!(
+                            "{}: dependency {} conflicts with parent dependency {}",
+                            node.locator.to_print_string(),
+                            child_locator.to_print_string(),
+                            parent_locator.to_print_string(),
+                        ));
+                    },
+                    (None, _) => {
+                        report.warn(format!(
+                            "{}: dependency {} can't be hoisted into the parent and the portal target is external",
+                            node.locator.to_print_string(),
+                            child_locator.to_print_string(),
+                        ));
+                    },
+                }
+            });
+
+            has_conflict = true;
+        }
+    }
+
+    if has_conflict {
+        return Err(Error::SilentError);
+    }
+
+    Ok(())
+}
+
 pub async fn link_project_nm(project: &Project, install: &Install) -> Result<LinkResult, Error> {
+    warn_about_portals_if_any(install);
+
     let mut work_tree
         = WorkTree::new(project, &install.install_state);
 
@@ -290,7 +761,16 @@ pub async fn link_project_nm(project: &Project, install: &Install) -> Result<Lin
     let mut packages_by_location
         = BTreeMap::new();
 
+    let mut canonical_build_locations
+        = BTreeMap::new();
+    let mut force_rebuild_locators
+        = BTreeSet::new();
+    let mut cas_extractions
+        = Vec::new();
+
     hoister.hoist();
+
+    check_external_portal_conflicts(project, install, &work_tree)?;
 
     let mut project_queue
         = vec![0usize];
@@ -302,16 +782,29 @@ pub async fn link_project_nm(project: &Project, install: &Install) -> Result<Lin
             &work_tree,
             workspace_node_idx,
             &mut packages_by_location,
+            &mut canonical_build_locations,
+            &mut force_rebuild_locators,
+            &mut cas_extractions,
         )?;
 
         project_queue.extend_from_slice(&work_tree.nodes[workspace_node_idx].workspaces_idx);
     }
 
+    run_cas_extractions(project, install, &cas_extractions)?;
+
+    let dependencies_meta
+        = linker::helpers::TopLevelConfiguration::from_project(project);
+
+    let build_requests = build_requests_from_locations(
+        project,
+        install,
+        &canonical_build_locations,
+        &force_rebuild_locators,
+        &dependencies_meta,
+    )?;
+
     Ok(LinkResult {
         packages_by_location,
-        build_requests: BuildRequests {
-            entries: vec![],
-            dependencies: BTreeMap::new(),
-        },
+        build_requests,
     })
 }

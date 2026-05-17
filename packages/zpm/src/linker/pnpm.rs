@@ -54,6 +54,9 @@ pub async fn link_project_pnpm<'a>(project: &'a Project, install: &'a Install) -
     let store_path = project.project_cwd
         .with_join_str(&project.config.settings.pnpm_store_folder.value);
 
+    let cas_index_root = project.config.settings.global_folder.value
+        .with_join_str("index");
+
     // Remove existing node_modules
     linker::helpers::fs_remove_nm(nm_path)?;
 
@@ -89,9 +92,10 @@ pub async fn link_project_pnpm<'a>(project: &'a Project, install: &'a Install) -
                 let package_store_path = package_base_path
                     .with_join(&locator.ident.nm_subdir());
 
-                linker::helpers::fs_extract_archive(
+                linker::helpers::fs_extract_archive_with_cas(
                     &package_store_path,
                     physical_package_data,
+                    &cas_index_root,
                 )?;
 
                 package_store_path
@@ -128,18 +132,23 @@ pub async fn link_project_pnpm<'a>(project: &'a Project, install: &'a Install) -
         );
 
         if let Some(build_commands) = package_build_info.build_commands {
-            package_build_entries.insert(
-                locator.clone(),
-                all_build_entries.len(),
-            );
+            // Virtualized locators share their build with the physical
+            // counterpart — only the physical entry should drive a build.
+            if !locator.reference.is_virtual_reference() {
+                package_build_entries.insert(
+                    locator.clone(),
+                    all_build_entries.len(),
+                );
 
-            all_build_entries.push(build::BuildRequest {
-                cwd: package_location_rel,
-                locator: locator.clone(),
-                commands: build_commands,
-                allowed_to_fail: install.install_state.resolution_tree.optional_builds.contains(locator),
-                force_rebuild: false, // TODO: track this properly for pnpm
-            });
+                all_build_entries.push(build::BuildRequest {
+                    cwd: package_location_rel,
+                    locator: locator.clone(),
+                    commands: build_commands,
+                    allowed_to_fail: install.install_state.resolution_tree.optional_builds.contains(locator),
+                    force_rebuild: false, // TODO: track this properly for pnpm
+                    inline_builds: install.inline_builds,
+                });
+            }
         }
     }
 

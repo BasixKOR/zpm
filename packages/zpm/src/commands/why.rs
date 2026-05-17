@@ -57,7 +57,7 @@ impl Why {
         let root_node = if self.recursive {
             self.why_recursive(&project, install_state)?
         } else {
-            self.why_simple(install_state)?
+            self.why_simple(&project, install_state)?
         };
 
         let rendering
@@ -69,7 +69,7 @@ impl Why {
         Ok(())
     }
 
-    fn why_simple(&self, install_state: &InstallState) -> Result<tree::Node<'_>, Error> {
+    fn why_simple(&self, project: &Project, install_state: &InstallState) -> Result<tree::Node<'_>, Error> {
         let mut root_children
             = vec![];
 
@@ -109,9 +109,11 @@ impl Why {
             }
 
             if !children_map.is_empty() {
+                let display_locator = project.displayable_locator(locator);
+
                 root_children.push(tree::Node {
                     label: None,
-                    value: Some(AbstractValue::new(locator.clone())),
+                    value: Some(AbstractValue::new(display_locator)),
                     children: Some(tree::TreeNodeChildren::Map(children_map)),
                 });
             }
@@ -269,14 +271,16 @@ impl Why {
             }
         }
 
+        let display_locator = project.displayable_locator(locator);
+
         let node_value = if let Some(desc) = descriptor {
-            AbstractValue::new(DescriptorResolution::new(desc.clone(), locator.clone()))
+            AbstractValue::new(DescriptorResolution::new(desc.clone(), display_locator.clone()))
         } else {
-            AbstractValue::new(locator.clone())
+            AbstractValue::new(display_locator.clone())
         };
 
         parent_children.insert(
-            locator.to_file_string(),
+            display_locator.to_file_string(),
             tree::Node {
                 label: None,
                 value: Some(node_value),
@@ -285,3 +289,4 @@ impl Why {
         );
     }
 }
+

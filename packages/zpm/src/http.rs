@@ -11,10 +11,7 @@ use wax::Program;
 use zpm_config::{Configuration, NetworkSettings, Setting};
 use zpm_utils::Glob;
 
-use crate::{
-    error::Error,
-    report::current_report,
-};
+use crate::error::Error;
 
 static WARNED_HOSTNAMES: LazyLock<tokio::sync::Mutex<HashSet<String>>> = LazyLock::new(|| tokio::sync::Mutex::new(HashSet::new()));
 
@@ -192,9 +189,9 @@ impl<'a> HttpRequest<'a> {
                             .insert(hostname.clone());
 
                     if should_warn {
-                        current_report().await.as_ref().map(|report| {
+                        crate::report::if_active_async(|report| {
                             report.warn(format!("Requests to {} are taking suspiciously long...", hostname));
-                        });
+                        }).await;
                     }
                 }
             };

@@ -23,6 +23,44 @@ pub async fn current_report() -> RwLockReadGuard<'static, Option<StreamReport>> 
     REPORT.read().await
 }
 
+/// Non-blocking attempt to read the active report; for sync code
+/// paths already inside a Tokio context.
+pub fn try_current_report() -> Option<RwLockReadGuard<'static, Option<StreamReport>>> {
+    REPORT.try_read().ok()
+}
+
+/// Runs `f` against the active report if one is installed and the
+/// lock is available; returns `true` when `f` ran.
+pub fn if_active<F: FnOnce(&StreamReport)>(f: F) -> bool {
+    let Some(guard) = try_current_report() else {
+        return false;
+    };
+
+    let Some(report) = guard.as_ref() else {
+        return false;
+    };
+
+    f(report);
+    true
+}
+
+/// Async sibling of `if_active`: awaits the lock.
+pub async fn if_active_async<F: FnOnce(&StreamReport)>(f: F) -> bool {
+    let guard = current_report().await;
+
+    let Some(report) = guard.as_ref() else {
+        return false;
+    };
+
+    f(report);
+    true
+}
+
+/// Emits an info banner via the active report.
+pub async fn info_banner(message: impl AsRef<str>) {
+    if_active_async(|r| r.info(message.as_ref().to_string())).await;
+}
+
 pub async fn async_section<F: Future>(name: &str, f: F) -> F::Output {
     current_report().await.as_ref().map(|r| {
         r.push_section(name.to_string());
@@ -532,6 +570,10 @@ impl StreamReport {
 
     pub fn warn(&self, message: String) {
         self.report(ReportMessage::Line(Severity::Warning, self.with_content_prefix(message)));
+    }
+
+    pub fn add_log_file(&self, log_path: Path) {
+        self.report(ReportMessage::LogFile(log_path));
     }
 
     pub fn error(&self, error: Error) {

@@ -14,9 +14,8 @@ exports[`Commands npm login it should login a user with OTP setup 2`] = `
 {
   "code": 0,
   "stderr": "",
-  "stdout": "➤ YN0000: Logging in to http://registry.example.org
-
-➤ YN0000: Successfully logged in
+  "stdout": "➤ · Logging in to http://registry.example.org
+➤ · Successfully logged in
 ",
 }
 `;
@@ -36,9 +35,8 @@ exports[`Commands npm login it should login a user with OTP to a specific scope 
 {
   "code": 0,
   "stderr": "",
-  "stdout": "➤ YN0000: Logging in to http://registry.example.org
-
-➤ YN0000: Successfully logged in
+  "stdout": "➤ · Logging in to http://registry.example.org
+➤ · Successfully logged in
 ",
 }
 `;
@@ -57,9 +55,8 @@ exports[`Commands npm login it should login a user with no OTP setup 2`] = `
 {
   "code": 0,
   "stderr": "",
-  "stdout": "➤ YN0000: Logging in to http://registry.example.org
-
-➤ YN0000: Successfully logged in
+  "stdout": "➤ · Logging in to http://registry.example.org
+➤ · Successfully logged in
 ",
 }
 `;
@@ -79,9 +76,8 @@ exports[`Commands npm login it should login a user with no OTP setup to a specif
 {
   "code": 0,
   "stderr": "",
-  "stdout": "➤ YN0000: Logging in to http://registry.example.org
-
-➤ YN0000: Successfully logged in
+  "stdout": "➤ · Logging in to http://registry.example.org
+➤ · Successfully logged in
 ",
 }
 `;
@@ -100,11 +96,8 @@ exports[`Commands npm login it should print the npm-notice when an OTP is reques
 {
   "code": 0,
   "stderr": "",
-  "stdout": "➤ YN0000: Logging in to http://registry.example.org
-
-➤ YN0000: You're looking handsome today
-
-➤ YN0000: Successfully logged in
+  "stdout": "➤ · Logging in to http://registry.example.org
+➤ · Successfully logged in
 ",
 }
 `;
@@ -113,9 +106,8 @@ exports[`Commands npm login it should store npmAlwaysAuth when passed as option 
 {
   "code": 0,
   "stderr": "",
-  "stdout": "➤ YN0000: Logging in to http://registry.example.org
-
-➤ YN0000: Successfully logged in
+  "stdout": "➤ · Logging in to http://registry.example.org
+➤ · Successfully logged in
 ",
 }
 `;

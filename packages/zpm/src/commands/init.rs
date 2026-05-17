@@ -2,9 +2,11 @@ use clipanion::cli;
 use zpm_parsers::{Document, JsonDocument, Value};
 use zpm_primitives::Ident;
 use zpm_utils::{IoResultExt, Path, ToFileString};
+use serde::Deserialize;
+use std::collections::BTreeMap;
 
 use crate::{
-    commands::dlx,
+    commands::dlx::{install_and_run_single, InstallAndRunOptions},
     descriptor_loose::{self, LooseDescriptor},
     error::Error,
     install::InstallContext,
@@ -87,9 +89,6 @@ impl InitWithTemplate {
         let template
             = self.template.resolve(&install_context, &resolve_options).await?;
 
-        let preferred_name
-            = template.descriptor.ident.name().to_string();
-
         let enforced_resolutions
             = vec![template.clone()].into_iter()
                 .filter_map(|resolution| resolution.locator.map(|locator| (resolution.descriptor, Some(locator))))
@@ -102,15 +101,12 @@ impl InitWithTemplate {
 
         println!();
 
-        let dlx_project
-            = dlx::setup_project().await?;
-        let dlx_project
-            = dlx::install_dependencies(&dlx_project.project_cwd, vec![template], false).await?;
-        let bin
-            = dlx::find_binary(&dlx_project, &preferred_name, true)?;
-
-        println!();
-        dlx::run_binary(&dlx_project, bin, self.args.clone(), init_cwd.clone()).await?;
+        install_and_run_single(self.template.clone(), InstallAndRunOptions {
+            args: self.args.clone(),
+            run_cwd: Some(init_cwd.clone()),
+            fallback_binary: true,
+            ..Default::default()
+        }).await?;
 
         Ok(())
     }
@@ -167,6 +163,67 @@ pub struct InitParams {
     version: String,
 }
 
+#[derive(Deserialize)]
+struct YarnRcInit {
+    #[serde(default, rename = "initFields")]
+    init_fields: BTreeMap<String, serde_json::Value>,
+}
+
+fn apply_init_fields(document: &mut JsonDocument, init_cwd: &Path) -> Result<(), Error> {
+    let rc_filename = crate::commands::rc_helpers::rc_filename();
+
+    // Walk every rc on the way up from `init_cwd`, plus the home rc,
+    // so the manifest reflects the same cascade `Configuration::load`
+    // would produce. Stopping at the first hit would silently drop an
+    // `initFields` set higher up the chain.
+    let mut rc_paths: Vec<Path> = Vec::new();
+    let mut current: Option<Path> = Some(init_cwd.clone());
+    while let Some(dir) = current {
+        let rc_path = dir.with_join_str(&rc_filename);
+        if rc_path.fs_exists() {
+            rc_paths.push(rc_path);
+        }
+        current = dir.dirname();
+    }
+
+    if let Ok(home_rc) = crate::commands::rc_helpers::home_rc_path() {
+        if home_rc.fs_exists() && !rc_paths.iter().any(|p| p == &home_rc) {
+            rc_paths.push(home_rc);
+        }
+    }
+
+    // Reverse to apply outermost first so inner rcs override.
+    for rc_path in rc_paths.into_iter().rev() {
+        let Ok(text) = rc_path.fs_read_text() else { continue };
+        let Ok(parsed) = zpm_parsers::YamlDocument::hydrate_from_str::<YarnRcInit>(&text) else { continue };
+
+        for (key, value) in parsed.init_fields {
+            let parser_value = json_to_parser_value(&value);
+            document.set_path(
+                &zpm_parsers::Path::from_segments(vec![key]),
+                parser_value,
+            )?;
+        }
+    }
+
+    Ok(())
+}
+
+fn json_to_parser_value(value: &serde_json::Value) -> Value {
+    match value {
+        serde_json::Value::Null => Value::Null,
+        serde_json::Value::Bool(b) => Value::Bool(*b),
+        serde_json::Value::Number(n) => Value::Number(n.to_string()),
+        serde_json::Value::String(s) => Value::String(s.clone()),
+        serde_json::Value::Array(items) => Value::Array(items.iter().map(json_to_parser_value).collect()),
+        serde_json::Value::Object(entries) => Value::Object(
+            entries.iter()
+                .map(|(k, v)| (k.clone(), json_to_parser_value(v)))
+                .collect(),
+        ),
+    }
+}
+
 pub async fn init_project(init_cwd: &Path, params: InitParams) -> Result<Project, Error> {
     let existing_project
         = Project::find_closest_project(init_cwd.clone()).ok();
@@ -202,6 +259,8 @@ pub async fn init_project(init_cwd: &Path, params: InitParams) -> Result<Project
         &zpm_parsers::Path::from_segments(vec!["packageManager".to_string()]),
         Value::String(format!("yarn@{}", params.version)),
     )?;
+
+    apply_init_fields(&mut document, init_cwd)?;
 
     if let Some(private) = params.private {
         let private_field = match private {

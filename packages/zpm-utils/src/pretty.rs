@@ -76,6 +76,25 @@ pub fn set_redacted(redacted: bool) {
     REDACTED.store(redacted, Ordering::Relaxed);
 }
 
+/// RAII guard for `REDACTED`. Restores the prior value on drop so
+/// early-returns can't leak a flipped flag.
+pub struct RedactionScope {
+    previous: bool,
+}
+
+impl RedactionScope {
+    pub fn new(redacted: bool) -> Self {
+        let previous = REDACTED.swap(redacted, Ordering::Relaxed);
+        Self { previous }
+    }
+}
+
+impl Drop for RedactionScope {
+    fn drop(&mut self) {
+        REDACTED.store(self.previous, Ordering::Relaxed);
+    }
+}
+
 impl<T> Secret<T> {
     pub fn new(value: T) -> Self {
         Self {value}

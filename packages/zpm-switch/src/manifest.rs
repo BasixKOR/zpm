@@ -129,6 +129,21 @@ const ROOT_FILES: &[&'static str] = &[
     "yarn.lock",
 ];
 
+/// Resolves the detected-root path: prefers `YARNSW_DETECTED_ROOT` when set
+/// (the switch binary stashes it before delegating to a package-manager
+/// version), otherwise walks up from `cwd` looking for the closest manifest
+/// with a `packageManager` field.
+pub fn resolve_detected_root(cwd: &Path) -> Result<Path, Error> {
+    if let Ok(env_root) = std::env::var("YARNSW_DETECTED_ROOT") {
+        return Ok(Path::try_from(&env_root)?);
+    }
+
+    let find_result = find_closest_package_manager(cwd)?;
+
+    find_result.detected_root_path
+        .ok_or(Error::NoProjectFound)
+}
+
 pub fn find_closest_package_manager(path: &Path) -> Result<FindResult, Error> {
     let mut last_package_folder = None;
 

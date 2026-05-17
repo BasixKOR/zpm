@@ -413,6 +413,20 @@ impl Path {
         Ok(())
     }
 
+    /// Sets cwd *and* `PWD` to this path's symlinked form. Without
+    /// updating `PWD`, child processes (`pwd` etc.) report the
+    /// canonical path instead of what the user typed.
+    ///
+    /// # Safety
+    /// Must be called single-threaded during startup; `set_var` is
+    /// unsafe in a multi-threaded process.
+    pub unsafe fn sys_set_current_dir_with_pwd(&self) -> Result<(), PathError> {
+        self.sys_set_current_dir()?;
+        // SAFETY: caller contract guarantees single-threaded startup.
+        unsafe { std::env::set_var("PWD", self.as_str()); }
+        Ok(())
+    }
+
     pub fn fs_canonicalize(&self) -> Result<Path, PathError> {
         Ok(Path::try_from(std::fs::canonicalize(&self.path)?)?)
     }
@@ -711,6 +725,28 @@ impl Path {
             SyncEntryKind::Folder
                 => self.fs_create_dir_all(),
         }
+    }
+
+    /// Like `fs_expect` but with a caller-supplied error on
+    /// missing/mismatch. Compares content only (no permission bits).
+    pub fn fs_expect_with<T, E, F>(&self, expected_data: T, build_err: F) -> Result<&Self, E>
+    where
+        T: AsRef<[u8]>,
+        F: FnOnce() -> E,
+        E: From<PathError>,
+    {
+        let current_content = self.fs_read()
+            .ok_missing()?;
+
+        let matches = current_content.as_ref()
+            .map(|current| current.as_slice() == expected_data.as_ref())
+            .unwrap_or(false);
+
+        if !matches {
+            return Err(build_err());
+        }
+
+        Ok(self)
     }
 
     pub fn fs_expect<T: AsRef<[u8]>>(&self, expected_data: T, is_exec: bool) -> Result<&Self, PathError> {

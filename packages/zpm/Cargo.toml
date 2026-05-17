@@ -58,6 +58,7 @@ env_logger = { workspace = true }
 hickory-resolver = { workspace = true }
 indexmap = { workspace = true, features = ["serde"]}
 interprocess = { workspace = true, features = ["tokio"] }
+sha1 = { workspace = true }
 sha2 = { workspace = true }
 smallvec = { workspace = true }
 hex = { workspace = true }

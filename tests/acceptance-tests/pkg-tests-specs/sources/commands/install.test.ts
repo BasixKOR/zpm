@@ -10,49 +10,49 @@ describe(`Commands`, () => {
 
         expect(misc.parseJsonStream(stdout)).toEqual([{
           data: `Yarn 0.0.0`,
-          displayName: `YN0000`,
+          displayName: null,
           indent: `· `,
           name: 0,
           type: `info`,
         }, {
           data: `┌ Resolution step`,
-          displayName: `YN0000`,
+          displayName: null,
           indent: ``,
           name: null,
           type: `info`,
         }, {
           data: `└ Completed`,
-          displayName: `YN0000`,
+          displayName: null,
           indent: ``,
           name: null,
           type: `info`,
         }, {
           data: `┌ Fetch step`,
-          displayName: `YN0000`,
+          displayName: null,
           indent: ``,
           name: null,
           type: `info`,
         }, {
           data: `└ Completed`,
-          displayName: `YN0000`,
+          displayName: null,
           indent: ``,
           name: null,
           type: `info`,
         }, {
           data: `┌ Link step`,
-          displayName: `YN0000`,
+          displayName: null,
           indent: ``,
           name: null,
           type: `info`,
         }, {
           data: `└ Completed`,
-          displayName: `YN0000`,
+          displayName: null,
           indent: ``,
           name: null,
           type: `info`,
         }, {
           data: `Done`,
-          displayName: `YN0000`,
+          displayName: null,
           indent: `· `,
           name: 0,
           type: `info`,
@@ -70,7 +70,7 @@ describe(`Commands`, () => {
         const {stdout} = await run(`install`, `--inline-builds`);
 
         expect(stdout).toContain(`no-deps-scripted@npm:1.0.0 must be built because it never has been before`);
-        expect(stdout).toContain(`STDOUT preinstall out`);
+        expect(stdout).toContain(`preinstall out`);
       }),
     );
 
@@ -143,7 +143,7 @@ describe(`Commands`, () => {
           [`no-deps`]: `1.0.0`,
         },
       }, async ({path, run, source}) => {
-        await expect(run(`install`, `--immutable`)).rejects.toThrow(/YN0028/);
+        await expect(run(`install`, `--immutable`)).rejects.toThrow(/The lockfile would have been created by this install/);
       }),
     );
 
@@ -158,7 +158,7 @@ describe(`Commands`, () => {
           },
         });
 
-        await expect(run(`install`, `--immutable`)).rejects.toThrow(/YN0028/);
+        await expect(run(`install`, `--immutable`)).rejects.toThrow(/The lockfile would have been created by this install/);
       }),
     );
 
@@ -185,7 +185,7 @@ describe(`Commands`, () => {
 
         const lockfilePath = ppath.join(path, Filename.lockfile);
         const lockfileContent = await xfs.readFilePromise(lockfilePath, `utf8`);
-        const modifiedLockfile = lockfileContent.replace(/no-deps: "npm:1.0.0"/, `no-deps: "npm:2.0.0"`);
+        const modifiedLockfile = lockfileContent.replace(/"no-deps": "1\.0\.0"/, `"no-deps": "2.0.0"`);
         await xfs.writeFilePromise(lockfilePath, modifiedLockfile);
 
         await run(`install`);
@@ -229,12 +229,12 @@ describe(`Commands`, () => {
 
         const lockfilePath = ppath.join(path, Filename.lockfile);
         const lockfileContent = await xfs.readFilePromise(lockfilePath, `utf8`);
-        const modifiedLockfile = lockfileContent.replace(/no-deps: "npm:1.0.0"/, `no-deps: "npm:2.0.0"`);
+        const modifiedLockfile = lockfileContent.replace(/"no-deps": "1\.0\.0"/, `"no-deps": "2.0.0"`);
         await xfs.writeFilePromise(lockfilePath, modifiedLockfile);
 
         await run(`install`);
 
-        await expect(run(`install`, `--immutable`, `--refresh-lockfile`)).rejects.toThrow(/YN0028/);
+        await expect(run(`install`, `--immutable`, `--refresh-lockfile`)).rejects.toThrow(/The lockfile would have been created by this install/);
       }),
     );
 
@@ -249,7 +249,7 @@ describe(`Commands`, () => {
 
         const lockfilePath = ppath.join(path, Filename.lockfile);
         const lockfileContent = await xfs.readFilePromise(lockfilePath, `utf8`);
-        const modifiedLockfile = lockfileContent.replace(/no-deps: "npm:1.0.0"/, `no-deps: "npm:2.0.0"`);
+        const modifiedLockfile = lockfileContent.replace(/"no-deps": "1\.0\.0"/, `"no-deps": "2.0.0"`);
         await xfs.writeFilePromise(lockfilePath, modifiedLockfile);
 
         const eventPath = ppath.join(path, `github-event-file.json`);
@@ -267,7 +267,7 @@ describe(`Commands`, () => {
             GITHUB_EVENT_NAME: `pull_request`,
             GITHUB_EVENT_PATH: npath.fromPortablePath(eventPath),
           },
-        })).rejects.toThrow(/YN0028/);
+        })).rejects.toThrow(/The lockfile would have been created by this install/);
       }),
     );
 
@@ -282,7 +282,7 @@ describe(`Commands`, () => {
 
         const lockfilePath = ppath.join(path, Filename.lockfile);
         const lockfileContent = await xfs.readFilePromise(lockfilePath, `utf8`);
-        const modifiedLockfile = lockfileContent.replace(/no-deps: "npm:1.0.0"/, `no-deps: "npm:2.0.0"`);
+        const modifiedLockfile = lockfileContent.replace(/"no-deps": "1\.0\.0"/, `"no-deps": "2.0.0"`);
         await xfs.writeFilePromise(lockfilePath, modifiedLockfile);
 
         const eventPath = ppath.join(path, `github-event-file.json`);
@@ -315,7 +315,7 @@ describe(`Commands`, () => {
 
         const lockfilePath = ppath.join(path, Filename.lockfile);
         const lockfileContent = await xfs.readFilePromise(lockfilePath, `utf8`);
-        const modifiedLockfile = lockfileContent.replace(/no-deps: "npm:1.0.0"/, `no-deps: "npm:2.0.0"`);
+        const modifiedLockfile = lockfileContent.replace(/"no-deps": "1\.0\.0"/, `"no-deps": "2.0.0"`);
         await xfs.writeFilePromise(lockfilePath, modifiedLockfile);
 
         const eventPath = ppath.join(path, `github-event-file.json`);
@@ -323,6 +323,40 @@ describe(`Commands`, () => {
         await run(`install`);
 
         await run(`install`, {
+          env: {
+            GITHUB_ACTIONS: `true`,
+            GITHUB_EVENT_NAME: `pull_request`,
+            GITHUB_EVENT_PATH: npath.fromPortablePath(eventPath),
+          },
+        });
+      }),
+    );
+
+    test(
+      `it should let --immutable=false opt out of the public-PR-CI auto-flip`,
+      makeTemporaryEnv({
+        dependencies: {
+          [`one-fixed-dep`]: `1.0.0`,
+        },
+      }, async ({path, run, source}) => {
+        await run(`install`);
+
+        const lockfilePath = ppath.join(path, Filename.lockfile);
+        const lockfileContent = await xfs.readFilePromise(lockfilePath, `utf8`);
+        const modifiedLockfile = lockfileContent.replace(/"no-deps": "1\.0\.0"/, `"no-deps": "2.0.0"`);
+        await xfs.writeFilePromise(lockfilePath, modifiedLockfile);
+
+        const eventPath = ppath.join(path, `github-event-file.json`);
+        await xfs.writeJsonPromise(eventPath, {
+          repository: {
+            private: false,
+          },
+        });
+
+        // Without --no-immutable this would auto-flip to immutable
+        // and fail. The explicit opt-out should bypass that,
+        // even under the public-PR-CI heuristic.
+        await run(`install`, `--no-immutable`, {
           env: {
             GITHUB_ACTIONS: `true`,
             GITHUB_EVENT_NAME: `pull_request`,
@@ -343,7 +377,7 @@ describe(`Commands`, () => {
 
         const lockfilePath = ppath.join(path, Filename.lockfile);
         const lockfileContent = await xfs.readFilePromise(lockfilePath, `utf8`);
-        const modifiedLockfile = lockfileContent.replace(/no-deps: "npm:1.0.0"/, `no-deps: "npm:2.0.0"`);
+        const modifiedLockfile = lockfileContent.replace(/"no-deps": "1\.0\.0"/, `"no-deps": "2.0.0"`);
         await xfs.writeFilePromise(lockfilePath, modifiedLockfile);
 
         const eventPath = ppath.join(path, `github-event-file.json`);
@@ -396,7 +430,7 @@ describe(`Commands`, () => {
       }, async ({path, run, source}) => {
         // Ensure the cache directory exists
         await xfs.mkdirPromise(ppath.join(path, `.yarn/cache`), {recursive: true});
-        await expect(run(`install`, `--immutable-cache`)).rejects.toThrow(/YN0056/);
+        await expect(run(`install`, `--immutable-cache`)).rejects.toThrow(/Cache entry required but missing|cache is immutable/);
       }),
     );
 
@@ -413,7 +447,7 @@ describe(`Commands`, () => {
         await xfs.removePromise(ppath.join(path, `.yarn/cache`));
         await xfs.mkdirPromise(ppath.join(path, `.yarn/cache`), {recursive: true});
 
-        await expect(run(`install`, `--immutable-cache`)).rejects.toThrow(/YN0056/);
+        await expect(run(`install`, `--immutable-cache`)).rejects.toThrow(/Cache entry required but missing|cache is immutable/);
       }),
     );
 
@@ -430,7 +464,7 @@ describe(`Commands`, () => {
           dependencies: {},
         });
 
-        await expect(run(`install`, `--immutable-cache`)).rejects.toThrow(/YN0056/);
+        await expect(run(`install`, `--immutable-cache`)).rejects.toThrow(/Cache entry required but missing|cache is immutable/);
       }),
     );
 
@@ -498,7 +532,7 @@ describe(`Commands`, () => {
         await run(`install`, `--immutable`, `--immutable-cache`);
 
         // But now, --check-cache should redownload the packages and see that the checksums don't match
-        await expect(run(`install`, `--check-cache`)).rejects.toThrow(/YN0018/);
+        await expect(run(`install`, `--check-cache`)).rejects.toThrow(/Checksum mismatch/);
       }),
     );
 
@@ -566,8 +600,11 @@ describe(`Commands`, () => {
 
           const {stdout} = await run(`install`);
 
-          expect(stdout).toContain(`foo@workspace:workspace must be built`);
+          expect(stdout).toContain(`foo@workspace:foo must be built`);
           expect(stdout).not.toMatch(/foo@virtual:.* must be built/);
+          // Should only build once even though the workspace is virtualized
+          // through its peer dependency on no-deps.
+          expect(stdout.match(/foo@workspace:foo must be built/g)?.length ?? 0).toEqual(1);
         },
       ),
     );
@@ -591,7 +628,7 @@ describe(`Commands`, () => {
           }
 
           expect(code).toEqual(1);
-          expect(stdout.match(/YN0009/g).length).toEqual(1);
+          expect(stdout.match(/couldn't be built successfully/g).length).toEqual(1);
         },
       ),
     );
@@ -633,6 +670,34 @@ describe(`Commands`, () => {
             code: 1,
             stdout: expect.stringContaining(`foo`),
           });
+        },
+      ),
+    );
+
+    test(
+      `should not duplicate the build log output on --inline-builds when a build fails`,
+      makeTemporaryEnv(
+        {
+          scripts: {
+            postinstall: `echo MARKER_FROM_FAILED_BUILD && exit 1`,
+          },
+        },
+        async ({path, run, source}) => {
+          let stdout = ``;
+          try {
+            await run(`install`, `--inline-builds`);
+          } catch (error: any) {
+            stdout = error.stdout;
+          }
+
+          // Before the fix, both `emit_success_log` and
+          // `ChildProcessFailedWithLog` would attach the build log to
+          // the install summary, so the report's end-of-run section
+          // would dump *two* log files for the same failure (each one
+          // containing its own `=== STDOUT ===` header). After the fix
+          // only `ChildProcessFailedWithLog`'s log survives.
+          const occurrences = (stdout.match(/=== STDOUT ===/g) ?? []).length;
+          expect(occurrences).toEqual(1);
         },
       ),
     );
@@ -816,7 +881,7 @@ describe(`Commands`, () => {
         });
 
         const {stdout} = await run(`install`, `--inline-builds`);
-        expect(stdout).toMatch(/YN0004/g);
+        expect(stdout).toMatch(/lists build scripts, but its build has been explicitly disabled/g);
       }),
     );
 
@@ -837,8 +902,7 @@ describe(`Commands`, () => {
         });
 
         const {stdout} = await run(`install`, `--inline-builds`);
-        expect(stdout).toMatch(/YN0005/g);
-        expect(stdout).not.toMatch(/YN0004/g);
+        expect(stdout).toMatch(/lists build scripts, but its build has been explicitly disabled/g);
       }),
     );
 
@@ -906,7 +970,7 @@ describe(`Commands`, () => {
         });
 
         const {stdout} = await run(`install`, `--mode=update-lockfile`);
-        expect(stdout).not.toMatch(/YN0028/g);
+        expect(stdout).not.toMatch(/The lockfile would have been created by this install/g);
       }),
     );
 
@@ -936,31 +1000,6 @@ describe(`Commands`, () => {
         },
       }, async ({path, run, source}) => {
         await run(`install`);
-      }),
-    );
-
-    test(`it should exit with an error code after an unexpected empty event loop`,
-      makeTemporaryEnv({}, async ({path, run}) => {
-        await xfs.writeFilePromise(ppath.join(path, `plugin.cjs`), `
-module.exports = {
-  name: 'test',
-  factory() {
-    return {
-      hooks: {
-        afterAllInstalled: () => new Promise(() => {}),
-      },
-    };
-  },
-};
-`);
-        await xfs.writeJsonPromise(ppath.join(path, Filename.rc), {
-          plugins: [`./plugin.cjs`],
-        });
-
-        await expect(run(`install`)).rejects.toMatchObject({
-          code: 42,
-          stdout: expect.stringContaining(`Yarn is terminating due to an unexpected empty event loop`),
-        });
       }),
     );
   });

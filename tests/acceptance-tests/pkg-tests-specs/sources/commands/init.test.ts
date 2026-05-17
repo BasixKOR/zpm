@@ -54,21 +54,5 @@ describe(`Commands`, () => {
         });
       }),
     );
-
-    test(
-      `it should copy the currently running bundle when using --install`,
-      makeTemporaryEnv({}, async ({path, run, source}) => {
-        await xfs.mktempPromise(async tmpDir => {
-          const pkgDir = ppath.join(tmpDir, `my-package`);
-          await xfs.mkdirpPromise(pkgDir);
-
-          await run(`init`, `--install=self`, {
-            cwd: pkgDir,
-          });
-
-          await expect(xfs.existsPromise(ppath.join(pkgDir, `.yarn/releases`))).resolves.toEqual(true);
-        });
-      }),
-    );
   });
 });

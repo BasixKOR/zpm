@@ -408,11 +408,13 @@ describe(`Commands`, () => {
 
         await run(`install`);
 
+        // zpm matches `**/x.js` against the root `x.js` (correct
+        // glob semantics), unlike berry which kept it; see
+        // https://github.com/yarnpkg/berry/issues/5872.
         await expect(genPackList(run)).resolves.toEqual([
           `foo/bar/y.js`,
           `foo/y.js`,
           `package.json`,
-          `x.js`, // TODO: This shouldn't be here; https://github.com/yarnpkg/berry/issues/5872
           `y.js`,
         ]);
       }),

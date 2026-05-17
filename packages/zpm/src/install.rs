@@ -1,31 +1,20 @@
-use std::{collections::{BTreeMap, BTreeSet}, sync::{Arc, LazyLock}};
+use std::{collections::{BTreeMap, BTreeSet, HashMap}, sync::{Arc, LazyLock, Mutex}};
 
 use chrono::{DateTime, Utc};
+use colored::Colorize;
 use futures::future::{BoxFuture, FutureExt};
 use futures::stream::{FuturesUnordered, StreamExt};
 use itertools::Itertools;
-use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use zpm_config::PackageExtension;
 use zpm_primitives::{Descriptor, GitRange, Ident, Locator, PatchRange, PeerRange, Range, Reference, RegistrySemverRange, RegistryTagRange, SemverDescriptor, SemverPeerRange, WorkspaceIdentRange};
-use zpm_utils::{Hash64, Hash64Writer, IoResultExt, Path, System, ToHumanString, UrlEncoded};
+use zpm_utils::{DataType, Hash64, Hash64Writer, IoResultExt, Path, System, ToHumanString, UrlEncoded, scc_tarjan_pearce};
 use rkyv::Archive;
 use serde::{Deserialize, Serialize};
 use zpm_utils::{FromFileString, ToFileString};
 
 use crate::{
-    build,
-    cache::CompositeCache,
-    constraints::check_constraints,
-    content_flags::ContentFlags,
-    error::Error,
-    fetchers::{PackageData, SyncFetchAttempt, fetch_locator, patch::has_builtin_patch, try_fetch_locator_sync},
-    graph::WaitMap,
-    linker,
-    lockfile::{Lockfile, LockfileEntry, LockfileMetadata},
-    primitives_exts::{InnerDependencyKind, RangeExt},
-    project::{InstallMode, Project},
-    report::{ReportContext, async_section, current_report, with_context_result},
-    resolvers::{Resolution, SyncResolutionAttempt, catalog::lookup_catalog_entry, resolve_descriptor, resolve_locator, try_resolve_descriptor_sync}, tree_resolver::{ResolutionTree, TreeResolver},
+    build, cache::CompositeCache, constraints::check_constraints, content_flags::ContentFlags, error::Error, fetchers::{PackageData, SyncFetchAttempt, fetch_locator, patch::has_builtin_patch, try_fetch_locator_sync}, graph::WaitMap, http_npm, linker, lockfile::{Lockfile, LockfileEntry, LockfileMetadata}, primitives_exts::{InnerDependencyKind, RangeExt}, project::{InstallMode, Project}, report::{self, ReportContext, async_section, current_report, with_context_result}, resolvers::{Resolution, SyncResolutionAttempt, catalog::lookup_catalog_entry, resolve_descriptor, resolve_locator, try_resolve_descriptor_sync}, tree_resolver::{ResolutionTree, TreeResolver}
 };
 
 #[derive(Clone)]
@@ -40,6 +29,47 @@ pub struct InstallContext<'a> {
     pub refresh_lockfile: bool,
     pub install_time: DateTime<Utc>,
     pub mode: Option<InstallMode>,
+    pub inline_builds: bool,
+    pub extension_tracking: Arc<Mutex<ExtensionTracking>>,
+    /// Off-thread tracker for metadata cache writes. The owner must
+    /// call `drain` before returning so pending writes aren't dropped
+    /// when the runtime shuts down.
+    pub background_writes: Option<Arc<http_npm::BackgroundWrites>>,
+}
+
+/// Tracks `packageExtensions` rule behavior so we can warn about
+/// rules that never matched, or whose added field was already present
+/// upstream (redundant).
+#[derive(Debug, Default)]
+pub struct ExtensionTracking {
+    pub matched: BTreeSet<SemverDescriptor>,
+    pub applied: BTreeSet<(SemverDescriptor, ExtensionFieldKey)>,
+    pub redundant: BTreeSet<(SemverDescriptor, ExtensionFieldKey)>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum ExtensionFieldKey {
+    Dependency(Ident),
+    PeerDependency(Ident),
+    PeerDependencyMetaOptional(Ident),
+}
+
+impl ExtensionFieldKey {
+    pub fn render(&self) -> String {
+        match self {
+            ExtensionFieldKey::Dependency(ident)
+                => format!("{} ➤ {}", DataType::Code.colorize("dependencies"), ident.to_print_string()),
+            ExtensionFieldKey::PeerDependency(ident)
+                => format!("{} ➤ {}", DataType::Code.colorize("peerDependencies"), ident.to_print_string()),
+            ExtensionFieldKey::PeerDependencyMetaOptional(ident)
+                => format!(
+                    "{} ➤ {} ➤ {}",
+                    DataType::Code.colorize("peerDependenciesMeta"),
+                    ident.to_print_string(),
+                    DataType::Code.colorize("optional"),
+                ),
+        }
+    }
 }
 
 impl<'a> Default for InstallContext<'a> {
@@ -55,6 +85,9 @@ impl<'a> Default for InstallContext<'a> {
             refresh_lockfile: false,
             install_time: Utc::now(),
             mode: None,
+            inline_builds: false,
+            extension_tracking: Arc::new(Mutex::new(ExtensionTracking::default())),
+            background_writes: None,
         }
     }
 }
@@ -100,8 +133,18 @@ impl<'a> InstallContext<'a> {
         self
     }
 
+    pub fn set_inline_builds(mut self, inline_builds: bool) -> Self {
+        self.inline_builds = inline_builds;
+        self
+    }
+
     pub fn with_systems(mut self, systems: Option<&'a Vec<System>>) -> Self {
         self.systems = systems;
+        self
+    }
+
+    pub fn with_background_writes(mut self, background_writes: Option<Arc<http_npm::BackgroundWrites>>) -> Self {
+        self.background_writes = background_writes;
         self
     }
 }
@@ -254,18 +297,29 @@ fn resolve_descriptor_impl<'a>(
         if let Some(cached) = cached {
             match cached {
                 CacheHit::Full(result) => {
+                    if ctx.check_resolutions {
+                        with_context_result(ReportContext::Descriptor(descriptor.clone()), async {
+                            verify_resolution_consistency(&descriptor, &result.resolution.locator)
+                        }).await.map_err(Arc::new)?;
+                    }
                     start_fetch(&result, ctx, maps).await;
                     return Ok(result);
                 },
 
                 CacheHit::Pinned(locator) => {
+                    if ctx.check_resolutions {
+                        with_context_result(ReportContext::Descriptor(descriptor.clone()), async {
+                            verify_resolution_consistency(&descriptor, &locator)
+                        }).await.map_err(Arc::new)?;
+                    }
+
                     // Inline Refresh: wait for locator prerequisites, then resolve_locator
                     let refresh_deps
                         = build_locator_fetch_deps(&locator, maps, ctx).await?;
 
-                    current_report().await.as_ref().map(|report| {
+                    crate::report::if_active_async(|report| {
                         report.counters.resolution_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                    });
+                    }).await;
 
                     let result = with_context_result(ReportContext::Locator(locator.clone()), async {
                         tokio::time::timeout(
@@ -346,9 +400,9 @@ fn resolve_descriptor_impl<'a>(
 
         // Phase 3: Resolve
         if !descriptor.range.details().transient_resolution {
-            current_report().await.as_ref().map(|report| {
+            crate::report::if_active_async(|report| {
                 report.counters.resolution_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-            });
+            }).await;
         }
 
         let result = with_context_result(ReportContext::Descriptor(descriptor.clone()), async {
@@ -379,10 +433,20 @@ async fn start_fetch<'a>(
 ) {
     let systems
         = ctx.systems.unwrap();
-    let is_mock_request
+    let mut is_mock_request
         = !result.resolution.requirements.validate_any(systems);
     let locator
         = result.resolution.locator.clone();
+
+    // Under --check-cache, refetch + verify stale-arch zips that still
+    // sit on disk; leave never-cached archs alone.
+    if is_mock_request && ctx.check_checksums {
+        if let Some(cache) = ctx.package_cache {
+            if let Ok(Some(_)) = cache.check_cache_entry(locator.clone(), ".zip") {
+                is_mock_request = false;
+            }
+        }
+    }
 
     ensure_fetched(locator, is_mock_request, ctx, maps).await;
 }
@@ -447,9 +511,9 @@ async fn fetch_locator_impl<'a>(
         if is_mock_request {
             if let Ok(result) = future.as_ref() {
                 if let FetchResult {package_data: PackageData::Zip {..}, ..} = result {
-                    current_report().await.as_ref().map(|report| {
+                    crate::report::if_active_async(|report| {
                         report.warn(format!("Mock request for {} returned a zip package; this should not happen.", locator.to_print_string()));
-                    });
+                    }).await;
                 }
             }
         }
@@ -524,6 +588,121 @@ enum CacheHit {
     Pinned(Locator),
 }
 
+/// Renders a single peer warning matching berry's
+/// `MISSING_PEER_DEPENDENCY` / `INCOMPATIBLE_PEER_DEPENDENCY` copy.
+/// The "named" requester is the first non-satisfying request; any
+/// others roll up into the trailing "and other dependencies" clause.
+fn render_peer_warning(
+    node: &crate::peer_requirements::PeerRequirementNode,
+    warning: &crate::peer_requirements::PeerWarning,
+) -> String {
+    use crate::peer_requirements::{PeerWarningKind, iter_requests_with_root, render_requester_label};
+
+    let all_requests = iter_requests_with_root(&node.requests);
+    let total_requests = all_requests.len();
+
+    let chosen_label = match (&warning.kind, node.provided_version.as_ref()) {
+        (PeerWarningKind::NodeNotCompatible { .. }, Some(version)) => {
+            all_requests.iter()
+                .find(|(req, _)| !req.range.check(version))
+                .map(|(req, root)| render_requester_label(req, root))
+        },
+        _ => {
+            all_requests.first().map(|(req, root)| render_requester_label(req, root))
+        },
+    };
+
+    let chosen_label = chosen_label.unwrap_or_else(|| node.ident.to_print_string());
+
+    match &warning.kind {
+        PeerWarningKind::NodeNotProvided => {
+            let suffix = if total_requests > 1 { " and other dependencies" } else { "" };
+            format!(
+                "{} doesn't provide {} ({}), requested by {}{}.",
+                node.subject.to_print_string(),
+                node.ident.to_print_string(),
+                DataType::Code.colorize(&node.hash),
+                chosen_label,
+                suffix,
+            )
+        },
+        PeerWarningKind::NodeNotCompatible { range } => {
+            let other_packages = if total_requests > 1 { "and other dependencies request" } else { "requests" };
+            let range_desc = match range {
+                Some(r) => DataType::Range.colorize(r),
+                None => "but they have non-overlapping ranges!".bright_red().to_string(),
+            };
+            let version_str = node.provided_version.as_ref()
+                .map(|v| v.to_print_string())
+                .unwrap_or_else(|| DataType::Reference.colorize("0.0.0"));
+            format!(
+                "{} is listed by your project with version {} ({}), which doesn't satisfy what {} {} ({}).",
+                node.ident.to_print_string(),
+                version_str,
+                DataType::Code.colorize(&node.hash),
+                chosen_label,
+                other_packages,
+                range_desc,
+            )
+        },
+    }
+}
+
+/// Structural check for `--check-resolutions`: confirm the lockfile's
+/// locator is still in-range for the descriptor without redoing
+/// resolution. We allow a lower compatible pin (lockfile lag is fine)
+/// and only fail when the pin is *out of range* — the supply-chain
+/// case the flag is designed to catch.
+fn verify_resolution_consistency(descriptor: &Descriptor, locator: &Locator) -> Result<(), Error> {
+    let mismatch = || Error::ResolutionMismatch(descriptor.clone(), locator.clone());
+
+    match &descriptor.range {
+        Range::RegistrySemver(range_params) => {
+            let physical_reference = locator.reference.physical_reference();
+
+            let (resolved_ident, resolved_version) = match physical_reference {
+                Reference::Registry(ref_params) => (&ref_params.ident, &ref_params.version),
+                // Shorthand drops the `ident@` prefix — read it off the locator.
+                Reference::Shorthand(ref_params) => (&locator.ident, &ref_params.version),
+                _ => return Err(mismatch()),
+            };
+
+            let expected_ident = range_params.ident.as_ref().unwrap_or(&descriptor.ident);
+            if expected_ident != resolved_ident {
+                return Err(mismatch());
+            }
+
+            if !range_params.range.check(resolved_version) {
+                return Err(mismatch());
+            }
+        },
+
+        Range::Git(range_params) => {
+            let physical_reference = locator.reference.physical_reference();
+            let Reference::Git(ref_params) = physical_reference else {
+                return Err(mismatch());
+            };
+
+            if ref_params.git.repo != range_params.git.repo {
+                return Err(mismatch());
+            }
+
+            // We can only cheaply verify exact-commit pins; other
+            // treeishes (tags, semver, HEAD) fall through to the
+            // normal fetch path, which fails if the tree is wrong.
+            if let zpm_git::GitTreeish::Commit(expected_commit) = &range_params.git.treeish {
+                if ref_params.git.commit != *expected_commit {
+                    return Err(mismatch());
+                }
+            }
+        },
+
+        _ => {},
+    }
+
+    Ok(())
+}
+
 /// Check if a descriptor can be resolved from the lockfile cache.
 fn check_resolution_cache(ctx: &InstallContext<'_>, lockfile: &Lockfile, descriptor: &Descriptor) -> Result<Option<CacheHit>, Error> {
     let range_details
@@ -532,6 +711,10 @@ fn check_resolution_cache(ctx: &InstallContext<'_>, lockfile: &Lockfile, descrip
     if range_details.transient_resolution {
         return Ok(None);
     }
+
+    // --check-resolutions still uses the cached locator; the
+    // descriptor→locator binding is verified in resolve_descriptor_impl
+    // before we accept the hit.
 
     // enforced_resolutions semantics:
     // - None (not in map): use lockfile resolution if available
@@ -611,6 +794,19 @@ pub struct InstallState {
     pub conditional_locators: BTreeSet<Locator>,
     pub island_descriptor_to_locator: BTreeMap<String, BTreeMap<Descriptor, Locator>>,
     pub island_normalized_resolutions: BTreeMap<String, BTreeMap<Locator, Resolution>>,
+
+    /// Per-locator zip checksums for `--check-cache`. The lockfile
+    /// strips them from conditional locators (to stay arch-stable), so
+    /// we shadow them here where cross-arch determinism doesn't matter.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub cache_checksums: BTreeMap<Locator, Hash64>,
+
+    /// The `nmMode` of the last install, lower-case kebab. The nm
+    /// linker checks for a transition and breaks existing hardlinks
+    /// when switching back to classic. Optional so pre-tracking
+    /// install states deserialize.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub nm_mode: Option<String>,
 }
 
 #[derive(Clone, Default)]
@@ -625,6 +821,8 @@ pub struct Install {
     pub skip_link_step: bool,
     pub skip_lockfile_update: bool,
     pub constraints_check: bool,
+    pub inline_builds: bool,
+    pub extension_tracking: Arc<Mutex<ExtensionTracking>>,
 }
 
 #[derive(Debug)]
@@ -633,21 +831,221 @@ pub struct InstallResult {
 }
 
 impl Install {
+    /// Emits peer warnings plus the closing CTA pointing at
+    /// `yarn explain peer-requirements`. Mirrors berry's
+    /// `emitPeerDependencyWarnings`.
+    fn report_peer_diagnostics(&self, project: &Project) {
+        report::if_active(|report| {
+            let data
+                = crate::peer_requirements::compute(project, &self.install_state);
+
+            if data.warnings.is_empty() {
+                return;
+            }
+
+            let data
+                = crate::peer_requirements::compute(project, &self.install_state);
+
+            if data.warnings.is_empty() {
+                return;
+            }
+
+            let mut project_lines: Vec<String> = Vec::new();
+            let mut has_transitive = false;
+
+            for warning in &data.warnings {
+                let Some(node) = data.nodes.get(&warning.hash) else {
+                    continue;
+                };
+
+                // Project-level (workspace subject) warnings list inline;
+                // transitive ones roll up under one CTA so a deep dep with
+                // mismatched peers can't drown the install output.
+                if !node.is_root {
+                    has_transitive = true;
+                    continue;
+                }
+
+                project_lines.push(render_peer_warning(node, warning));
+            }
+
+            project_lines.sort();
+
+            if !project_lines.is_empty() {
+                report.push_section("Validating peer dependencies".to_string());
+
+                for line in project_lines.iter() {
+                    report.warn(line.clone());
+                }
+
+                report.warn(format!(
+                    "Some peer dependencies are incorrectly met by your project; \
+                    run {} for details, where {} is the six-letter p-prefixed code.",
+                    DataType::Code.colorize("yarn explain peer-requirements <hash>"),
+                    DataType::Code.colorize("<hash>"),
+                ));
+
+                if has_transitive {
+                    report.warn(format!(
+                        "Some peer dependencies are incorrectly met by dependencies; \
+                        run {} for details.",
+                        DataType::Code.colorize("yarn explain peer-requirements"),
+                    ));
+                }
+
+                report.pop_section();
+            }
+        });
+    }
+
+    /// Emits a warning/info once per *physical* locator with build
+    /// commands but scripts disabled. Deduping avoids repeating the
+    /// same line for every virtualised instance.
+    async fn report_disabled_build_scripts(&self, project: &Project) {
+        let report_guard = current_report().await;
+        let Some(report) = report_guard.as_ref() else {
+            return;
+        };
+
+        let dependencies_meta = crate::linker::helpers::TopLevelConfiguration::from_project(project);
+
+        let mut warned: BTreeSet<Locator> = BTreeSet::new();
+
+        for (virtual_locator, resolution) in &self.install_state.resolution_tree.locator_resolutions {
+            let physical_locator = virtual_locator.physical_locator();
+            if !warned.insert(physical_locator.clone()) {
+                continue;
+            }
+
+            // Workspaces are always allowed to run their own scripts.
+            if physical_locator.reference.is_workspace_reference() {
+                continue;
+            }
+
+            let Some(package_flags) = self.install_state.content_flags.get(&physical_locator) else {
+                continue;
+            };
+
+            if package_flags.build_commands.is_empty() {
+                continue;
+            }
+
+            let package_ident = match &physical_locator.reference {
+                Reference::Registry(params) => &params.ident,
+                _ => &physical_locator.ident,
+            };
+
+            let package_meta = dependencies_meta.iter()
+                .find(|(selector, _)| selector.check(package_ident, &resolution.version))
+                .map(|(_, meta)| meta.clone())
+                .unwrap_or_default();
+
+            let scripts_allowed_by_meta = package_meta.built
+                .unwrap_or(project.config.settings.enable_scripts.value);
+
+            if scripts_allowed_by_meta {
+                continue;
+            }
+
+            if package_meta.built == Some(false) {
+                report.info(format!(
+                    "{} lists build scripts, but its build has been explicitly disabled through configuration.",
+                    physical_locator.to_print_string(),
+                ));
+            } else {
+                report.warn(format!(
+                    "{} lists build scripts, but its build has been explicitly disabled through configuration.",
+                    physical_locator.to_print_string(),
+                ));
+            }
+        }
+    }
+
+    async fn report_package_extension_diagnostics(&self, project: &Project) {
+        let report_guard = current_report().await;
+        let Some(report) = report_guard.as_ref() else {
+            return;
+        };
+
+        let tracking = self.extension_tracking.lock().unwrap();
+
+        for (descriptor, extension) in project.config.settings.package_extensions.iter() {
+            let matched = tracking.matched.contains(descriptor);
+            let parent = descriptor.ident.to_print_string();
+
+            let entries = extension.dependencies.keys()
+                .map(|ident| ExtensionFieldKey::Dependency(ident.clone()))
+                .chain(extension.peer_dependencies.keys()
+                    .map(|ident| ExtensionFieldKey::PeerDependency(ident.clone())))
+                .chain(extension.peer_dependencies_meta.iter()
+                    .filter(|(_, m)| m.optional.value == Some(true))
+                    .map(|(ident, _)| ExtensionFieldKey::PeerDependencyMetaOptional(ident.clone())));
+
+            for key in entries {
+                let rule_key = (descriptor.clone(), key.clone());
+
+                if !matched {
+                    report.warn(format!(
+                        "{} ➤ {}: No matching package in the dependency tree; you may not need this rule anymore.",
+                        parent,
+                        key.render(),
+                    ));
+                } else if tracking.redundant.contains(&rule_key) && !tracking.applied.contains(&rule_key) {
+                    report.warn(format!(
+                        "{} ➤ {}: This rule seems redundant when applied on the original package; the extension may have been applied upstream.",
+                        parent,
+                        key.render(),
+                    ));
+                }
+            }
+        }
+    }
+
     pub async fn link_and_build(mut self, project: &mut Project) -> Result<InstallResult, Error> {
+        self.report_disabled_build_scripts(project).await;
+        self.report_package_extension_diagnostics(project).await;
+
+        let graph = build_locator_graph(
+            &self.install_state.normalized_resolutions,
+            &self.install_state.descriptor_to_locator,
+        );
+
+        let workspace_locators: Vec<(Ident, Locator)> = project.workspaces.iter()
+            .map(|w| (w.name.clone(), w.locator()))
+            .collect();
+
         if self.skip_link_step {
+            self.lockfile.workspaces
+                = compute_workspace_hashes(&graph, &workspace_locators);
+
             project.attach_install_state(self.install_state)?;
 
             if !self.skip_lockfile_update {
                 project.write_lockfile(&self.lockfile)?;
             }
         } else {
-            self.install_state.last_installed_at = project.last_modified_at.as_nanos();
+            self.install_state.last_installed_at
+                = project.last_modified_at.as_nanos();
+
+            self.install_state.nm_mode
+                = Some(match project.config.settings.nm_mode.value {
+                    zpm_config::NmMode::Classic => "classic".to_string(),
+                    zpm_config::NmMode::HardlinksLocal => "hardlinks-local".to_string(),
+                    zpm_config::NmMode::HardlinksGlobal => "hardlinks-global".to_string(),
+                });
+
+            let hash_handle = tokio::task::spawn_blocking(move || {
+                compute_workspace_hashes(&graph, &workspace_locators)
+            });
 
             let link_future
-                = linker::link_project(project, &mut self);
+                = linker::link_project(project, &self);
 
             let link_result
                 = async_section("Linking the project", link_future).await?;
+
+            self.lockfile.workspaces
+                = hash_handle.await?;
 
             for (location, locator) in &link_result.packages_by_location {
                 self.install_state.locations_by_package.insert(locator.clone(), location.clone());
@@ -765,6 +1163,38 @@ impl<'a> InstallManager<'a> {
 
         let lockfile
             = self.initial_lockfile.clone();
+
+        if let Some(project) = self.context.project {
+            http_npm::ensure_metadata_cache_dir(&project.config.settings.global_folder.value);
+
+            for workspace in &project.workspaces {
+                for legacy_key in &workspace.manifest.resolutions.legacy_glob_keys {
+                    crate::report::if_active_async(|report| {
+                        report.warn(format!("Legacy glob syntax found in resolutions ({legacy_key}); the leading **/ prefix is no longer needed."));
+                    }).await;
+                }
+
+                let has_string_bin = matches!(workspace.manifest.bin, Some(crate::manifest::bin::BinField::String(_)));
+                if has_string_bin && workspace.manifest.name.is_none() {
+                    crate::report::if_active_async(|report| {
+                        report.warn(format!(
+                            "{}: String bin field, but no attached package name",
+                            workspace.pretty_name(),
+                        ));
+                    }).await;
+                }
+
+                for nohoist_pattern in &workspace.manifest.workspaces.nohoist {
+                    crate::report::if_active_async(|report| {
+                        report.warn(format!(
+                            "{}: 'nohoist' is deprecated, please use 'installConfig.hoistingLimits' instead (pattern: {})",
+                            workspace.pretty_name(),
+                            nohoist_pattern,
+                        ));
+                    }).await;
+                }
+            }
+        }
 
         // --- Island resolution ---
         // Resolve islands from project config and partition roots between
@@ -884,8 +1314,16 @@ impl<'a> InstallManager<'a> {
             self.record_fetch(locator, package_data)?;
         }
 
+        let check_checksums = self.context.check_checksums;
+
         let missing_checksums = self.result.lockfile.entries.values()
             .filter(|entry| {
+                // --check-cache forces a fresh hash even when the
+                // lockfile already had one, so on-disk tampering shows.
+                if check_checksums {
+                    return true;
+                }
+
                 let previous_entry
                     = self.initial_lockfile.entries.get(&entry.resolution.locator);
 
@@ -901,6 +1339,10 @@ impl<'a> InstallManager<'a> {
                 let PackageData::Zip {archive_path, ..} = package_data else {
                     return None;
                 };
+
+                if !archive_path.fs_exists() {
+                    return None;
+                }
 
                 Some((entry.resolution.locator.clone(), archive_path))
             })
@@ -929,7 +1371,17 @@ impl<'a> InstallManager<'a> {
             let previous_checksum = previous_entry
                 .and_then(|s| s.checksum.as_ref());
 
+            let previous_cache_checksum = self.previous_state
+                .and_then(|state| state.cache_checksums.get(&entry.resolution.locator));
+
+            // Under --check-cache, prefer freshly-hashed late_checksums
+            // over the lockfile's record so tampered files surface.
             let mut checksum = package_data.checksum()
+                .or_else(|| if self.context.check_checksums {
+                    late_checksums.get(&entry.resolution.locator).cloned()
+                } else {
+                    None
+                })
                 .or_else(|| previous_checksum.cloned())
                 .or_else(|| late_checksums.get(&entry.resolution.locator).cloned());
 
@@ -937,8 +1389,44 @@ impl<'a> InstallManager<'a> {
                 = self.result.install_state.conditional_locators
                     .contains(&entry.resolution.locator);
 
+            // Shadow the checksum in install state before the
+            // conditional-locator scrub clears it from the lockfile;
+            // this shadow is what --check-cache compares against.
+            if let Some(cs) = &checksum {
+                self.result.install_state.cache_checksums
+                    .insert(entry.resolution.locator.clone(), cs.clone());
+            }
+
             if is_conditional_locator {
                 checksum = None;
+            }
+
+            // Conditional locators keep their checksum in install
+            // state (not the lockfile, which has to stay arch-stable);
+            // here we compare the fresh hash to that shadow.
+            if self.context.check_checksums && is_conditional_locator {
+                let recomputed = late_checksums.get(&entry.resolution.locator);
+                if let (Some(recomputed), Some(previous_cache_checksum)) = (recomputed, previous_cache_checksum) {
+                    if recomputed != previous_cache_checksum {
+                        if let PackageData::Zip {archive_path, ..} = package_data {
+                            if let Some(project) = &self.context.project {
+                                let quarantine_path = project.ignore_path()
+                                    .with_join_str("quarantine")
+                                    .with_join_str(entry.resolution.locator.slug())
+                                    .with_ext("zip");
+
+                                let data = archive_path
+                                    .fs_read_prealloc()?;
+
+                                quarantine_path
+                                    .fs_create_parent()?
+                                    .fs_write(&data)?;
+                            }
+
+                            return Err(Error::ChecksumMismatch(entry.resolution.locator.clone()));
+                        }
+                    }
+                }
             }
 
             if self.context.check_checksums {
@@ -1014,19 +1502,14 @@ impl<'a> InstallManager<'a> {
                 .run();
         }
 
-        let project
-            = self.context.project
-                .expect("The project is required to compute workspace hashes");
-
         self.result.lockfile.resolutions = self.result.install_state.descriptor_to_locator.clone();
 
-        self.result.lockfile.workspaces = project.workspaces.par_iter()
-            .map(|workspace| (workspace.name.clone(), self.compute_workspace_hash(&workspace.locator())))
-            .collect::<BTreeMap<_, _>>();
-
-        self.result.lockfile_changed = self.result.lockfile != self.initial_lockfile;
-
         self.result.skip_build = self.context.mode == Some(InstallMode::SkipBuild);
+
+        self.result.extension_tracking = self.context.extension_tracking.clone();
+        self.result.inline_builds = self.context.inline_builds;
+
+        self.result.report_peer_diagnostics(self.context.project.unwrap());
 
         if let Some(cache) = &self.context.package_cache {
             cache.clean().await?;
@@ -1079,44 +1562,138 @@ impl<'a> InstallManager<'a> {
         Ok(())
     }
 
-    fn compute_workspace_hash(&self, root_locator: &Locator) -> Hash64 {
-        let mut hash_writer
-            = Hash64Writer::new();
+}
 
-        let mut visited
-            = BTreeSet::new();
+fn dep_locators<'a>(
+    locator: &Locator,
+    resolutions: &'a BTreeMap<Locator, Resolution>,
+    d2l: &'a BTreeMap<Descriptor, Locator>,
+) -> Vec<&'a Locator> {
+    let Some(resolution) = resolutions.get(locator) else {
+        return Vec::new();
+    };
 
-        let mut queue
-            = vec![root_locator.clone()];
+    resolution.dependencies.values()
+        .filter_map(|desc| d2l.get(desc))
+        .chain(resolution.variants.iter().filter_map(|desc| d2l.get(desc)))
+        .collect()
+}
 
-        while let Some(locator) = queue.pop() {
-            if !visited.insert(locator.clone()) {
-                continue;
-            }
+fn compute_workspace_hashes(
+    graph: &BTreeMap<Locator, BTreeSet<Locator>>,
+    workspace_locators: &[(Ident, Locator)],
+) -> BTreeMap<Ident, Hash64> {
+    let cache
+        = compute_all_locator_hashes(graph);
+
+    workspace_locators.iter()
+        .map(|(name, locator)| {
+            let hash = cache.get(locator)
+                .cloned()
+                .unwrap_or_else(|| Hash64::from_data(locator.to_file_string()));
+
+            (name.clone(), hash)
+        })
+        .collect()
+}
+
+fn build_locator_graph(
+    resolutions: &BTreeMap<Locator, Resolution>,
+    descriptor_to_locator: &BTreeMap<Descriptor, Locator>,
+) -> BTreeMap<Locator, BTreeSet<Locator>> {
+    resolutions.keys()
+        .map(|locator| {
+            let deps
+                = dep_locators(locator, resolutions, descriptor_to_locator)
+                    .into_iter()
+                    .cloned()
+                    .collect();
+            (locator.clone(), deps)
+        })
+        .collect()
+}
+
+fn compute_all_locator_hashes(
+    graph: &BTreeMap<Locator, BTreeSet<Locator>>,
+) -> HashMap<Locator, Hash64> {
+    let sccs
+        = scc_tarjan_pearce(graph);
+
+    let mut cache: HashMap<Locator, Hash64>
+        = HashMap::with_capacity(graph.len());
+
+    for scc in &sccs {
+        if scc.len() == 1 {
+            let locator = &scc[0];
+
+            let mut hash_writer
+                = Hash64Writer::new();
 
             hash_writer.update(locator.to_file_string());
 
-            if let Some(resolution) = self.result.install_state.normalized_resolutions.get(&locator) {
-                for dependency_descriptor in resolution.dependencies.values() {
-                    if let Some(dep_locator) = self.result.install_state.descriptor_to_locator.get(dependency_descriptor) {
-                        if !visited.contains(dep_locator) {
-                            queue.push(dep_locator.clone());
-                        }
-                    }
-                }
+            let mut child_hashes
+                = graph.get(locator)
+                    .into_iter()
+                    .flat_map(|deps| deps.iter())
+                    .filter_map(|dep| cache.get(dep))
+                    .collect_vec();
 
-                for variant_descriptor in &resolution.variants {
-                    if let Some(variant_locator) = self.result.install_state.descriptor_to_locator.get(variant_descriptor) {
-                        if !visited.contains(variant_locator) {
-                            queue.push(variant_locator.clone());
+            child_hashes.sort();
+            for h in child_hashes {
+                hash_writer.update(h.to_file_string());
+            }
+
+            cache.insert(locator.clone(), hash_writer.finalize());
+        } else {
+            let scc_set: BTreeSet<_>
+                = scc.iter()
+                    .collect();
+
+            let mut member_strings
+                = scc.iter()
+                    .map(|l| l.to_file_string())
+                    .collect_vec();
+
+            member_strings.sort();
+
+            let mut external_hashes
+                = Vec::new();
+
+            for locator in scc {
+                if let Some(deps) = graph.get(locator) {
+                    for dep in deps {
+                        if !scc_set.contains(dep) {
+                            if let Some(h) = cache.get(dep) {
+                                external_hashes.push(h);
+                            }
                         }
                     }
                 }
             }
-        }
 
-        hash_writer.finalize()
+            external_hashes.sort();
+            external_hashes.dedup();
+
+            let mut hash_writer
+                = Hash64Writer::new();
+
+            for s in &member_strings {
+                hash_writer.update(s);
+            }
+            for h in external_hashes {
+                hash_writer.update(h.to_file_string());
+            }
+
+            let scc_hash
+                = hash_writer.finalize();
+
+            for locator in scc {
+                cache.insert(locator.clone(), scc_hash.clone());
+            }
+        }
     }
+
+    cache
 }
 
 fn normalize_resolution(context: &InstallContext<'_>, descriptor: &mut Descriptor, resolution: &Resolution, apply_overrides: bool) -> Result<(), Error> {
@@ -1267,15 +1844,39 @@ pub fn normalize_resolutions(context: &InstallContext<'_>, resolution: &Resoluti
 
     for (descriptor, extension) in project.config.settings.package_extensions.iter() {
         if descriptor.ident == resolution.locator.ident && descriptor.range.check(&resolution.version) {
+            let mut tracking = context.extension_tracking.lock().unwrap();
+            tracking.matched.insert(descriptor.clone());
+
             for (dependency, range) in extension.dependencies.iter() {
-                if !dependencies.contains_key(dependency) {
+                let key = ExtensionFieldKey::Dependency(dependency.clone());
+                if dependencies.contains_key(dependency) {
+                    tracking.redundant.insert((descriptor.clone(), key));
+                } else {
                     dependencies.insert(dependency.clone(), Descriptor::new_bound(dependency.clone(), range.value.clone(), None));
+                    tracking.applied.insert((descriptor.clone(), key));
                 }
             }
 
             for (peer_dependency, range) in extension.peer_dependencies.iter() {
-                if !peer_dependencies.contains_key(peer_dependency) {
+                let key = ExtensionFieldKey::PeerDependency(peer_dependency.clone());
+                if peer_dependencies.contains_key(peer_dependency) {
+                    tracking.redundant.insert((descriptor.clone(), key));
+                } else {
                     peer_dependencies.insert(peer_dependency.clone(), range.value.clone());
+                    tracking.applied.insert((descriptor.clone(), key));
+                }
+            }
+
+            for (peer_dependency, meta) in extension.peer_dependencies_meta.iter() {
+                if meta.optional.value == Some(true) {
+                    let key = ExtensionFieldKey::PeerDependencyMetaOptional(peer_dependency.clone());
+                    if resolution.optional_peer_dependencies.contains(peer_dependency) {
+                        tracking.redundant.insert((descriptor.clone(), key));
+                    } else {
+                        // Flag-only: `optional_peer_dependencies` comes
+                        // from the original manifest and isn't mutated here.
+                        tracking.applied.insert((descriptor.clone(), key));
+                    }
                 }
             }
         }

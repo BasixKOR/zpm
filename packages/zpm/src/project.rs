@@ -17,6 +17,7 @@ use crate::{
     error::Error,
     git::{GitOperation, detect_git_operation},
     http::HttpClient,
+    http_npm,
     install::{InstallContext, InstallManager, InstallResult, InstallState},
     lockfile::{Lockfile, from_legacy_berry_lockfile, from_pnpm_node_modules},
     manifest::{Manifest, helpers::read_manifest_with_size},
@@ -59,6 +60,7 @@ pub struct RunInstallOptions {
     pub refresh_lockfile: bool,
     pub roots: Option<BTreeSet<Ident>>,
     pub silent_or_error: bool,
+    pub inline_builds: bool,
 }
 
 pub struct Project {
@@ -245,7 +247,7 @@ impl Project {
     }
 
     pub fn unplugged_path(&self) -> Path {
-        self.ignore_path().with_join_str("unplugged")
+        self.project_cwd.with_join_str(".yarn/unplugged")
     }
 
     pub fn install_state_path(&self) -> Path {
@@ -398,7 +400,7 @@ impl Project {
             = JsonDocument::to_string_pretty(lockfile)?;
 
         if self.config.settings.enable_immutable_installs.value {
-            lockfile_path.fs_expect(contents, false)?;
+            lockfile_path.fs_expect_with(contents.as_bytes(), || Error::ImmutableLockfile)?;
         } else {
             lockfile_path.fs_change(contents, false)?;
         }
@@ -525,6 +527,21 @@ impl Project {
             .ok_or_else(|| Error::WorkspaceNotFound(ident.clone()))?;
 
         Ok(&self.workspaces[*idx])
+    }
+
+    /// Rewrites workspace locators to their path form
+    /// (`name@workspace:packages/foo`) so same-ident workspaces are
+    /// distinguishable. Non-workspace locators pass through.
+    pub fn displayable_locator(&self, locator: &Locator) -> Locator {
+        match &locator.reference {
+            Reference::WorkspaceIdent(params) => {
+                self.workspaces_by_ident.get(&params.ident)
+                    .map(|&idx| self.workspaces[idx].locator_path())
+                    .unwrap_or_else(|| locator.clone())
+            },
+
+            _ => locator.clone(),
+        }
     }
 
     pub fn try_workspace_by_locator(&self, locator: &Locator) -> Result<Option<&Workspace>, Error> {
@@ -840,7 +857,13 @@ impl Project {
         let systems
             = self.config.settings.supported_architectures.to_systems();
 
-        with_report_result(report, async {
+        let background_writes
+            = Arc::new(http_npm::BackgroundWrites::new());
+
+        let drain_background_writes
+            = background_writes.clone();
+
+        let install_outcome = with_report_result(report, async {
             let package_cache
                 = self.package_cache()?;
 
@@ -881,11 +904,14 @@ impl Project {
                     .with_package_cache(Some(&package_cache))
                     .with_project(Some(self))
                     .set_check_checksums(options.check_checksums)
+                    .set_check_resolutions(options.check_resolutions)
                     .set_enforced_resolutions(options.enforced_resolutions)
                     .set_prune_dev_dependencies(options.prune_dev_dependencies)
                     .set_refresh_lockfile(options.refresh_lockfile)
                     .set_mode(options.mode)
-                    .with_systems(Some(&systems));
+                    .set_inline_builds(options.inline_builds)
+                    .with_systems(Some(&systems))
+                    .with_background_writes(Some(background_writes.clone()));
 
             let roots
                 = self.workspaces.iter()
@@ -906,7 +932,12 @@ impl Project {
                     .link_and_build(self).await?;
 
             Ok(install_result)
-        }).await
+        }).await;
+
+        // Always drain so the cache writes don't outlive the runtime.
+        drain_background_writes.drain().await;
+
+        install_outcome
     }
 
     /// Resolve a task and all its dependencies.
@@ -1058,6 +1089,27 @@ impl Workspace {
         }.into())
     }
 
+    /// Berry-compatible `prettyWorkspace`: unnamed workspaces append
+    /// a 6-hex sha512 of the relative cwd so collisions are visible.
+    pub fn pretty_name(&self) -> String {
+        use sha2::{Digest, Sha512};
+
+        if self.manifest.name.is_some() {
+            return self.name.to_print_string();
+        }
+
+        let rel_input = if self.rel_path == Path::new() {
+            ".".to_string()
+        } else {
+            self.rel_path.to_file_string()
+        };
+
+        let digest = Sha512::digest(rel_input.as_bytes());
+        let hex_prefix = &hex::encode(&digest)[..6];
+
+        format!("{}-{}", self.name.as_str(), hex_prefix)
+    }
+
     pub fn locator(&self) -> Locator {
         Locator::new(self.name.clone(), WorkspaceIdentReference {
             ident: self.name.clone(),
@@ -1081,7 +1133,8 @@ impl Workspace {
     pub async fn workspaces(&self) -> Result<Vec<Workspace>, Error> {
         let mut workspaces = vec![];
 
-        if let Some(patterns) = &self.manifest.workspaces {
+        if !self.manifest.workspaces.is_empty() {
+            let patterns = &self.manifest.workspaces.packages;
             let roots
                 = patterns.iter().filter_map(|pattern| {
                     if pattern.starts_with('!') {
@@ -1190,8 +1243,8 @@ impl Workspace {
                                 last_changed_at: *last_changed_at,
                             })?);
 
-                            if let Some(nested_patterns) = &manifest.workspaces {
-                                workspace_queue.push((workspace_rel_path, nested_patterns.clone()));
+                            if !manifest.workspaces.packages.is_empty() {
+                                workspace_queue.push((workspace_rel_path, manifest.workspaces.packages.clone()));
                             }
                         },
 

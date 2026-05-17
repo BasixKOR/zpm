@@ -8,7 +8,7 @@ use crate::{
 #[zpm_enum(error = DescriptorError, or_else = |s| Err(DescriptorError::SyntaxError(s.to_string())))]
 #[derive(Debug, Clone,)]
 #[derive_variants(Debug, Clone)]
-pub enum FilterDescriptor {
+pub enum VersionFilter {
     #[pattern("(?<ident>@?[^@]+)")]
     #[to_file_string(|params| params.ident.to_file_string())]
     #[to_print_string(|params| params.ident.to_print_string())]
@@ -25,14 +25,14 @@ pub enum FilterDescriptor {
     },
 }
 
-impl FilterDescriptor {
+impl VersionFilter {
     pub fn check(&self, ident: &Ident, version: &zpm_semver::Version) -> bool {
         match self {
-            FilterDescriptor::Ident(params) => {
+            VersionFilter::Ident(params) => {
                 params.ident.check(ident)
             },
 
-            FilterDescriptor::Range(params) => {
+            VersionFilter::Range(params) => {
                 params.ident.check(ident) && params.range.check(version)
             },
         }

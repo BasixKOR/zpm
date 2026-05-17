@@ -21,12 +21,9 @@ pub struct SetVersion {
 
 impl SetVersion {
     pub async fn execute(&self) -> Result<(), Error> {
-        let Ok(switch_detected_root) = std::env::var("YARNSW_DETECTED_ROOT") else {
-            return Err(Error::FailedToGetSwitchDetectedRoot);
-        };
-
-        let detected_root_path
-            = Path::try_from(&switch_detected_root)?;
+        let cwd = Path::current_dir()?;
+        let detected_root_path = zpm_switch::resolve_detected_root(&cwd)
+            .map_err(|_| Error::FailedToGetSwitchDetectedRoot)?;
 
         let manifest_path = detected_root_path
             .with_join_str("package.json");

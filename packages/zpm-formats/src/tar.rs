@@ -1,8 +1,8 @@
-use std::{borrow::Cow, io::{Read, Write}};
+use std::{borrow::Cow, io::Read};
 
 use zerocopy::{Immutable, IntoBytes, KnownLayout, Unaligned};
 
-use crate::{error::Error, tar_iter::TarIterator};
+use crate::{error::Error, gzip_compress, tar_iter::TarIterator};
 
 use super::Entry;
 
@@ -112,12 +112,7 @@ impl<'a> ToTar for Vec<Entry<'a>> {
         let tar
             = self.to_tar();
 
-        let mut gz
-            = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
-
-        gz.write_all(&tar)?;
-
-        Ok(gz.finish()?)
+        Ok(gzip_compress(&tar, 6))
     }
 }
 

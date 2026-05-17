@@ -1,17 +1,23 @@
-use std::sync::{Arc, LazyLock};
+use std::collections::HashSet;
+use std::sync::{Arc, LazyLock, Mutex};
 
 use bytes::Bytes;
+use dashmap::DashMap;
 use regex::{Captures, Regex};
 use reqwest::Response;
 use serde::Deserialize;
+use sha2::{Sha256, Digest};
+use tokio::sync::OnceCell;
+use tokio::task::JoinHandle;
 use zpm_config::Configuration;
 use zpm_parsers::JsonDocument;
 use zpm_primitives::Ident;
-use zpm_utils::DataType;
+use zpm_utils::{DataType, Path};
 
 use crate::{
     error::Error,
     http::{HttpClient, HttpRequest},
+    npm,
     report::{current_report, PromptType},
 };
 
@@ -347,6 +353,314 @@ pub async fn get(params: &NpmHttpParams<'_>) -> Result<Bytes, Error> {
     Ok(bytes)
 }
 
+const CACHED_VERSION_FIELDS: &[&str] = &[
+    "bin",
+    "cpu",
+    "dependenciesMeta",
+    "dependencies",
+    "dist",
+    "libc",
+    "name",
+    "optionalDependencies",
+    "os",
+    "peerDependenciesMeta",
+    "peerDependencies",
+    "scripts",
+    "version",
+];
+
+const CACHED_TOP_LEVEL_FIELDS: &[&str] = &[
+    "dist-tags",
+    "time",
+    "versions",
+];
+
+static METADATA_CACHE_KEY: LazyLock<String> = LazyLock::new(|| {
+    let mut hasher
+        = Sha256::new();
+
+    for field in CACHED_TOP_LEVEL_FIELDS {
+        hasher.update(field.as_bytes());
+    }
+
+    for field in CACHED_VERSION_FIELDS {
+        hasher.update(field.as_bytes());
+    }
+
+    hex::encode(&hasher.finalize()[..3])
+});
+
+static METADATA_CACHE: LazyLock<DashMap<String, Arc<OnceCell<Bytes>>>>
+    = LazyLock::new(DashMap::new);
+
+#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)]
+struct CachedMetadataDisk {
+    metadata: Vec<u8>,
+    etag: Option<String>,
+    last_modified: Option<String>,
+}
+
+pub struct GetPackageMetadataParams<'a> {
+    pub http_client: &'a HttpClient,
+    pub registry: &'a str,
+    pub ident: &'a Ident,
+    pub authorization: Option<&'a str>,
+    pub global_folder: &'a Path,
+    pub refresh_lockfile: bool,
+    /// Offloads the on-disk metadata cache write to a `spawn_blocking`
+    /// task; the owner must `drain` before the runtime exits. `None`
+    /// falls back to an inline write (slower under parallel fetches,
+    /// but safe for one-shot subcommands with no drain point).
+    pub background_writes: Option<&'a BackgroundWrites>,
+}
+
+/// Tracks `spawn_blocking` cache-write tasks so the install can await
+/// them before returning. Without an explicit join, `tokio::main`
+/// drops the runtime out from under the writes when the outer future
+/// resolves.
+#[derive(Default)]
+pub struct BackgroundWrites {
+    handles: Mutex<Vec<JoinHandle<()>>>,
+}
+
+impl BackgroundWrites {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    fn track<F>(&self, f: F)
+    where
+        F: FnOnce() + Send + 'static,
+    {
+        let handle = tokio::task::spawn_blocking(f);
+        self.handles.lock().unwrap().push(handle);
+    }
+
+    pub async fn drain(&self) {
+        let handles = std::mem::take(&mut *self.handles.lock().unwrap());
+        for handle in handles {
+            let _ = handle.await;
+        }
+    }
+}
+
+pub async fn get_package_metadata(params: &GetPackageMetadataParams<'_>) -> Result<Bytes, Error> {
+    let cache_key
+        = params.ident.to_string();
+
+    let cell
+        = METADATA_CACHE
+            .entry(cache_key)
+            .or_default()
+            .clone();
+
+    let result = cell.get_or_try_init(|| async {
+        fetch_metadata_with_disk_cache(params).await
+    }).await?;
+
+    Ok(result.clone())
+}
+
+pub fn ensure_metadata_cache_dir(global_folder: &Path) {
+    let cache_dir = global_folder
+        .with_join_str("metadata/npm")
+        .with_join_str(&*METADATA_CACHE_KEY);
+
+    let _ = cache_dir.fs_create_dir_all();
+}
+
+fn get_cache_file_path(global_folder: &Path, url: &str) -> Path {
+    let mut hasher = Sha256::new();
+    hasher.update(url.as_bytes());
+    let url_hash = hex::encode(hasher.finalize());
+
+    global_folder
+        .with_join_str("metadata/npm")
+        .with_join_str(&*METADATA_CACHE_KEY)
+        .with_join_str(&format!("{}.bin", url_hash))
+}
+
+fn trim_metadata(raw: &[u8]) -> Vec<u8> {
+    let Ok(mut metadata) = serde_json::from_slice::<serde_json::Value>(raw) else {
+        return raw.to_vec();
+    };
+
+    let top_level_fields: HashSet<_>
+        = CACHED_TOP_LEVEL_FIELDS.iter()
+            .copied()
+            .collect();
+
+    let version_fields: HashSet<_>
+        = CACHED_VERSION_FIELDS.iter()
+            .copied()
+            .collect();
+
+    if let Some(obj) = metadata.as_object_mut() {
+        obj.retain(|k, _| top_level_fields.contains(k.as_str()));
+    }
+
+    if let Some(versions) = metadata.get_mut("versions").and_then(|v| v.as_object_mut()) {
+        for version_data in versions.values_mut() {
+            if let Some(obj) = version_data.as_object_mut() {
+                obj.retain(|k, _| version_fields.contains(k.as_str()));
+            }
+        }
+    }
+
+    serde_json::to_vec(&metadata).unwrap_or_else(|_| raw.to_vec())
+}
+
+fn write_cache_to_disk(cache_file: &Path, metadata: &[u8], etag: Option<String>, last_modified: Option<String>) {
+    let entry = CachedMetadataDisk {
+        metadata: trim_metadata(metadata),
+        etag,
+        last_modified,
+    };
+
+    let Ok(encoded) = rkyv::to_bytes::<rkyv::rancor::BoxedError>(&entry) else {
+        return;
+    };
+
+    let _ = cache_file.fs_create_parent();
+
+    let _ = cache_file.fs_write_atomic(|tmp| {
+        tmp.fs_write(&encoded)?;
+        Ok::<_, zpm_utils::PathError>(())
+    });
+}
+
+async fn fetch_metadata_with_disk_cache(params: &GetPackageMetadataParams<'_>) -> Result<Bytes, Error> {
+    let registry_path
+        = npm::registry_url_for_all_versions(params.ident);
+    let url
+        = format!("{}{}", params.registry, registry_path);
+
+    let cache_file
+        = get_cache_file_path(params.global_folder, &url);
+
+    let cached = if !params.refresh_lockfile {
+        cache_file.fs_read_prealloc().ok()
+            .and_then(|data| rkyv::from_bytes::<CachedMetadataDisk, rkyv::rancor::BoxedError>(&data).ok())
+    } else {
+        None
+    };
+
+    let mut request
+        = params.http_client.get(&url)?
+            .enable_status_check(false);
+
+    if let Some(auth) = params.authorization {
+        request = request.header("authorization", Some(auth));
+    }
+
+    if let Some(ref cached) = cached {
+        if let Some(ref etag) = cached.etag {
+            request = request.header("if-none-match", Some(etag.as_str()));
+        }
+        if let Some(ref last_modified) = cached.last_modified {
+            request = request.header("if-modified-since", Some(last_modified.as_str()));
+        }
+    }
+
+    let response
+        = request.send().await?;
+
+    if params.authorization.is_some() {
+        let npm_params = NpmHttpParams {
+            http_client: params.http_client,
+            registry: params.registry,
+            path: &registry_path,
+            authorization: params.authorization,
+            otp: None,
+        };
+        handle_invalid_authentication_error(&npm_params, &response).await?;
+    }
+
+    if response.status().as_u16() == 304 {
+        if let Some(cached) = cached {
+            return Ok(Bytes::from(cached.metadata));
+        }
+    }
+
+    let etag
+        = response.headers().get("etag")
+            .and_then(|v| v.to_str().ok())
+            .map(|s| s.to_string());
+    let last_modified
+        = response.headers().get("last-modified")
+            .and_then(|v| v.to_str().ok())
+            .map(|s| s.to_string());
+
+    let fresh_body
+        = response.error_for_status()?.bytes().await?;
+
+    // Keep stale version entries the fresh response omits so
+    // resolution still works when a published version is later
+    // removed or hidden behind an allow-list.
+    let merged_body = match &cached {
+        Some(cached) => Bytes::from(merge_versions_into_fresh(&cached.metadata, &fresh_body)),
+        None => fresh_body,
+    };
+
+    let body_for_disk
+        = merged_body.clone();
+    let cache_file_for_disk
+        = cache_file.clone();
+
+    // Offload the trim/encode/write when the caller passes a tracker;
+    // otherwise fall back to an inline write (safe for one-shot
+    // subcommands with no drain point).
+    if let Some(background_writes) = params.background_writes {
+        background_writes.track(move || {
+            write_cache_to_disk(&cache_file_for_disk, &body_for_disk, etag, last_modified);
+        });
+    } else {
+        write_cache_to_disk(&cache_file_for_disk, &body_for_disk, etag, last_modified);
+    }
+
+    Ok(merged_body)
+}
+
+/// Reintroduces stale `versions` entries the fresh response dropped.
+/// Fresh always wins on conflicts; only the version-map is merged.
+fn merge_versions_into_fresh(stale: &[u8], fresh: &[u8]) -> Vec<u8> {
+    let Ok(mut fresh_json) = serde_json::from_slice::<serde_json::Value>(fresh) else {
+        return fresh.to_vec();
+    };
+
+    let Ok(stale_json) = serde_json::from_slice::<serde_json::Value>(stale) else {
+        return fresh.to_vec();
+    };
+
+    let Some(stale_versions) = stale_json.get("versions").and_then(|v| v.as_object()) else {
+        return fresh.to_vec();
+    };
+
+    // Fast-path: skip re-serialising hundreds of KBs of metadata when
+    // every stale version is already in the fresh response.
+    if let Some(fresh_versions) = fresh_json.get("versions").and_then(|v| v.as_object()) {
+        if stale_versions.keys().all(|k| fresh_versions.contains_key(k)) {
+            return fresh.to_vec();
+        }
+    }
+
+    let Some(fresh_obj) = fresh_json.as_object_mut() else {
+        return fresh.to_vec();
+    };
+
+    let fresh_versions_entry = fresh_obj
+        .entry("versions".to_string())
+        .or_insert_with(|| serde_json::Value::Object(serde_json::Map::new()));
+
+    if let Some(fresh_versions) = fresh_versions_entry.as_object_mut() {
+        for (version, value) in stale_versions {
+            fresh_versions.entry(version.clone()).or_insert_with(|| value.clone());
+        }
+    }
+
+    serde_json::to_vec(&fresh_json).unwrap_or_else(|_| fresh.to_vec())
+}
+
 pub async fn post(params: &NpmHttpParams<'_>, body: String) -> Result<Response, Error> {
     let url
         = format!("{}{}", params.registry, params.path);
@@ -511,8 +825,7 @@ async fn render_otp_notice(response: &Response) {
             DataType::Url.colorize(caps.get(0).unwrap().as_str()).to_string()
         });
 
-        current_report().await.as_ref()
-            .map(|report| report.info(formatted_notice.to_string()));
+        crate::report::if_active_async(|report| report.info(formatted_notice.to_string())).await;
     }
 }
 
@@ -533,4 +846,38 @@ async fn ask_for_otp(params: &NpmHttpParams<'_>, response: &Response) -> Result<
         .await;
 
     Ok(otp)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn body_with_versions(keys: &[&str]) -> Vec<u8> {
+        let map: serde_json::Map<String, serde_json::Value> = keys.iter()
+            .map(|k| (k.to_string(), serde_json::json!({"dist": {"tarball": "https://example/x.tgz"}})))
+            .collect();
+        serde_json::to_vec(&serde_json::json!({"name": "pkg", "versions": serde_json::Value::Object(map)})).unwrap()
+    }
+
+    #[test]
+    fn merge_returns_fresh_unchanged_when_stale_is_a_subset() {
+        let stale = body_with_versions(&["1.0.0", "1.1.0"]);
+        let fresh = body_with_versions(&["1.0.0", "1.1.0", "2.0.0"]);
+        // The fast-path should hand back `fresh` byte-for-byte instead
+        // of going through a JSON round-trip that may reorder keys.
+        assert_eq!(merge_versions_into_fresh(&stale, &fresh), fresh);
+    }
+
+    #[test]
+    fn merge_layers_in_missing_stale_versions() {
+        let stale = body_with_versions(&["1.0.0", "0.9.0"]);
+        let fresh = body_with_versions(&["1.0.0", "2.0.0"]);
+        let merged = merge_versions_into_fresh(&stale, &fresh);
+        let parsed: serde_json::Value = serde_json::from_slice(&merged).unwrap();
+        let versions = parsed.get("versions").unwrap().as_object().unwrap();
+        // 0.9.0 from stale should now be present alongside the fresh
+        // entries; 2.0.0 from fresh must still be there.
+        assert!(versions.contains_key("0.9.0"));
+        assert!(versions.contains_key("2.0.0"));
+    }
 }

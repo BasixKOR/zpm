@@ -2,13 +2,14 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use itertools::Itertools;
 use zpm_primitives::{Ident, LinkReference, Locator, Reference};
-use zpm_utils::{Path, ToFileString, ToHumanString, tree};
+use zpm_utils::{FromFileString, Path, ToFileString, ToHumanString, tree};
 
 use crate::{
     algos,
     install::InstallState,
     project::Project,
 };
+use zpm_config::NmHoistingLimits;
 
 fn convert_workspace_to_link(project: &Project, locator: Locator) -> Locator {
     let physical_locator
@@ -25,6 +26,26 @@ fn convert_workspace_to_link(project: &Project, locator: Locator) -> Locator {
     } else {
         locator
     }
+}
+
+/// True for real workspace refs and for Links pointing at workspace
+/// dirs. Workspace deps get converted to Links before hoisting; the
+/// hoister still refuses to lift those synthetic Links because their
+/// peer-dep context comes from the filesystem parent.
+fn is_workspace_backed_locator(project: &Project, locator: &Locator) -> bool {
+    if locator.reference.is_workspace_reference() {
+        return true;
+    }
+
+    let Reference::Link(params) = &locator.reference else {
+        return false;
+    };
+
+    let Ok(link_path) = Path::from_file_string(&params.path) else {
+        return false;
+    };
+
+    project.workspaces.iter().any(|ws| ws.path == link_path)
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -137,15 +158,22 @@ impl<'a> WorkTree<'a> {
             = locator.physical_locator();
 
         let may_have_dependencies
-            = (!physical_locator.reference.is_workspace_reference() || !terminal_workspaces) && !matches!(physical_locator.reference, Reference::Link(_));
+            = (!physical_locator.reference.is_workspace_reference() || !terminal_workspaces) && !physical_locator.reference.is_link();
 
         if may_have_dependencies {
-            let resolution
-                = &self.install_state.resolution_tree.locator_resolutions[&locator];
-
-            dependencies = resolution.dependencies.iter()
-                .map(|(ident, descriptor)| (ident.clone(), self.install_state.resolution_tree.descriptor_to_locator[descriptor].clone()))
-                .collect();
+            // `workspaces focus`-excluded workspaces aren't in the
+            // resolution tree; treat them as dep-less so we still get
+            // a node (we'll decide to skip it later).
+            match self.install_state.resolution_tree.locator_resolutions.get(&locator) {
+                Some(resolution) => {
+                    dependencies = resolution.dependencies.iter()
+                        .map(|(ident, descriptor)| (ident.clone(), self.install_state.resolution_tree.descriptor_to_locator[descriptor].clone()))
+                        .collect();
+                },
+                None => {
+                    children = Some(BTreeMap::new());
+                },
+            }
         } else {
             children = Some(BTreeMap::new());
         }
@@ -163,6 +191,48 @@ impl<'a> WorkTree<'a> {
         self.nodes.push(node);
 
         node_idx
+    }
+
+    /// Workspace-side `installConfig.hoistingLimits` overrides the
+    /// project-wide `nmHoistingLimits`.
+    fn effective_hoisting_limit(&self, node_idx: usize) -> NmHoistingLimits {
+        let node = &self.nodes[node_idx];
+
+        let global_limit = self.project.config.settings.nm_hoisting_limits.value;
+
+        let per_workspace_limit = self.project
+            .workspace_by_locator(&node.locator).ok()
+            .and_then(|workspace| workspace.manifest.install_config.as_ref())
+            .and_then(|cfg| cfg.hoisting_limits)
+            .map(NmHoistingLimits::from);
+
+        per_workspace_limit.unwrap_or(global_limit)
+    }
+
+    /// True when transitives of this node's children must not bubble
+    /// past it. `workspaces` blocks only at workspace nodes;
+    /// `dependencies` blocks at any node with that limit. Portals are
+    /// transparent — Node walks up from the symlink target.
+    pub fn blocks_outbound_hoisting(&self, node_idx: usize) -> bool {
+        if self.nodes[node_idx].locator.reference.physical_reference().is_portal() {
+            return false;
+        }
+
+        match self.effective_hoisting_limit(node_idx) {
+            NmHoistingLimits::None => false,
+            NmHoistingLimits::Workspaces => {
+                let reference = &self.nodes[node_idx].locator.reference;
+                reference.is_workspace_reference()
+                    || reference.is_link()
+            },
+            NmHoistingLimits::Dependencies => true,
+        }
+    }
+
+    /// True under the `dependencies` limit: only direct children land
+    /// here; transitives stay nested.
+    pub fn blocks_inbound_transitives(&self, node_idx: usize) -> bool {
+        matches!(self.effective_hoisting_limit(node_idx), NmHoistingLimits::Dependencies)
     }
 
     fn expand_node(&mut self, node_idx: usize) {
@@ -187,13 +257,18 @@ impl<'a> WorkTree<'a> {
         }
 
         let peer_dependencies
-            = &self.install_state.resolution_tree.locator_resolutions[&node.locator].peer_dependencies;
+            = self.install_state.resolution_tree.locator_resolutions
+                .get(&node.locator)
+                .map(|res| &res.peer_dependencies);
 
         let children
             = node.dependencies.clone()
                 .into_iter()
-                .filter(|(_, dependency)| !peer_dependencies.contains_key(&dependency.ident))
-                .filter(|(_, dependency)| !parent_chain.contains(&dependency))
+                .filter(|(_, dependency)| peer_dependencies.map_or(true, |peers| !peers.contains_key(&dependency.ident)))
+                // Skip non-workspace deps already in our parent chain
+                // (true cycle). Workspace deps are fine — they become
+                // terminal Link nodes that don't expand.
+                .filter(|(_, dependency)| !parent_chain.contains(&dependency) || dependency.reference.is_workspace_reference())
                 .map(|(ident, dependency)| (ident, convert_workspace_to_link(self.project, dependency)))
                 .map(|(ident, dependency)| (ident, self.create_node(dependency, Some(node_idx), true)))
                 .collect::<BTreeMap<_, _>>();
@@ -383,8 +458,24 @@ impl<'a, 'b> Hoister<'a, 'b> {
         let mut hoist_candidates_with_parents: BTreeMap<Locator, Vec<(usize, Ident, usize)>>
             = BTreeMap::new();
 
+        // `dependencies` limit: only direct deps land here, no
+        // transitives — skip gathering hoist candidates.
+        let host_blocks_inbound
+            = self.work_tree.blocks_inbound_transitives(node_idx);
+
         for &child_idx in node_children.iter() {
             self.work_tree.expand_node(child_idx);
+
+            // Hoist-border check: if the child blocks outbound, its
+            // grandchildren stay put (the child itself still hoists).
+            // Portals are transparent — their direct deps need to
+            // reach the parent through the symlink.
+            let child_is_portal
+                = self.work_tree.nodes[child_idx].locator.reference.physical_reference().is_portal();
+
+            if (host_blocks_inbound && !child_is_portal) || self.work_tree.blocks_outbound_hoisting(child_idx) {
+                continue;
+            }
 
             let flattened_node
                 = &self.work_tree.nodes[child_idx];
@@ -512,14 +603,14 @@ impl<'a, 'b> Hoister<'a, 'b> {
                     scc_hoisting_requirements.push((package, package_dependencies));
                 }
 
-                // The SCC cannot be hoisted if the dependency is a workspace. Note that we will only
-                // ever encounter this situation for workspaces under their top-level view - if a
-                // package depends on a workspace, we will have turned that dependency into a link
-                // prior to hoisting.
-
+                // Workspaces and portals stay pinned: workspaces
+                // inherit peer-dep context from their filesystem
+                // parent, and portals must keep their dep checks
+                // against the declared parent (berry's invariant).
                 let is_workspace
                     = scc.iter().any(|&scc_locator| {
-                        scc_locator.reference.is_workspace_reference()
+                        is_workspace_backed_locator(self.work_tree.project, scc_locator)
+                            || scc_locator.reference.physical_reference().is_portal()
                     });
 
                 if is_workspace {

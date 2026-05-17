@@ -2,7 +2,7 @@ use clipanion::cli;
 use zpm_config::Source;
 use zpm_parsers::JsonDocument;
 
-use crate::{error::Error, project::{self, InstallMode, RunInstallOptions}};
+use crate::{error::Error, immutable, project::{self, InstallMode, RunInstallOptions}};
 
 /// Install dependencies
 ///
@@ -50,7 +50,7 @@ pub struct Install {
     #[cli::option("--immutable-cache")]
     immutable_cache: Option<bool>,
 
-    #[cli::option("--check-checksums", default = false)]
+    #[cli::option("--check-checksums,--check-cache", default = false)]
     check_checksums: bool,
 
     /// Refresh the package metadata stored in the lockfile
@@ -64,6 +64,14 @@ pub struct Install {
     /// Hide any output but errors
     #[cli::option("--silent", default = false)]
     silent: bool,
+
+    /// Verbosely print the output of the build steps of your dependencies
+    #[cli::option("--inline-builds", default = false)]
+    inline_builds: bool,
+
+    /// Format the output as a NDJSON stream
+    #[cli::option("--json", default = false)]
+    _json: bool,
 }
 
 impl Install {
@@ -71,38 +79,89 @@ impl Install {
         let mut project
             = project::Project::new(None).await?;
 
-        if self.mode == Some(InstallMode::UpdateLockfile) && self.immutable == Some(true) {
-            return Err(Error::IncompatibleOptions(vec!["--immutable".to_string(), "--mode=update-lockfile".to_string()]));
+        if !project.package_cwd.is_empty() {
+            let cwd_manifest_path = project
+                .project_cwd
+                .with_join(&project.package_cwd)
+                .with_join_str(project::MANIFEST_NAME);
+
+            if cwd_manifest_path.fs_exists() && project.try_workspace_by_rel_path(&project.package_cwd)?.is_none() {
+                let nearest = project
+                    .project_cwd
+                    .with_join(&project.package_cwd);
+
+                return Err(Error::PackageDirectoryNotInProject {
+                    nearest_path: nearest,
+                    project_path: project.project_cwd.clone(),
+                });
+            }
         }
 
-        if self.mode == Some(InstallMode::UpdateLockfile) && self.immutable_cache == Some(true) {
-            return Err(Error::IncompatibleOptions(vec!["--immutable-cache".to_string(), "--mode=update-lockfile".to_string()]));
+        if self.mode == Some(InstallMode::UpdateLockfile) && (self.immutable == Some(true) || self.immutable_cache == Some(true)) {
+            return Err(Error::ImmutableWithUpdateLockfile);
         }
 
-        if self.immutable == Some(true) {
-            project.config.settings.enable_immutable_installs.value = true;
-            project.config.settings.enable_immutable_installs.source = Source::Cli;
+        // Honour both `--immutable` and `--no-immutable` so users can
+        // opt out of the hardened-mode default.
+        match self.immutable {
+            Some(value) => project.config.settings.enable_immutable_installs.force(value, Source::Cli),
+            None => {},
         }
 
         if self.mode == Some(InstallMode::UpdateLockfile) {
-            project.config.settings.enable_immutable_installs.value = false;
+            project.config.settings.enable_immutable_installs.force(false, Source::Cli);
         }
 
         if self.immutable_cache == Some(true) {
-            project.config.settings.enable_immutable_cache.value = true;
-            project.config.settings.enable_immutable_cache.source = Source::Cli;
+            project.config.settings.enable_immutable_cache.force(true, Source::Cli);
         }
 
+        let refresh_lockfile = self.refresh_lockfile
+            || project.config.settings.enable_hardened_mode.value;
+
         sort_workspace_dependencies(&project)?;
+
+        // Snapshot each `immutablePatterns` glob so we can fail loudly
+        // if --immutable later changes a pinned path.
+        let immutable_patterns: Vec<_> = project.config.settings.immutable_patterns
+            .iter()
+            .map(|setting| setting.value.clone())
+            .collect();
+        let pattern_check_enabled = project.config.settings.enable_immutable_installs.value
+            && !immutable_patterns.is_empty();
+        let pre_snapshot = if pattern_check_enabled {
+            Some(immutable_patterns
+                .iter()
+                .map(|pattern| -> Result<_, Error> {
+                    Ok((pattern.raw().to_string(), immutable::snapshot_pattern(&project.project_cwd, pattern)?))
+                })
+                .collect::<Result<Vec<_>, Error>>()?)
+        } else {
+            None
+        };
 
         project.run_install(RunInstallOptions {
             check_checksums: self.check_checksums,
             check_resolutions: self.check_resolutions,
-            refresh_lockfile: self.refresh_lockfile,
+            refresh_lockfile,
             mode: self.mode,
             silent_or_error: self.silent,
+            inline_builds: self.inline_builds,
             ..Default::default()
         }).await?;
+
+        if let Some(pre_snapshot) = pre_snapshot {
+            for (pattern_raw, pre_hash) in pre_snapshot {
+                let glob = immutable_patterns
+                    .iter()
+                    .find(|p| p.raw() == pattern_raw)
+                    .expect("immutable pattern vanished mid-install");
+                let post_hash = immutable::snapshot_pattern(&project.project_cwd, glob)?;
+                if post_hash != pre_hash {
+                    return Err(Error::ImmutablePatternViolation(pattern_raw));
+                }
+            }
+        }
 
         Ok(())
     }

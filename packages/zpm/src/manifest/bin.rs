@@ -34,10 +34,14 @@ pub enum BinField {
 
 impl BinField {
     pub fn paths(&self) -> impl Iterator<Item = &Path> {
+        self.raw_paths().map(|p| &p.path)
+    }
+
+    pub fn raw_paths(&self) -> Box<dyn Iterator<Item = &RawPath> + '_> {
         match self {
-            BinField::String(path) => vec![path].into_iter(),
-            BinField::Map(map) => map.values().collect::<Vec<_>>().into_iter(),
-        }.map(|p| &p.path)
+            BinField::String(path) => Box::new(std::iter::once(path)),
+            BinField::Map(map) => Box::new(map.values()),
+        }
     }
 }
 

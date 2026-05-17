@@ -87,7 +87,7 @@ pub enum Error {
     #[error("Checksum mismatch for {}", .0.to_print_string())]
     ChecksumMismatch(Locator),
 
-    #[error("[YN0028] The lockfile would have been created by this install, which is explicitly forbidden.")]
+    #[error("The lockfile would have been created by this install, which is explicitly forbidden.")]
     ImmutableLockfile,
 
     #[error("Cannot autofix a lockfile when running an immutable install.")]
@@ -111,19 +111,19 @@ pub enum Error {
     #[error("The lockfile is a v1 lockfile; please first migrate to Yarn Berry then migrate again to Yarn ZPM")]
     LockfileV1Error,
 
-    #[error("[YN0056] Cache entry required but missing for {0:?}.")]
+    #[error("Cache entry required but missing for {0:?}.")]
     ImmutableCache(Locator),
 
-    #[error("[YN0056] {} appears to be unused and would be marked for deletion, but the cache is immutable", .0.to_print_string())]
+    #[error("{} appears to be unused and would be marked for deletion, but the cache is immutable", .0.to_print_string())]
     ImmutableCacheCleanup(Path),
 
-    #[error("[YN0091] Cache path does not exist ({}).", .0.to_print_string())]
+    #[error("Cache path does not exist ({}).", .0.to_print_string())]
     MissingCacheFolder(Path),
 
-    #[error("[YN0080] Request to '{0}' has been blocked because of your configuration settings.")]
+    #[error("Request to '{0}' has been blocked because of your configuration settings.")]
     NetworkDisabledError(reqwest::Url),
 
-    #[error("[YN0081] Unsafe http requests must be explicitly whitelisted in your configuration ({}).", .0.host_str().expect("\"http:\" URL should have a host"))]
+    #[error("Unsafe http requests must be explicitly whitelisted in your configuration ({}).", .0.host_str().expect("\"http:\" URL should have a host"))]
     UnsafeHttpError(reqwest::Url),
 
     #[error("Algolia registry error")]
@@ -167,6 +167,22 @@ pub enum Error {
 
     #[error("Package manifest failed to parse ({}): {}", .0.to_print_string(), .1)]
     ManifestParseError(Path, Arc<dyn std::error::Error + Send + Sync>),
+
+    #[error("Invalid value for --{option}: expected to be at least {min} (got {value})")]
+    InvalidOptionMin {
+        option: String,
+        min: i64,
+        value: i64,
+    },
+
+    #[error("Some workspaces have been modified but their version hasn't been bumped:\n{0}")]
+    VersionCheckFailed(String),
+
+    #[error("The nearest package directory ({}) doesn't seem to be part of the project declared in {}.", nearest_path.to_print_string(), project_path.to_print_string())]
+    PackageDirectoryNotInProject {
+        nearest_path: Path,
+        project_path: Path,
+    },
 
     #[error("Invalid descriptor ({0})")]
     InvalidDescriptor(String),
@@ -276,6 +292,9 @@ pub enum Error {
     #[error("Incompatible options: {}", .0.join(", "))]
     IncompatibleOptions(Vec<String>),
 
+    #[error("--immutable and --immutable-cache cannot be used with --mode=update-lockfile")]
+    ImmutableWithUpdateLockfile,
+
     #[error("Repository clone failed")]
     RepositoryCloneFailed(String),
 
@@ -327,7 +346,7 @@ pub enum Error {
     #[error("Constraints configuration file not found")]
     ConstraintsConfigNotFound,
 
-    #[error("Automatic constraints check failed; run {} to obtain details", DataType::Code.colorize("yarn constraints"))]
+    #[error("Constraint check failed; run {} for more details", DataType::Code.colorize("yarn constraints"))]
     AutoConstraintsError,
 
     #[error("Install state file not found; please run an install operation first")]
@@ -345,7 +364,7 @@ pub enum Error {
     #[error("The active package is not a workspace")]
     ActivePackageNotWorkspace,
 
-    #[error("Script not found ({0})")]
+    #[error("Usage Error: Couldn't find a script named \"{0}\"")]
     ScriptNotFound(String),
 
     #[error("Global script not found ({0})")]
@@ -450,7 +469,7 @@ pub enum Error {
     #[error("Invalid mode in patch file ({0})")]
     InvalidModeInPatchFile(u32),
 
-    #[error("No changes found in this patch file")]
+    #[error("Unable to parse patch file: No changes found")]
     EmptyPatchFile,
 
     #[error("Missing rename target in patch file")]
@@ -474,6 +493,12 @@ pub enum Error {
     #[error("Bad resolution")]
     BadResolution(Descriptor, Locator),
 
+    #[error("The lockfile pins {} to {}, but that locator no longer satisfies the descriptor", .0.to_print_string(), .1.to_print_string())]
+    ResolutionMismatch(Descriptor, Locator),
+
+    #[error("The checksum for {0} has been modified by this install")]
+    ImmutablePatternViolation(String),
+
     #[error("Task timeout")]
     TaskTimeout,
 
@@ -494,6 +519,9 @@ pub enum Error {
 
     #[error("Declining a version bump is only allowed when using the `--deferred` flag or when `preferDeferredVersions` is enabled")]
     VersionDeclineNotAllowed,
+
+    #[error("Cache cleanup is disabled (the `enableCacheClean` setting is `false`)")]
+    CacheCleanDisabled,
 
     #[error("Cannot use {0} as a version bump strategy when using the `--deferred` flag or when `preferDeferredVersions` is enabled and `--immediate` isn't set")]
     InvalidDeferredVersionBump(String),

@@ -26,6 +26,80 @@ pub struct DistManifest {
     pub tarball: String,
 }
 
+/// Accepts the array form and the deprecated object form
+/// (`{ packages, nohoist }`). `nohoist` is retained so install can
+/// warn about each pattern even though zpm doesn't honor it.
+#[derive(Clone, Debug, Default, Archive, rkyv::Serialize, rkyv::Deserialize)]
+pub struct WorkspacesField {
+    pub packages: Vec<String>,
+    pub nohoist: Vec<String>,
+}
+
+impl WorkspacesField {
+    pub fn is_empty(&self) -> bool {
+        self.packages.is_empty() && self.nohoist.is_empty()
+    }
+}
+
+impl<'de> Deserialize<'de> for WorkspacesField {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Either {
+            Array(Vec<String>),
+            Object {
+                #[serde(default)]
+                packages: Vec<String>,
+                #[serde(default)]
+                nohoist: Vec<String>,
+            },
+        }
+
+        Ok(match Either::deserialize(deserializer)? {
+            Either::Array(packages) => WorkspacesField { packages, nohoist: Vec::new() },
+            Either::Object { packages, nohoist } => WorkspacesField { packages, nohoist },
+        })
+    }
+}
+
+impl Serialize for WorkspacesField {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        // Only emit the packages array — round-tripping `nohoist`
+        // would pin the deprecated shape into manifests.
+        self.packages.serialize(serializer)
+    }
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, Archive, rkyv::Serialize, rkyv::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InstallConfig {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hoisting_limits: Option<HoistingLimitsValue>,
+
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub self_references: Option<bool>,
+}
+
+/// Rkyv-aware mirror of `zpm_config::NmHoistingLimits` (zpm-config
+/// doesn't pull in rkyv).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize, Archive, rkyv::Serialize, rkyv::Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum HoistingLimitsValue {
+    None,
+    Workspaces,
+    Dependencies,
+}
+
+impl From<HoistingLimitsValue> for zpm_config::NmHoistingLimits {
+    fn from(value: HoistingLimitsValue) -> Self {
+        match value {
+            HoistingLimitsValue::None => zpm_config::NmHoistingLimits::None,
+            HoistingLimitsValue::Workspaces => zpm_config::NmHoistingLimits::Workspaces,
+            HoistingLimitsValue::Dependencies => zpm_config::NmHoistingLimits::Dependencies,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize, Archive, rkyv::Serialize, rkyv::Deserialize)]
 pub struct BinManifest {
     pub name: Option<Ident>,
@@ -185,8 +259,12 @@ pub struct Manifest {
     #[serde(skip_serializing_if = "zpm_utils::is_default")]
     pub publish_config: PublishConfig,
 
+    #[serde(default, skip_serializing_if = "WorkspacesField::is_empty")]
+    pub workspaces: WorkspacesField,
+
+    #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub workspaces: Option<Vec<String>>,
+    pub install_config: Option<InstallConfig>,
 
     #[serde(default)]
     #[serde(skip_serializing_if = "BTreeMap::is_empty")]
@@ -235,29 +313,44 @@ impl HardDependencyKind {
 #[derive(Debug, Clone)]
 pub struct HardDependency<'a> {
     pub kind: HardDependencyKind,
+    pub ident: &'a Ident,
     pub descriptor: &'a Descriptor,
+}
+
+#[derive(Debug, Clone)]
+pub struct PeerDependency<'a> {
+    pub ident: &'a Ident,
+    pub range: &'a PeerRange,
 }
 
 impl Manifest {
     pub fn iter_hard_dependencies(&self) -> impl Iterator<Item = HardDependency<'_>> {
-        let dependencies_iter = self.remote.dependencies.values()
-            .map(|descriptor| HardDependency {
+        let dependencies_iter = self.remote.dependencies.iter()
+            .map(|(ident, descriptor)| HardDependency {
                 kind: HardDependencyKind::Dependency,
+                ident,
                 descriptor,
             });
 
-        let optional_dependencies_iter = self.remote.optional_dependencies.values()
-            .map(|descriptor| HardDependency {
+        let optional_dependencies_iter = self.remote.optional_dependencies.iter()
+            .map(|(ident, descriptor)| HardDependency {
                 kind: HardDependencyKind::OptionalDependency,
+                ident,
                 descriptor,
             });
 
-        let dev_dependencies_iter = self.dev_dependencies.values()
-            .map(|descriptor| HardDependency {
+        let dev_dependencies_iter = self.dev_dependencies.iter()
+            .map(|(ident, descriptor)| HardDependency {
                 kind: HardDependencyKind::DevDependency,
+                ident,
                 descriptor,
             });
 
         dependencies_iter.chain(optional_dependencies_iter).chain(dev_dependencies_iter)
+    }
+
+    pub fn iter_peer_dependencies(&self) -> impl Iterator<Item = PeerDependency<'_>> {
+        self.remote.peer_dependencies.iter()
+            .map(|(ident, range)| PeerDependency { ident, range })
     }
 }

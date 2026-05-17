@@ -89,38 +89,12 @@ pub struct Dlx {
 
 impl Dlx {
     pub async fn execute(&self) -> Result<ExitStatus, Error> {
-        let dlx_project
-            = setup_project().await?;
-
-        let package_cache
-            = dlx_project.package_cache()?;
-
-        let install_context = InstallContext::default()
-            .with_package_cache(Some(&package_cache))
-            .with_project(Some(&dlx_project));
-
-        let resolve_options = descriptor_loose::ResolveOptions {
-            active_workspace_ident: dlx_project.active_workspace()?.name.clone(),
-            range_kind: RangeKind::Exact,
-            resolve_tags: true,
-            allow_reuse: true,
-        };
-
-        let resolution
-            = self.package.resolve(&install_context, &resolve_options).await?;
-
-        let preferred_name
-            = resolution.descriptor.ident.name().to_string();
-
-        let dlx_project
-            = install_dependencies(&dlx_project.project_cwd, vec![resolution], self.quiet).await?;
-        let bin
-            = find_binary(&dlx_project, &preferred_name, true)?;
-
-        let run_cwd
-            = Path::current_dir()?;
-
-        run_binary(&dlx_project, bin, self.args.clone(), run_cwd).await
+        install_and_run_single(self.package.clone(), InstallAndRunOptions {
+            args: self.args.clone(),
+            quiet: self.quiet,
+            fallback_binary: true,
+            ..Default::default()
+        }).await
     }
 }
 
@@ -132,8 +106,12 @@ pub async fn setup_project() -> Result<Project, Error> {
         .fs_write_text("{}\n")?;
     temp_dir.with_join_str("yarn.lock")
         .fs_write_text("{}\n")?;
+
+    let calling_cwd = Path::current_dir()?;
+    let rc_body = crate::commands::rc_helpers::build_inherited_rc(&calling_cwd);
+
     temp_dir.with_join_str(".yarnrc.yml")
-        .fs_write_text("enableGlobalCache: false\n")?;
+        .fs_write_text(&rc_body)?;
 
     let project
         = Project::new(Some(temp_dir)).await?;
@@ -209,7 +187,73 @@ pub async fn run_binary(project: &Project, bin: Binary, args: Vec<String>, curre
         .with_package(&project, &project.root_workspace().locator())?
         .with_cwd(current_cwd)
         .enable_shell_forwarding()
+        .enable_signal_delegation()
         .run_binary(&bin, &args)
         .await?
         .into())
+}
+
+#[derive(Default)]
+pub struct InstallAndRunOptions {
+    /// Arguments passed to the binary.
+    pub args: Vec<String>,
+    /// Suppress the install report unless it errors.
+    pub quiet: bool,
+    /// Optional banner to emit before the install.
+    pub banner: Option<String>,
+    /// Override the preferred binary name (defaults to the package name).
+    pub binary_name: Option<String>,
+    /// Fall back to the sole available binary when the preferred name
+    /// isn't found (matches `yarn create` / `yarn dlx -p`).
+    pub fallback_binary: bool,
+    /// Override the run cwd (defaults to the caller's current dir).
+    pub run_cwd: Option<Path>,
+}
+
+/// Installs `descriptor` into a temp dlx project and runs its binary —
+/// shared backbone for `yarn dlx`, `yarn create`, and `yarn init`.
+pub async fn install_and_run_single(
+    descriptor: LooseDescriptor,
+    options: InstallAndRunOptions,
+) -> Result<ExitStatus, Error> {
+    if let Some(banner) = options.banner.as_ref() {
+        // Direct println so the banner lands before the report opens.
+        println!("➤ {}", banner);
+    }
+
+    let dlx_project
+        = setup_project().await?;
+
+    let package_cache
+        = dlx_project.package_cache()?;
+
+    let install_context = InstallContext::default()
+        .with_package_cache(Some(&package_cache))
+        .with_project(Some(&dlx_project));
+
+    let resolve_options = descriptor_loose::ResolveOptions {
+        active_workspace_ident: dlx_project.active_workspace()?.name.clone(),
+        range_kind: RangeKind::Exact,
+        resolve_tags: true,
+        allow_reuse: true,
+    };
+
+    let resolution
+        = descriptor.resolve(&install_context, &resolve_options).await?;
+
+    let binary_name = options.binary_name
+        .unwrap_or_else(|| resolution.descriptor.ident.name().to_string());
+
+    let dlx_project
+        = install_dependencies(&dlx_project.project_cwd, vec![resolution], options.quiet).await?;
+
+    let bin
+        = find_binary(&dlx_project, &binary_name, options.fallback_binary)?;
+
+    let run_cwd = match options.run_cwd {
+        Some(cwd) => cwd,
+        None => Path::current_dir()?,
+    };
+
+    run_binary(&dlx_project, bin, options.args, run_cwd).await
 }

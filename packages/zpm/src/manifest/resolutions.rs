@@ -114,6 +114,7 @@ use std::collections::BTreeMap;
 pub struct ResolutionsField {
     pub entries: Vec<(ResolutionSelector, Range)>,
     pub by_ident: BTreeMap<Ident, Vec<(ResolutionSelector, Range)>>,
+    pub legacy_glob_keys: Vec<String>,
 }
 
 impl ResolutionsField {
@@ -121,6 +122,7 @@ impl ResolutionsField {
         Self {
             entries: Vec::new(),
             by_ident: BTreeMap::new(),
+            legacy_glob_keys: Vec::new(),
         }
     }
 
@@ -170,6 +172,71 @@ impl Serialize for ResolutionsField {
     }
 }
 
+// Parse structurally rather than through the Range parser, which
+// would misclassify ambiguous values like `1.0.0/no-deps` as Git etc.
+fn parse_selector(key: &str) -> Option<ResolutionSelector> {
+    use zpm_primitives::AnonymousSemverRange;
+
+    // Skip the `@scope/` slash when locating the parent/child split.
+    let slash_search_start = if key.starts_with('@') {
+        key.find('/').map_or(0, |idx| idx + 1)
+    } else {
+        0
+    };
+
+    let slash_pos = key[slash_search_start..].find('/').map(|idx| idx + slash_search_start);
+
+    let (parent_part, child_part) = match slash_pos {
+        Some(idx) => (&key[..idx], Some(&key[idx + 1..])),
+        None => (key, None),
+    };
+
+    let make_anonymous = |descriptor: Descriptor| {
+        let mut descriptor = descriptor;
+        let raw_range = descriptor.range.to_file_string();
+        if let Ok(range) = zpm_semver::Range::from_file_string(&raw_range) {
+            descriptor.range = Range::AnonymousSemver(AnonymousSemverRange { range });
+        }
+        descriptor
+    };
+
+    // True when `parent_part` has an explicit `@<range>`. Strip a
+    // leading `@scope` first so a scope's `@` doesn't masquerade as
+    // the descriptor separator.
+    let has_range_separator = if let Some(rest) = parent_part.strip_prefix('@') {
+        rest.contains('@')
+    } else {
+        parent_part.contains('@')
+    };
+
+    let parent_descriptor = if has_range_separator {
+        let descriptor = Descriptor::from_file_string(parent_part).ok()?;
+        Some(make_anonymous(descriptor))
+    } else {
+        None
+    };
+
+    let parent_ident = if parent_descriptor.is_none() {
+        Some(zpm_primitives::Ident::from_file_string(parent_part).ok()?)
+    } else {
+        None
+    };
+
+    match (parent_descriptor, parent_ident, child_part) {
+        (Some(descriptor), _, None) => Some(ResolutionSelector::Descriptor(DescriptorResolutionSelector { descriptor })),
+        (_, Some(ident), None) => Some(ResolutionSelector::Ident(IdentResolutionSelector { ident })),
+        (Some(parent_descriptor), _, Some(child)) => {
+            let ident = zpm_primitives::Ident::from_file_string(child).ok()?;
+            Some(ResolutionSelector::DescriptorIdent(DescriptorIdentResolutionSelector { parent_descriptor, ident }))
+        },
+        (_, Some(parent_ident), Some(child)) => {
+            let ident = zpm_primitives::Ident::from_file_string(child).ok()?;
+            Some(ResolutionSelector::IdentIdent(IdentIdentResolutionSelector { parent_ident, ident }))
+        },
+        _ => None,
+    }
+}
+
 struct ResolutionsFieldVisitor;
 
 impl<'de> Visitor<'de> for ResolutionsFieldVisitor {
@@ -186,8 +253,14 @@ impl<'de> Visitor<'de> for ResolutionsFieldVisitor {
         let mut field = ResolutionsField::new();
 
         while let Some(key) = map.next_key::<String>()? {
-            let selector = ResolutionSelector::from_file_string(&key)
-                .map_err(|_| de::Error::custom("invalid resolution selector"))?;
+            let (effective_key, legacy_form) = if let Some(stripped) = key.strip_prefix("**/") {
+                (stripped.to_string(), Some(key.clone()))
+            } else {
+                (key.clone(), None)
+            };
+
+            let selector = parse_selector(&effective_key)
+                .ok_or_else(|| de::Error::custom("invalid resolution selector"))?;
 
             let value_str: String = map.next_value()?;
             let range = Range::from_file_string(&value_str)
@@ -208,6 +281,10 @@ impl<'de> Visitor<'de> for ResolutionsFieldVisitor {
 
             if !is_valid_resolution_descriptor {
                 return Err(de::Error::custom("the range must be an anonymous semver range"));
+            }
+
+            if let Some(legacy) = legacy_form {
+                field.legacy_glob_keys.push(legacy);
             }
 
             field.add_entry(selector, range);

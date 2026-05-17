@@ -219,7 +219,7 @@ impl<'a> Versioning<'a> {
 
         let mut versioning_files
             = changed_files.into_iter()
-                .filter_map(|file| file.forward_relative_to(&versioning_path))
+                .filter(|file| versioning_path.contains(file))
                 .collect_vec();
 
         if versioning_files.is_empty() {

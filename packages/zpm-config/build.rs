@@ -293,6 +293,13 @@ impl Generator {
                 let type_
                     = &field.type_;
 
+                for alias in &field.aliases {
+                    let alias_camel_case
+                        = alias.to_case(Case::Camel);
+
+                    writeln!(writer, "        #[serde(alias = \"{alias_camel_case}\")]").unwrap();
+                }
+
                 writeln!(writer, "        #[serde(default)] pub {lc_snake_name}: Partial<{}>,", type_.to_intermediate_type_string()).unwrap();
             }
 
@@ -365,7 +372,10 @@ impl Generator {
             writeln!(writer).unwrap();
             writeln!(writer, "    fn get(&self, path: &[&str]) -> Result<ConfigurationEntry<'_>, GetError> {{").unwrap();
             writeln!(writer, "        let Some(key_str) = path.first() else {{").unwrap();
-            writeln!(writer, "            unimplemented!(\"Configuration records cannot be returned directly just yet\");").unwrap();
+            writeln!(writer, "            return Ok(ConfigurationEntry {{").unwrap();
+            writeln!(writer, "                value: AbstractValue::new_container(Container::new(self)),").unwrap();
+            writeln!(writer, "                source: Source::Mixed,").unwrap();
+            writeln!(writer, "            }});").unwrap();
             writeln!(writer, "        }};").unwrap();
             writeln!(writer, "").unwrap();
             writeln!(writer, "        match *key_str {{").unwrap();
@@ -478,6 +488,23 @@ impl Generator {
             writeln!(writer, "                children: Some(tree::TreeNodeChildren::Map(children)),").unwrap();
             writeln!(writer, "            }}").unwrap();
             writeln!(writer, "        }}").unwrap();
+            writeln!(writer, "    }}").unwrap();
+            writeln!(writer, "}}").unwrap();
+        }
+
+        // Helper to enumerate top-level settings on the root struct.
+        if let Some(fields) = self.structs.get(&self.root_name) {
+            writeln!(writer).unwrap();
+            writeln!(writer, "impl {} {{", self.root_name).unwrap();
+            writeln!(writer, "    pub fn setting_names() -> Vec<&'static str> {{").unwrap();
+            writeln!(writer, "        vec![").unwrap();
+
+            for field in fields {
+                let name = &field.name;
+                writeln!(writer, "            \"{name}\",").unwrap();
+            }
+
+            writeln!(writer, "        ]").unwrap();
             writeln!(writer, "    }}").unwrap();
             writeln!(writer, "}}").unwrap();
         }

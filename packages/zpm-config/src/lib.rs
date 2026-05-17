@@ -11,6 +11,13 @@ pub struct ConfigurationContext {
     pub package_cwd: Option<Path>,
 }
 
+impl ConfigurationContext {
+    /// Most-specific cwd available: project, falling back to package.
+    pub fn preferred_cwd(&self) -> Option<&Path> {
+        self.project_cwd.as_ref().or(self.package_cwd.as_ref())
+    }
+}
+
 #[derive(Debug, Clone, Copy, Default)]
 pub enum Source {
     #[default]
@@ -19,7 +26,23 @@ pub enum Source {
     Project,
     Environment,
     Cli,
+    Hardened,
     Mixed,
+}
+
+impl Source {
+    /// Berry-compatible label for `yarn config --json` output.
+    pub fn label(&self) -> &'static str {
+        match self {
+            Source::Default => "<default>",
+            Source::User => "<user>",
+            Source::Project => "<project>",
+            Source::Environment => "<environment>",
+            Source::Cli => "<cli>",
+            Source::Hardened => "<hardened>",
+            Source::Mixed => "<mixed>",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default)]
@@ -31,6 +54,12 @@ pub struct Setting<T> {
 impl<T> Setting<T> {
     pub fn new(value: T, source: Source) -> Self {
         Self {value, source}
+    }
+
+    /// Overrides the setting with `value` and stamps it with `source`.
+    pub fn force(&mut self, value: T, source: Source) {
+        self.value = value;
+        self.source = source;
     }
 }
 
@@ -201,7 +230,7 @@ impl<K: Ord + ToFileString + ToHumanString + FromFileString + Serialize + std::f
     fn get(&self, path: &[&str]) -> Result<ConfigurationEntry<'_>, GetError> {
         let Some(key_str) = path.first() else {
             return Ok(ConfigurationEntry {
-                value: AbstractValue::new(Container::new(self)),
+                value: AbstractValue::new_container(Container::new(self)),
                 source: Source::Mixed,
             });
         };
@@ -341,7 +370,7 @@ impl<T: std::fmt::Debug + Serialize + MergeSettings> MergeSettings for Vec<T> {
     fn get(&self, path: &[&str]) -> Result<ConfigurationEntry<'_>, GetError> {
         let Some(key_str) = path.first() else {
             return Ok(ConfigurationEntry {
-                value: AbstractValue::new(Container::new(self)),
+                value: AbstractValue::new_container(Container::new(self)),
                 source: Source::Mixed,
             });
         };
@@ -802,6 +831,9 @@ pub struct Configuration {
     pub user_config_path: Option<Path>,
     pub project_config_path: Option<Path>,
     pub env_files: BTreeMap<String, String>,
+    /// Retained so downstream predicates can re-evaluate without
+    /// recomputing the env/cwd snapshot.
+    pub context: ConfigurationContext,
 }
 
 #[derive(thiserror::Error, Debug, Clone)]
@@ -931,6 +963,11 @@ impl Configuration {
         self.settings.tree_node(None, None)
     }
 
+    pub fn validate(text: &str) -> Result<(), ConfigurationError> {
+        serde_yaml::from_str::<intermediate::Settings>(text)?;
+        Ok(())
+    }
+
     pub fn hydrate(&self, path: &[&str], value_str: &str) -> Result<AbstractValue<'_>, HydrateError> {
         self.settings.hydrate(path, value_str)
     }
@@ -988,9 +1025,7 @@ impl Configuration {
 
     pub fn load(context: &ConfigurationContext, last_modified_at: &mut LastModifiedAt) -> Result<Configuration, ConfigurationError> {
         let project_cwd
-            = context.project_cwd
-                .as_ref()
-                .expect("A project directory should be set");
+            = context.project_cwd.as_ref();
 
         let rc_filename
             = std::env::var("YARN_RC_FILENAME")
@@ -1000,7 +1035,7 @@ impl Configuration {
         let user_rc
             = RcFile::try_read(context.user_cwd.as_ref(), &rc_filename, last_modified_at)?;
         let project_rc
-            = RcFile::try_read(Some(project_cwd), &rc_filename, last_modified_at)?;
+            = RcFile::try_read(project_cwd, &rc_filename, last_modified_at)?;
 
         // Phase 1: Extract injectEnvironmentFiles from the raw YAML text.
         // We check the project rc first, falling back to the user rc, then
@@ -1013,10 +1048,13 @@ impl Configuration {
             .unwrap_or_else(|| vec![".env.yarn?".to_string()]);
 
         // Phase 2: Load .env files and collect variables
-        let env_files = Self::load_env_files(
-            project_cwd,
-            &inject_environment_files,
-        )?;
+        let env_files = match project_cwd {
+            Some(project_cwd) => Self::load_env_files(
+                project_cwd,
+                &inject_environment_files,
+            )?,
+            None => BTreeMap::new(),
+        };
 
         // Phase 3: Set env file variables in the process environment so that
         // shellexpand::env() (used by the Interpolated deserializer) can
@@ -1062,12 +1100,29 @@ impl Configuration {
             .or_default()
             .extend(std::mem::take(&mut settings.catalog));
 
+        apply_hardened_mode(&mut settings);
+
         Ok(Configuration {
             settings,
             user_config_path,
             project_config_path,
             env_files,
+            context: enriched_context,
         })
+    }
+}
+
+/// Cascades stricter defaults (immutable installs, lockfile refresh)
+/// when hardened mode is on. Only overrides settings still at
+/// `Source::Default`; explicit user values keep precedence. Cascaded
+/// overrides are stamped `Source::Hardened` for `yarn config`.
+fn apply_hardened_mode(settings: &mut Settings) {
+    if !settings.enable_hardened_mode.value {
+        return;
+    }
+
+    if matches!(settings.enable_immutable_installs.source, Source::Default) {
+        settings.enable_immutable_installs.force(true, Source::Hardened);
     }
 }
 
@@ -1095,7 +1150,7 @@ merge_settings!(zpm_formats::CompressionAlgorithm, |s: &str| FromFileString::fro
 merge_optional_settings!(zpm_formats::CompressionAlgorithm);
 
 merge_settings!(zpm_primitives::Descriptor, |s: &str| FromFileString::from_file_string(s).unwrap());
-merge_settings!(zpm_primitives::FilterDescriptor, |s: &str| FromFileString::from_file_string(s).unwrap());
+merge_settings!(zpm_primitives::VersionFilter, |s: &str| FromFileString::from_file_string(s).unwrap());
 merge_settings!(zpm_primitives::Ident, |s: &str| FromFileString::from_file_string(s).unwrap());
 merge_settings!(zpm_primitives::IdentGlob, |s: &str| FromFileString::from_file_string(s).unwrap());
 merge_settings!(zpm_primitives::Locator, |s: &str| FromFileString::from_file_string(s).unwrap());
@@ -1103,7 +1158,7 @@ merge_settings!(zpm_primitives::PeerRange, |s: &str| FromFileString::from_file_s
 merge_settings!(zpm_primitives::Range, |s: &str| FromFileString::from_file_string(s).unwrap());
 merge_settings!(zpm_primitives::Reference, |s: &str| FromFileString::from_file_string(s).unwrap());
 merge_optional_settings!(zpm_primitives::Descriptor);
-merge_optional_settings!(zpm_primitives::FilterDescriptor);
+merge_optional_settings!(zpm_primitives::VersionFilter);
 merge_optional_settings!(zpm_primitives::Ident);
 merge_optional_settings!(zpm_primitives::IdentGlob);
 merge_optional_settings!(zpm_primitives::Locator);
@@ -1128,7 +1183,13 @@ merge_optional_settings!(zpm_utils::Secret<String>);
 merge_settings!(crate::types::NodeLinker, |s: &str| FromFileString::from_file_string(s).unwrap());
 merge_settings!(crate::types::IslandLinker, |s: &str| FromFileString::from_file_string(s).unwrap());
 merge_settings!(crate::types::PnpFallbackMode, |s: &str| FromFileString::from_file_string(s).unwrap());
+merge_settings!(crate::types::NmHoistingLimits, |s: &str| FromFileString::from_file_string(s).unwrap());
+merge_settings!(crate::types::NmMode, |s: &str| FromFileString::from_file_string(s).unwrap());
+merge_settings!(crate::types::WinLinkType, |s: &str| FromFileString::from_file_string(s).unwrap());
 merge_optional_settings!(crate::types::NodeLinker);
 merge_optional_settings!(crate::types::IslandLinker);
 merge_optional_settings!(crate::types::PnpFallbackMode);
+merge_optional_settings!(crate::types::NmHoistingLimits);
+merge_optional_settings!(crate::types::NmMode);
+merge_optional_settings!(crate::types::WinLinkType);
 merge_optional_settings!(Path);

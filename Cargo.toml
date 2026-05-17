@@ -52,6 +52,7 @@ erased-serde = "0.4.6"
 env_logger = "0.11.8"
 fancy-regex = "0.13.0"
 flate2 = { version = "1.0.31", features = ["zlib-rs"] }
+libdeflater = "1.25.2"
 fundu = "2.0.1"
 futures = "0.3.30"
 git-url-parse = "0.4.5"
@@ -106,7 +107,7 @@ tokio = { version = "1.39.2", features = ["full"] }
 tokio-tungstenite = "0.26"
 tower = { version = "0.5.2", features = ["limit"] }
 ts-rs = "12.0.1"
-serde_json = "1.0.145"
+serde_json = { version = "1.0.145", features = ["preserve_order"] }
 serde = { version = "1.0.207", features = ["derive"] }
 wax = { git = "https://github.com/arcanis/wax.git" }
 winnow = "0.7"

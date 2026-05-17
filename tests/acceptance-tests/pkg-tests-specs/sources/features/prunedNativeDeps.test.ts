@@ -61,13 +61,16 @@ describe(`Features`, () => {
 
       const file = parseSyml(await xfs.readFilePromise(ppath.join(path, Filename.lockfile), `utf8`));
 
+      // zpm splits workspace identifiers into a separate top-level
+      // `workspaces` map (keyed by ident, not by descriptor), so we
+      // merge both maps for the comparison.
       const dependencies = tests.FEATURE_CHECKS.jsonLockfile
-        ? file.entries
+        ? {...file.entries, ...file.workspaces}
         : file;
 
       delete dependencies.__metadata;
 
-      expect(Object.keys(dependencies)).toEqual([
+      expect(Object.keys(dependencies)).toEqual(expect.arrayContaining([
         `native-bar-x64@npm:1.0.0`,
         `native-foo-x64@npm:1.0.0`,
         `native-foo-x86@npm:1.0.0`,
@@ -75,7 +78,8 @@ describe(`Features`, () => {
         `native-libc-musl@npm:1.0.0`,
         `optional-native@npm:1.0.0`,
         expect.stringMatching(/^root-workspace.*/),
-      ]);
+      ]));
+      expect(Object.keys(dependencies)).toHaveLength(7);
     }));
 
     it(`shouldn't fetch packages that it won't need`, makeTemporaryEnv({

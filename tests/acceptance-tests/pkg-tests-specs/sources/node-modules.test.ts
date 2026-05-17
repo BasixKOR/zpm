@@ -859,6 +859,55 @@ describe(`Node Modules`, () => {
     ),
   );
 
+  test(`should run postinstall for nested deps under nmHoistingLimits: dependencies`,
+    // Repro for the dest_abs_path double-join: with the bug, the build
+    // cwd was `workspace/node_modules/dep1/node_modules/dep1/node_modules/dep2`,
+    // which doesn't exist, so the script either silently skipped or
+    // failed. The expected cwd is `workspace/node_modules/dep1/node_modules/dep2`.
+    makeTemporaryEnv(
+      {
+        private: true,
+        workspaces: {
+          packages: [`workspace`],
+        },
+      },
+      {
+        nodeLinker: `node-modules`,
+      },
+      async ({path, run, source}) => {
+        await writeJson(npath.toPortablePath(`${path}/workspace/package.json`), {
+          name: `workspace`,
+          version: `1.0.0`,
+          dependencies: {
+            dep1: `file:./dep1`,
+          },
+          installConfig: {
+            hoistingLimits: `dependencies`,
+          },
+        });
+        await writeJson(npath.toPortablePath(`${path}/workspace/dep1/package.json`), {
+          name: `dep1`,
+          version: `1.0.0`,
+          dependencies: {
+            dep2: `file:../dep2`,
+          },
+        });
+        await writeJson(npath.toPortablePath(`${path}/workspace/dep2/package.json`), {
+          name: `dep2`,
+          version: `1.0.0`,
+          scripts: {
+            postinstall: `node -e "require('fs').writeFileSync('postinstall.marker', '')"`,
+          },
+        });
+
+        await run(`install`);
+
+        // The marker must land alongside dep2's real install location.
+        expect(await xfs.existsPromise(`${path}/workspace/node_modules/dep1/node_modules/dep2/postinstall.marker` as PortablePath)).toEqual(true);
+      },
+    ),
+  );
+
   test(`should create symlink if workspace is a dependency AND it has hoist borders at the same time`,
     makeTemporaryEnv(
       {
@@ -1287,7 +1336,7 @@ describe(`Node Modules`, () => {
 
         const {stdout} = await run(`install`);
 
-        expect(stdout).not.toContain(`YN0006`);
+        expect(stdout).not.toContain(`lists build scripts, but its build has been explicitly disabled`);
       }),
   );
 

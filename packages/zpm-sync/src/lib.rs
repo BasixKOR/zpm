@@ -17,6 +17,12 @@ pub enum SyncTemplate {
 #[derive(Debug, PartialEq, Eq, Deserialize)]
 #[serde(tag = "type")]
 pub enum SyncItem<'a> {
+    /// Placeholder telling the sync tree "something is supposed to
+    /// live here, but I'll write it myself after the sync runs." The
+    /// tree skips create/remove and never descends into it, leaving
+    /// whatever the caller produced later on its own.
+    Any,
+
     Folder {
         template: Option<SyncTemplate>,
     },
@@ -457,6 +463,8 @@ pub enum SyncNode<'a> {
 impl<'a> From<SyncItem<'a>> for SyncNode<'a> {
     fn from(entry: SyncItem<'a>) -> Self {
         match entry {
+            SyncItem::Any => SyncNode::Any,
+
             SyncItem::Folder {template} => SyncNode::Folder {
                 template,
                 children: BTreeMap::new(),

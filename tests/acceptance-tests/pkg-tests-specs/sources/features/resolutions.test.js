@@ -201,7 +201,7 @@ describe(`Features`, () => {
         async ({path, run, source}) => {
           const {stdout} = await run(`install`);
 
-          expect(stdout).toContain(`YN0057`);
+          expect(stdout).toContain(`Legacy glob syntax found in resolutions`);
         },
       ),
     );
