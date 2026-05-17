@@ -87,7 +87,7 @@ pub enum Error {
     #[error("Checksum mismatch for {}", .0.to_print_string())]
     ChecksumMismatch(Locator),
 
-    #[error("[YN0028] The lockfile would have been created by this install, which is explicitly forbidden.")]
+    #[error("The lockfile would have been created by this install, which is explicitly forbidden.")]
     ImmutableLockfile,
 
     #[error("Cannot autofix a lockfile when running an immutable install.")]
@@ -111,19 +111,19 @@ pub enum Error {
     #[error("The lockfile is a v1 lockfile; please first migrate to Yarn Berry then migrate again to Yarn ZPM")]
     LockfileV1Error,
 
-    #[error("[YN0056] Cache entry required but missing for {0:?}.")]
+    #[error("Cache entry required but missing for {0:?}.")]
     ImmutableCache(Locator),
 
-    #[error("[YN0056] {} appears to be unused and would be marked for deletion, but the cache is immutable", .0.to_print_string())]
+    #[error("{} appears to be unused and would be marked for deletion, but the cache is immutable", .0.to_print_string())]
     ImmutableCacheCleanup(Path),
 
-    #[error("[YN0091] Cache path does not exist ({}).", .0.to_print_string())]
+    #[error("Cache path does not exist ({}).", .0.to_print_string())]
     MissingCacheFolder(Path),
 
-    #[error("[YN0080] Request to '{0}' has been blocked because of your configuration settings.")]
+    #[error("Request to '{0}' has been blocked because of your configuration settings.")]
     NetworkDisabledError(reqwest::Url),
 
-    #[error("[YN0081] Unsafe http requests must be explicitly whitelisted in your configuration ({}).", .0.host_str().expect("\"http:\" URL should have a host"))]
+    #[error("Unsafe http requests must be explicitly whitelisted in your configuration ({}).", .0.host_str().expect("\"http:\" URL should have a host"))]
     UnsafeHttpError(reqwest::Url),
 
     #[error("Algolia registry error")]
@@ -493,10 +493,10 @@ pub enum Error {
     #[error("Bad resolution")]
     BadResolution(Descriptor, Locator),
 
-    #[error("[YN0078] The lockfile pins {} to {}, but that locator no longer satisfies the descriptor", .0.to_print_string(), .1.to_print_string())]
+    #[error("The lockfile pins {} to {}, but that locator no longer satisfies the descriptor", .0.to_print_string(), .1.to_print_string())]
     ResolutionMismatch(Descriptor, Locator),
 
-    #[error("[YN0036] The checksum for {0} has been modified by this install")]
+    #[error("The checksum for {0} has been modified by this install")]
     ImmutablePatternViolation(String),
 
     #[error("Task timeout")]

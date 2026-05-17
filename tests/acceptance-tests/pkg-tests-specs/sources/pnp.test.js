@@ -386,7 +386,7 @@ describe(`Plug'n'Play`, () => {
       },
       async ({path, run, source}) => {
         const {stdout} = await run(`install`);
-        expect(stdout).not.toEqual(expect.stringContaining(`YN0060`));
+        expect(stdout).not.toEqual(expect.stringContaining(`which doesn't satisfy`));
       },
     ),
   );
@@ -402,7 +402,7 @@ describe(`Plug'n'Play`, () => {
       },
       async ({path, run, source}) => {
         const {stdout} = await run(`install`);
-        expect(stdout).toEqual(expect.stringContaining(`YN0060`));
+        expect(stdout).toEqual(expect.stringContaining(`which doesn't satisfy`));
       },
     ),
   );

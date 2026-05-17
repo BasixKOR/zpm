@@ -1,32 +1,20 @@
 use std::{collections::{BTreeMap, BTreeSet, HashMap}, sync::{Arc, LazyLock, Mutex}};
 
 use chrono::{DateTime, Utc};
+use colored::Colorize;
 use futures::future::{BoxFuture, FutureExt};
 use futures::stream::{FuturesUnordered, StreamExt};
 use itertools::Itertools;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use zpm_config::PackageExtension;
 use zpm_primitives::{Descriptor, GitRange, Ident, Locator, PatchRange, PeerRange, Range, Reference, RegistrySemverRange, RegistryTagRange, SemverDescriptor, SemverPeerRange, WorkspaceIdentRange};
-use zpm_utils::{Hash64, Hash64Writer, IoResultExt, Path, System, ToHumanString, UrlEncoded, scc_tarjan_pearce};
+use zpm_utils::{DataType, Hash64, Hash64Writer, IoResultExt, Path, System, ToHumanString, UrlEncoded, scc_tarjan_pearce};
 use rkyv::Archive;
 use serde::{Deserialize, Serialize};
 use zpm_utils::{FromFileString, ToFileString};
 
 use crate::{
-    build,
-    cache::CompositeCache,
-    constraints::check_constraints,
-    content_flags::ContentFlags,
-    error::Error,
-    fetchers::{PackageData, SyncFetchAttempt, fetch_locator, patch::has_builtin_patch, try_fetch_locator_sync},
-    http_npm,
-    graph::WaitMap,
-    linker,
-    lockfile::{Lockfile, LockfileEntry, LockfileMetadata},
-    primitives_exts::{InnerDependencyKind, RangeExt},
-    project::{InstallMode, Project},
-    report::{ReportContext, async_section, current_report, with_context_result},
-    resolvers::{Resolution, SyncResolutionAttempt, catalog::lookup_catalog_entry, resolve_descriptor, resolve_locator, try_resolve_descriptor_sync}, tree_resolver::{ResolutionTree, TreeResolver},
+    build, cache::CompositeCache, constraints::check_constraints, content_flags::ContentFlags, error::Error, fetchers::{PackageData, SyncFetchAttempt, fetch_locator, patch::has_builtin_patch, try_fetch_locator_sync}, graph::WaitMap, http_npm, linker, lockfile::{Lockfile, LockfileEntry, LockfileMetadata}, primitives_exts::{InnerDependencyKind, RangeExt}, project::{InstallMode, Project}, report::{self, ReportContext, async_section, current_report, with_context_result}, resolvers::{Resolution, SyncResolutionAttempt, catalog::lookup_catalog_entry, resolve_descriptor, resolve_locator, try_resolve_descriptor_sync}, tree_resolver::{ResolutionTree, TreeResolver}
 };
 
 #[derive(Clone)]
@@ -70,11 +58,16 @@ impl ExtensionFieldKey {
     pub fn render(&self) -> String {
         match self {
             ExtensionFieldKey::Dependency(ident)
-                => format!("dependencies ➤ {}", ident.to_print_string()),
+                => format!("{} ➤ {}", DataType::Code.colorize("dependencies"), ident.to_print_string()),
             ExtensionFieldKey::PeerDependency(ident)
-                => format!("peerDependencies ➤ {}", ident.to_print_string()),
+                => format!("{} ➤ {}", DataType::Code.colorize("peerDependencies"), ident.to_print_string()),
             ExtensionFieldKey::PeerDependencyMetaOptional(ident)
-                => format!("peerDependenciesMeta ➤ {} ➤ optional", ident.to_print_string()),
+                => format!(
+                    "{} ➤ {} ➤ {}",
+                    DataType::Code.colorize("peerDependenciesMeta"),
+                    ident.to_print_string(),
+                    DataType::Code.colorize("optional"),
+                ),
         }
     }
 }
@@ -625,10 +618,10 @@ fn render_peer_warning(
         PeerWarningKind::NodeNotProvided => {
             let suffix = if total_requests > 1 { " and other dependencies" } else { "" };
             format!(
-                "[YN0002] {} doesn't provide {} ({}), requested by {}{}.",
+                "{} doesn't provide {} ({}), requested by {}{}.",
                 node.subject.to_print_string(),
                 node.ident.to_print_string(),
-                node.hash,
+                DataType::Code.colorize(&node.hash),
                 chosen_label,
                 suffix,
             )
@@ -636,17 +629,17 @@ fn render_peer_warning(
         PeerWarningKind::NodeNotCompatible { range } => {
             let other_packages = if total_requests > 1 { "and other dependencies request" } else { "requests" };
             let range_desc = match range {
-                Some(r) => r.clone(),
-                None => "but they have non-overlapping ranges!".to_string(),
+                Some(r) => DataType::Range.colorize(r),
+                None => "but they have non-overlapping ranges!".bright_red().to_string(),
             };
             let version_str = node.provided_version.as_ref()
                 .map(|v| v.to_print_string())
-                .unwrap_or_else(|| "0.0.0".to_string());
+                .unwrap_or_else(|| DataType::Reference.colorize("0.0.0"));
             format!(
-                "[YN0060] {} is listed by your project with version {} ({}), which doesn't satisfy what {} {} ({}).",
+                "{} is listed by your project with version {} ({}), which doesn't satisfy what {} {} ({}).",
                 node.ident.to_print_string(),
                 version_str,
-                node.hash,
+                DataType::Code.colorize(&node.hash),
                 chosen_label,
                 other_packages,
                 range_desc,
@@ -838,61 +831,74 @@ pub struct InstallResult {
 }
 
 impl Install {
-    /// Emits `YN0002`/`YN0060` peer warnings plus the closing CTA
-    /// pointing at `yarn explain peer-requirements`. Mirrors berry's
+    /// Emits peer warnings plus the closing CTA pointing at
+    /// `yarn explain peer-requirements`. Mirrors berry's
     /// `emitPeerDependencyWarnings`.
-    async fn report_peer_diagnostics(&self, project: &Project) {
-        let report_guard = current_report().await;
-        let Some(report) = report_guard.as_ref() else {
-            return;
-        };
+    fn report_peer_diagnostics(&self, project: &Project) {
+        report::if_active(|report| {
+            let data
+                = crate::peer_requirements::compute(project, &self.install_state);
 
-        let data = crate::peer_requirements::compute(project, &self.install_state);
-        if data.warnings.is_empty() {
-            return;
-        }
-
-        let mut project_lines: Vec<String> = Vec::new();
-        let mut has_transitive = false;
-
-        for warning in &data.warnings {
-            let Some(node) = data.nodes.get(&warning.hash) else {
-                continue;
-            };
-
-            // Project-level (workspace subject) warnings list inline;
-            // transitive ones roll up under one CTA so a deep dep with
-            // mismatched peers can't drown the install output.
-            if !node.is_root {
-                has_transitive = true;
-                continue;
+            if data.warnings.is_empty() {
+                return;
             }
 
-            project_lines.push(render_peer_warning(node, warning));
-        }
+            let data
+                = crate::peer_requirements::compute(project, &self.install_state);
 
-        project_lines.sort();
-        for line in project_lines.iter() {
-            report.warn(line.clone());
-        }
+            if data.warnings.is_empty() {
+                return;
+            }
 
-        if !project_lines.is_empty() {
-            report.warn(
-                "[YN0086] Some peer dependencies are incorrectly met by your project; \
-                 run `yarn explain peer-requirements <hash>` for details, where \
-                 <hash> is the six-letter p-prefixed code.".to_string(),
-            );
-        }
+            let mut project_lines: Vec<String> = Vec::new();
+            let mut has_transitive = false;
 
-        if has_transitive {
-            report.warn(
-                "[YN0086] Some peer dependencies are incorrectly met by dependencies; \
-                 run `yarn explain peer-requirements` for details.".to_string(),
-            );
-        }
+            for warning in &data.warnings {
+                let Some(node) = data.nodes.get(&warning.hash) else {
+                    continue;
+                };
+
+                // Project-level (workspace subject) warnings list inline;
+                // transitive ones roll up under one CTA so a deep dep with
+                // mismatched peers can't drown the install output.
+                if !node.is_root {
+                    has_transitive = true;
+                    continue;
+                }
+
+                project_lines.push(render_peer_warning(node, warning));
+            }
+
+            project_lines.sort();
+
+            if !project_lines.is_empty() {
+                report.push_section("Validating peer dependencies".to_string());
+
+                for line in project_lines.iter() {
+                    report.warn(line.clone());
+                }
+
+                report.warn(format!(
+                    "Some peer dependencies are incorrectly met by your project; \
+                    run {} for details, where {} is the six-letter p-prefixed code.",
+                    DataType::Code.colorize("yarn explain peer-requirements <hash>"),
+                    DataType::Code.colorize("<hash>"),
+                ));
+
+                if has_transitive {
+                    report.warn(format!(
+                        "Some peer dependencies are incorrectly met by dependencies; \
+                        run {} for details.",
+                        DataType::Code.colorize("yarn explain peer-requirements"),
+                    ));
+                }
+
+                report.pop_section();
+            }
+        });
     }
 
-    /// Emits YN0004 / YN0005 once per *physical* locator with build
+    /// Emits a warning/info once per *physical* locator with build
     /// commands but scripts disabled. Deduping avoids repeating the
     /// same line for every virtualised instance.
     async fn report_disabled_build_scripts(&self, project: &Project) {
@@ -943,12 +949,12 @@ impl Install {
 
             if package_meta.built == Some(false) {
                 report.info(format!(
-                    "[YN0005] {} lists build scripts, but its build has been explicitly disabled through configuration.",
+                    "{} lists build scripts, but its build has been explicitly disabled through configuration.",
                     physical_locator.to_print_string(),
                 ));
             } else {
                 report.warn(format!(
-                    "[YN0004] {} lists build scripts, but its build has been explicitly disabled through configuration.",
+                    "{} lists build scripts, but its build has been explicitly disabled through configuration.",
                     physical_locator.to_print_string(),
                 ));
             }
@@ -980,13 +986,13 @@ impl Install {
 
                 if !matched {
                     report.warn(format!(
-                        "[YN0068] {} ➤ {}: No matching package in the dependency tree; you may not need this rule anymore.",
+                        "{} ➤ {}: No matching package in the dependency tree; you may not need this rule anymore.",
                         parent,
                         key.render(),
                     ));
                 } else if tracking.redundant.contains(&rule_key) && !tracking.applied.contains(&rule_key) {
                     report.warn(format!(
-                        "[YN0068] {} ➤ {}: This rule seems redundant when applied on the original package; the extension may have been applied upstream.",
+                        "{} ➤ {}: This rule seems redundant when applied on the original package; the extension may have been applied upstream.",
                         parent,
                         key.render(),
                     ));
@@ -996,7 +1002,6 @@ impl Install {
     }
 
     pub async fn link_and_build(mut self, project: &mut Project) -> Result<InstallResult, Error> {
-        self.report_peer_diagnostics(project).await;
         self.report_disabled_build_scripts(project).await;
         self.report_package_extension_diagnostics(project).await;
 
@@ -1165,7 +1170,7 @@ impl<'a> InstallManager<'a> {
             for workspace in &project.workspaces {
                 for legacy_key in &workspace.manifest.resolutions.legacy_glob_keys {
                     crate::report::if_active_async(|report| {
-                        report.warn(format!("[YN0057] Legacy glob syntax found in resolutions ({legacy_key}); the leading **/ prefix is no longer needed."));
+                        report.warn(format!("Legacy glob syntax found in resolutions ({legacy_key}); the leading **/ prefix is no longer needed."));
                     }).await;
                 }
 
@@ -1173,7 +1178,7 @@ impl<'a> InstallManager<'a> {
                 if has_string_bin && workspace.manifest.name.is_none() {
                     crate::report::if_active_async(|report| {
                         report.warn(format!(
-                            "[YN0057] {}: String bin field, but no attached package name",
+                            "{}: String bin field, but no attached package name",
                             workspace.pretty_name(),
                         ));
                     }).await;
@@ -1182,7 +1187,7 @@ impl<'a> InstallManager<'a> {
                 for nohoist_pattern in &workspace.manifest.workspaces.nohoist {
                     crate::report::if_active_async(|report| {
                         report.warn(format!(
-                            "[YN0058] {}: 'nohoist' is deprecated, please use 'installConfig.hoistingLimits' instead (pattern: {})",
+                            "{}: 'nohoist' is deprecated, please use 'installConfig.hoistingLimits' instead (pattern: {})",
                             workspace.pretty_name(),
                             nohoist_pattern,
                         ));
@@ -1503,6 +1508,8 @@ impl<'a> InstallManager<'a> {
 
         self.result.extension_tracking = self.context.extension_tracking.clone();
         self.result.inline_builds = self.context.inline_builds;
+
+        self.result.report_peer_diagnostics(self.context.project.unwrap());
 
         if let Some(cache) = &self.context.package_cache {
             cache.clean().await?;

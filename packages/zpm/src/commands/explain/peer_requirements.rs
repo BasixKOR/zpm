@@ -1,5 +1,5 @@
 use clipanion::cli;
-use zpm_utils::{ToHumanString, tree};
+use zpm_utils::{DataType, ToHumanString, tree};
 
 use crate::{
     error::Error,
@@ -110,7 +110,7 @@ impl ExplainPeerRequirements {
                 if let Some(w) = warning {
                     if let PeerWarningKind::NodeNotCompatible { range } = &w.kind {
                         match range {
-                            Some(r) => println!("  The combined requested range is {}", r),
+                            Some(r) => println!("  The combined requested range is {}", DataType::Range.colorize(r)),
                             None => println!("  Unfortunately, the requested ranges have no overlap"),
                         }
                     }
@@ -155,10 +155,10 @@ impl ExplainPeerRequirements {
                 Some(_) => {
                     let version_str = node.provided_version.as_ref()
                         .map(|v| v.to_print_string())
-                        .unwrap_or_else(|| "0.0.0".into());
+                        .unwrap_or_else(|| DataType::Reference.colorize("0.0.0"));
                     format!(
                         "{} → {} {} provides {} ({}) to {}{}",
-                        node.hash,
+                        DataType::Code.colorize(&node.hash),
                         mark,
                         node.subject.to_print_string(),
                         node.ident.to_print_string(),
@@ -170,7 +170,7 @@ impl ExplainPeerRequirements {
                 None => {
                     format!(
                         "{} → {} {} doesn't provide {} to {}{}",
-                        node.hash,
+                        DataType::Code.colorize(&node.hash),
                         mark,
                         node.subject.to_print_string(),
                         node.ident.to_print_string(),

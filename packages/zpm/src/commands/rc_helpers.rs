@@ -60,8 +60,8 @@ pub fn build_inherited_rc(calling_cwd: &Path) -> String {
     if let Some(mut parsed) = parsed {
         if let Some(map) = parsed.as_object_mut() {
             // Targets these keys reference aren't in the ephemeral
-            // project; user-set values would surface as YN0068 or
-            // override our forced `enableGlobalCache: false`.
+            // project; user-set values would surface as unused-rule
+            // warnings or override our forced `enableGlobalCache: false`.
             map.remove("packageExtensions");
             map.remove("plugins");
             map.remove("enableGlobalCache");

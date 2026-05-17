@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use zpm_primitives::{VersionFilter, Ident, Locator, Reference};
 use zpm_sync::{SyncItem, SyncTemplate, SyncTree};
-use zpm_utils::{FromFileString, IoResultExt, Path, ToFileString, ToHumanString};
+use zpm_utils::{FromFileString, IoResultExt, Path, ToHumanString};
 
 use crate::{
     build::{self, BuildRequest, BuildRequests}, content_flags, error::Error, fetchers::PackageData, install::Install, linker::{self, LinkResult, helpers::PackageMeta, nm::hoist::{Hoister, WorkTree}}, project::Project
@@ -621,7 +621,7 @@ fn warn_about_portals_if_any(install: &Install) {
 
     crate::report::if_active(|report| {
         report.warn(
-            "[YN0066] Portals are in use. Make sure to set --preserve-symlinks (or NODE_PRESERVE_SYMLINKS_MAIN=1) so node can resolve hoisted dependencies through the portal symlink.".to_string(),
+            "Portals are in use. Make sure to set --preserve-symlinks (or NODE_PRESERVE_SYMLINKS_MAIN=1) so node can resolve hoisted dependencies through the portal symlink.".to_string(),
         );
     });
 }
@@ -713,26 +713,26 @@ fn check_external_portal_conflicts(
                 match (parent_locator, sibling_portal) {
                     (Some(parent_locator), Some(sibling_locator)) => {
                         report.warn(format!(
-                            "[YN0067] {}: dependency {} conflicts with dependency {} from sibling portal {}",
-                            node.locator.to_file_string(),
-                            child_locator.to_file_string(),
-                            parent_locator.to_file_string(),
-                            sibling_locator.ident.as_str(),
+                            "{}: dependency {} conflicts with dependency {} from sibling portal {}",
+                            node.locator.to_print_string(),
+                            child_locator.to_print_string(),
+                            parent_locator.to_print_string(),
+                            sibling_locator.ident.to_print_string(),
                         ));
                     },
                     (Some(parent_locator), None) => {
                         report.warn(format!(
-                            "[YN0067] {}: dependency {} conflicts with parent dependency {}",
-                            node.locator.to_file_string(),
-                            child_locator.to_file_string(),
-                            parent_locator.to_file_string(),
+                            "{}: dependency {} conflicts with parent dependency {}",
+                            node.locator.to_print_string(),
+                            child_locator.to_print_string(),
+                            parent_locator.to_print_string(),
                         ));
                     },
                     (None, _) => {
                         report.warn(format!(
-                            "[YN0067] {}: dependency {} can't be hoisted into the parent and the portal target is external",
-                            node.locator.to_file_string(),
-                            child_locator.to_file_string(),
+                            "{}: dependency {} can't be hoisted into the parent and the portal target is external",
+                            node.locator.to_print_string(),
+                            child_locator.to_print_string(),
                         ));
                     },
                 }

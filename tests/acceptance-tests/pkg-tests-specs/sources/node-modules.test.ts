@@ -1336,7 +1336,7 @@ describe(`Node Modules`, () => {
 
         const {stdout} = await run(`install`);
 
-        expect(stdout).not.toContain(`YN0006`);
+        expect(stdout).not.toContain(`lists build scripts, but its build has been explicitly disabled`);
       }),
   );
 

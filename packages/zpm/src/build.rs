@@ -71,7 +71,7 @@ impl BuildRequest {
 
         crate::report::if_active(|report| {
             report.info(format!(
-                "[YN0007] {} must be built because it never has been before",
+                "{} must be built because it never has been before",
                 self.locator.to_print_string(),
             ));
         });
@@ -305,7 +305,7 @@ impl<'a> BuildManager<'a> {
 
         if !script_result.success() {
             if self.build_errors.insert(request.key()) {
-                emit_yn0009(&request.locator);
+                emit_build_failure_warning(&request.locator);
             }
         } else {
             self.build_state_out.entries.entry(request.locator.clone())
@@ -444,7 +444,7 @@ impl<'a> BuildManager<'a> {
 
                 Err(_) => {
                     if self.build_errors.insert(request.key()) {
-                        emit_yn0009(&request.locator);
+                        emit_build_failure_warning(&request.locator);
                     }
                 }
             }
@@ -465,10 +465,10 @@ impl<'a> BuildManager<'a> {
     }
 }
 
-fn emit_yn0009(locator: &Locator) {
+fn emit_build_failure_warning(locator: &Locator) {
     crate::report::if_active(|report| {
         report.warn(format!(
-            "[YN0009] {} couldn't be built successfully; please check the logs above for more information.",
+            "{} couldn't be built successfully; please check the logs above for more information.",
             locator.to_print_string(),
         ));
     });

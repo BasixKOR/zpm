@@ -1,10 +1,5 @@
 import {PortablePath, xfs} from '@yarnpkg/fslib';
 
-const makeCodeFilter = (level: string) => JSON.stringify([{
-  code: `YN0005`,
-  level,
-}]);
-
 const makeTextFilter = (level: string) => JSON.stringify([{
   text: `no-deps-scripted@npm:1.0.0 lists build scripts, but its build has been explicitly disabled through configuration.`,
   level,
@@ -17,51 +12,6 @@ const makePatternFilter = (level: string) => JSON.stringify([{
 
 describe(`Features`, () => {
   describe(`LogFilters`, () => {
-    test(`it should allow to filter by message name`, makeTemporaryEnv({
-      dependencies: {
-        [`no-deps-scripted`]: `1.0.0`,
-      },
-      dependenciesMeta: {
-        [`no-deps-scripted`]: {built: false},
-      },
-    }, async ({path, run, source}) => {
-      let {stdout} = await run(`install`);
-      expect(stdout).toMatch(/lists build scripts/); // sanity check
-
-      await run(`config`, `set`, `logFilters`, `--json`, makeCodeFilter(`discard`));
-
-      ({stdout} = await run(`rebuild`));
-      expect(stdout).not.toMatch(/lists build scripts/);
-
-      await run(`config`, `set`, `logFilters`, `--json`, makeCodeFilter(`info`));
-
-      ({stdout} = await run(`rebuild`));
-      expect(stdout).toMatch(/lists build scripts/);
-      expect(stdout).not.toMatch(/Failed with errors/);
-      expect(stdout).not.toMatch(/Done with warnings/);
-
-      await run(`config`, `set`, `logFilters`, `--json`, makeCodeFilter(`warning`));
-
-      ({stdout} = await run(`rebuild`));
-      expect(stdout).toMatch(/lists build scripts/);
-      expect(stdout).not.toMatch(/Failed with errors/);
-      expect(stdout).toMatch(/Done with warnings/);
-
-      await run(`config`, `set`, `logFilters`, `--json`, makeCodeFilter(`error`));
-
-      let hadError = false;
-      try {
-        await run(`rebuild`);
-      } catch (err) {
-        ({stdout} = err);
-        hadError = true;
-      }
-      expect(hadError).toBe(true);
-      expect(stdout).toMatch(/lists build scripts/);
-      expect(stdout).toMatch(/Failed with errors/);
-      expect(stdout).not.toMatch(/Done with warnings/);
-    }));
-
     test(`it should allow to filter by message text`, makeTemporaryEnv({
       dependencies: {
         [`no-deps-scripted`]: `1.0.0`,
@@ -242,7 +192,7 @@ describe(`Features`, () => {
     }, async ({path, run, source}) => {
       let {stdout} = await run(`install`);
       // sanity check
-      expect(stdout).toContain(`YN0002`);
+      expect(stdout).toContain(`doesn't provide`);
       expect(stdout).toMatch(/Some peer dependencies are incorrectly met/);
 
       await run(`config`, `set`, `logFilters`, `--json`, JSON.stringify([{
@@ -251,7 +201,7 @@ describe(`Features`, () => {
       }]));
 
       ({stdout} = await run(`install`));
-      expect(stdout).not.toContain(`YN0002`);
+      expect(stdout).not.toContain(`doesn't provide`);
       expect(stdout).not.toMatch(/Some peer dependencies are incorrectly met/);
     }));
   });

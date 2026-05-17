@@ -56,9 +56,9 @@ pub async fn if_active_async<F: FnOnce(&StreamReport)>(f: F) -> bool {
     true
 }
 
-/// Emits a `YN0000:` info banner via the active report.
-pub async fn yn0000(message: impl AsRef<str>) {
-    if_active_async(|r| r.info(format!("YN0000: {}", message.as_ref()))).await;
+/// Emits an info banner via the active report.
+pub async fn info_banner(message: impl AsRef<str>) {
+    if_active_async(|r| r.info(message.as_ref().to_string())).await;
 }
 
 pub async fn async_section<F: Future>(name: &str, f: F) -> F::Output {

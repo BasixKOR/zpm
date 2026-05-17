@@ -5,7 +5,7 @@ use zpm_utils::{Glob, Hash64, Hash64Writer, Path, ToFileString};
 use crate::error::Error;
 
 /// Hashes the paths matched by an `immutablePatterns` entry so
-/// install can compare before/after and raise YN0036 on drift.
+/// install can compare before/after and fail on drift.
 /// Files hash to their content; directories hash to a deterministic
 /// digest of their tree, with `.git`/`.yarn` at the project root
 /// excluded.

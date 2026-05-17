@@ -199,7 +199,7 @@ pub struct InstallAndRunOptions {
     pub args: Vec<String>,
     /// Suppress the install report unless it errors.
     pub quiet: bool,
-    /// Optional `[YN0000]`-style banner to emit before the install.
+    /// Optional banner to emit before the install.
     pub banner: Option<String>,
     /// Override the preferred binary name (defaults to the package name).
     pub binary_name: Option<String>,
@@ -217,9 +217,8 @@ pub async fn install_and_run_single(
     options: InstallAndRunOptions,
 ) -> Result<ExitStatus, Error> {
     if let Some(banner) = options.banner.as_ref() {
-        // Direct println so the literal "➤ YN0000:" prefix lands
-        // before the report opens (tests scrape it).
-        println!("➤ YN0000: {}", banner);
+        // Direct println so the banner lands before the report opens.
+        println!("➤ {}", banner);
     }
 
     let dlx_project

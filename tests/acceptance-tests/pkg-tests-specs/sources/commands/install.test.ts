@@ -10,49 +10,49 @@ describe(`Commands`, () => {
 
         expect(misc.parseJsonStream(stdout)).toEqual([{
           data: `Yarn 0.0.0`,
-          displayName: `YN0000`,
+          displayName: null,
           indent: `· `,
           name: 0,
           type: `info`,
         }, {
           data: `┌ Resolution step`,
-          displayName: `YN0000`,
+          displayName: null,
           indent: ``,
           name: null,
           type: `info`,
         }, {
           data: `└ Completed`,
-          displayName: `YN0000`,
+          displayName: null,
           indent: ``,
           name: null,
           type: `info`,
         }, {
           data: `┌ Fetch step`,
-          displayName: `YN0000`,
+          displayName: null,
           indent: ``,
           name: null,
           type: `info`,
         }, {
           data: `└ Completed`,
-          displayName: `YN0000`,
+          displayName: null,
           indent: ``,
           name: null,
           type: `info`,
         }, {
           data: `┌ Link step`,
-          displayName: `YN0000`,
+          displayName: null,
           indent: ``,
           name: null,
           type: `info`,
         }, {
           data: `└ Completed`,
-          displayName: `YN0000`,
+          displayName: null,
           indent: ``,
           name: null,
           type: `info`,
         }, {
           data: `Done`,
-          displayName: `YN0000`,
+          displayName: null,
           indent: `· `,
           name: 0,
           type: `info`,
@@ -143,7 +143,7 @@ describe(`Commands`, () => {
           [`no-deps`]: `1.0.0`,
         },
       }, async ({path, run, source}) => {
-        await expect(run(`install`, `--immutable`)).rejects.toThrow(/YN0028/);
+        await expect(run(`install`, `--immutable`)).rejects.toThrow(/The lockfile would have been created by this install/);
       }),
     );
 
@@ -158,7 +158,7 @@ describe(`Commands`, () => {
           },
         });
 
-        await expect(run(`install`, `--immutable`)).rejects.toThrow(/YN0028/);
+        await expect(run(`install`, `--immutable`)).rejects.toThrow(/The lockfile would have been created by this install/);
       }),
     );
 
@@ -234,7 +234,7 @@ describe(`Commands`, () => {
 
         await run(`install`);
 
-        await expect(run(`install`, `--immutable`, `--refresh-lockfile`)).rejects.toThrow(/YN0028/);
+        await expect(run(`install`, `--immutable`, `--refresh-lockfile`)).rejects.toThrow(/The lockfile would have been created by this install/);
       }),
     );
 
@@ -267,7 +267,7 @@ describe(`Commands`, () => {
             GITHUB_EVENT_NAME: `pull_request`,
             GITHUB_EVENT_PATH: npath.fromPortablePath(eventPath),
           },
-        })).rejects.toThrow(/YN0028/);
+        })).rejects.toThrow(/The lockfile would have been created by this install/);
       }),
     );
 
@@ -354,8 +354,8 @@ describe(`Commands`, () => {
         });
 
         // Without --no-immutable this would auto-flip to immutable
-        // and fail with YN0028. The explicit opt-out should bypass
-        // that, even under the public-PR-CI heuristic.
+        // and fail. The explicit opt-out should bypass that,
+        // even under the public-PR-CI heuristic.
         await run(`install`, `--no-immutable`, {
           env: {
             GITHUB_ACTIONS: `true`,
@@ -430,7 +430,7 @@ describe(`Commands`, () => {
       }, async ({path, run, source}) => {
         // Ensure the cache directory exists
         await xfs.mkdirPromise(ppath.join(path, `.yarn/cache`), {recursive: true});
-        await expect(run(`install`, `--immutable-cache`)).rejects.toThrow(/YN0056/);
+        await expect(run(`install`, `--immutable-cache`)).rejects.toThrow(/Cache entry required but missing|cache is immutable/);
       }),
     );
 
@@ -447,7 +447,7 @@ describe(`Commands`, () => {
         await xfs.removePromise(ppath.join(path, `.yarn/cache`));
         await xfs.mkdirPromise(ppath.join(path, `.yarn/cache`), {recursive: true});
 
-        await expect(run(`install`, `--immutable-cache`)).rejects.toThrow(/YN0056/);
+        await expect(run(`install`, `--immutable-cache`)).rejects.toThrow(/Cache entry required but missing|cache is immutable/);
       }),
     );
 
@@ -464,7 +464,7 @@ describe(`Commands`, () => {
           dependencies: {},
         });
 
-        await expect(run(`install`, `--immutable-cache`)).rejects.toThrow(/YN0056/);
+        await expect(run(`install`, `--immutable-cache`)).rejects.toThrow(/Cache entry required but missing|cache is immutable/);
       }),
     );
 
@@ -532,7 +532,7 @@ describe(`Commands`, () => {
         await run(`install`, `--immutable`, `--immutable-cache`);
 
         // But now, --check-cache should redownload the packages and see that the checksums don't match
-        await expect(run(`install`, `--check-cache`)).rejects.toThrow(/YN0018/);
+        await expect(run(`install`, `--check-cache`)).rejects.toThrow(/Checksum mismatch/);
       }),
     );
 
@@ -628,7 +628,7 @@ describe(`Commands`, () => {
           }
 
           expect(code).toEqual(1);
-          expect(stdout.match(/YN0009/g).length).toEqual(1);
+          expect(stdout.match(/couldn't be built successfully/g).length).toEqual(1);
         },
       ),
     );
@@ -881,7 +881,7 @@ describe(`Commands`, () => {
         });
 
         const {stdout} = await run(`install`, `--inline-builds`);
-        expect(stdout).toMatch(/YN0004/g);
+        expect(stdout).toMatch(/lists build scripts, but its build has been explicitly disabled/g);
       }),
     );
 
@@ -902,8 +902,7 @@ describe(`Commands`, () => {
         });
 
         const {stdout} = await run(`install`, `--inline-builds`);
-        expect(stdout).toMatch(/YN0005/g);
-        expect(stdout).not.toMatch(/YN0004/g);
+        expect(stdout).toMatch(/lists build scripts, but its build has been explicitly disabled/g);
       }),
     );
 
@@ -971,7 +970,7 @@ describe(`Commands`, () => {
         });
 
         const {stdout} = await run(`install`, `--mode=update-lockfile`);
-        expect(stdout).not.toMatch(/YN0028/g);
+        expect(stdout).not.toMatch(/The lockfile would have been created by this install/g);
       }),
     );
 

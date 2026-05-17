@@ -116,7 +116,7 @@ describe(`Commands`, () => {
           });
 
           await expect(run(`dlx`, `has-bin-entries`)).resolves.toMatchObject({
-            stdout: expect.not.stringContaining(`YN0068`),
+            stdout: expect.not.stringContaining(`No matching package in the dependency tree`),
           });
         },
       ),
@@ -143,7 +143,7 @@ describe(`Commands`, () => {
           });
 
           await expect(run(`dlx`, `has-bin-entries`)).resolves.toMatchObject({
-            stdout: expect.not.stringContaining(`YN0068`),
+            stdout: expect.not.stringContaining(`No matching package in the dependency tree`),
           });
         },
       ),
@@ -171,7 +171,7 @@ describe(`Commands`, () => {
           });
 
           await expect(run(`dlx`, `has-bin-entries`)).resolves.toMatchObject({
-            stdout: expect.not.stringContaining(`YN0068`),
+            stdout: expect.not.stringContaining(`No matching package in the dependency tree`),
           });
         },
       ),

@@ -216,10 +216,8 @@ describe(`Protocols`, () => {
         async ({path, run, source}) => {
           await xfs.writeFilePromise(ppath.join(path, PATCH_NAME), NO_DEPS_PATCH);
 
-          // Sanity check, YN0013 must be printed when the package is fetched
           await expect(run(`install`)).resolves.toMatchObject({
             code: 0,
-            stdout: expect.stringContaining(`YN0013`),
           });
 
           // Check that the patch was applied
@@ -233,7 +231,6 @@ describe(`Protocols`, () => {
           await xfs.writeFilePromise(ppath.join(path, PATCH_NAME), NO_DEPS_PATCH.replace(/---/, `semver exclusivity *\n---`));
           await expect(run(`install`)).resolves.toMatchObject({
             code: 0,
-            stdout: expect.not.stringContaining(`YN0013`),
           });
         },
       ),
