@@ -5,30 +5,40 @@ interface Props {
   tag: string;
   bottomLeft?: string;
   bottomRight?: string;
+  autoCounter?: boolean;
   revealBrand?: boolean;
 }
 
-const { tag, bottomLeft, bottomRight, revealBrand = false } = Astro.props;
+const { tag, bottomLeft, bottomRight, autoCounter = false, revealBrand = false } = Astro.props;
+
+const hasAutoBottomRight = !bottomRight && autoCounter;
+const hasBottom = !!(bottomLeft || bottomRight || hasAutoBottomRight);
 ---
 
-<div class="slide-stars absolute inset-0 z-1 pointer-events-none opacity-90"></div>
+<div class="slide-stars absolute inset-0 pointer-events-none opacity-90"></div>
 
-<div class="absolute inset-[56px_88px] z-3 pointer-events-none flex justify-between items-start font-mono text-[13px] tracking-[0.1em] text-[var(--fg-mute)] uppercase">
-  <span class:list={[revealBrand && 'reveal reveal-1']}>
+<header class="relative z-3 flex justify-between items-start font-mono text-[13px] tracking-[0.1em] text-[var(--fg-mute)] uppercase pointer-events-none">
+  <span class:list={[revealBrand && `reveal reveal-1`]}>
     <YarnBrand />
   </span>
   <span class:list={[revealBrand && `reveal reveal-1`]}>
     {tag}
   </span>
+</header>
+
+<div class="relative z-2 flex-1 min-h-0 flex flex-col py-[54px]">
+  <slot />
 </div>
 
-{(bottomLeft || bottomRight) && (
-  <div class="absolute inset-[auto_88px_56px] z-3 pointer-events-none flex justify-between items-end font-mono text-xs text-[var(--fg-mute)]">
+{hasBottom && (
+  <footer class="relative z-3 flex justify-between items-end font-mono text-xs text-[var(--fg-mute)] pointer-events-none">
+    <span>{bottomLeft}</span>
     <span>
-      {bottomLeft}
+      {hasAutoBottomRight ? (
+        <><span data-deck-slide-fill>?</span> / <span data-deck-total-fill>?</span></>
+      ) : (
+        bottomRight
+      )}
     </span>
-    <span>
-      {bottomRight}
-    </span>
-  </div>
+  </footer>
 )}

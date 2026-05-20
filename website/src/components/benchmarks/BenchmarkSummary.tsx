@@ -17,52 +17,57 @@ function aggregate(
   projects: Array<Project>,
   mutedSeries: Record<string, boolean>,
 ) {
-  const validProjects: Array<{id: string; max: number}> = [];
-  for (const p of projects) {
-    let mx = 0;
-    let contributors = 0;
-    for (const sid of seriesOrder) {
-      if (mutedSeries[sid]) continue;
-      const projectData = data[scenarioId]?.[p.id];
-      if (!projectData) continue;
-      const m = median(getSeriesValues(projectData, sid));
-      if (m > 0) {contributors++; if (m > mx) mx = m;}
-    }
-    if (contributors >= 2) validProjects.push({id: p.id, max: mx});
-  }
+  const visibleSeries = seriesOrder.filter(sid => !mutedSeries[sid]);
 
-  const out: Array<{id: string; name: string; normalized: number; color: string; accent: boolean}> = [];
-  for (const sid of seriesOrder) {
-    if (mutedSeries[sid]) continue;
-    let prod = 1;
-    let count = 0;
-    for (const vp of validProjects) {
-      const projectData = data[scenarioId]?.[vp.id];
-      if (!projectData) continue;
+  // Keep only projects where every visible series has a usable median.
+  // Comparing geomeans across series is only meaningful when they're computed
+  // over the same project set.
+  const rows: Array<Record<string, number>> = [];
+  for (const p of projects) {
+    const projectData = data[scenarioId]?.[p.id];
+    if (!projectData) continue;
+    const medians: Record<string, number> = {};
+    let complete = true;
+    for (const sid of visibleSeries) {
       const m = median(getSeriesValues(projectData, sid));
-      if (m > 0 && vp.max > 0) {
-        prod *= (m / vp.max);
-        count++;
+      if (m > 0) {
+        medians[sid] = m;
+      } else {
+        complete = false;
+        break;
       }
     }
-    if (count > 0) {
-      out.push({
-        id: sid,
-        name: seriesMeta[sid].name,
-        normalized: Math.pow(prod, 1 / count),
-        color: SERIES_COLORS[sid],
-        accent: seriesMeta[sid].accent,
-      });
-    }
+    if (complete) rows.push(medians);
   }
+
+  if (visibleSeries.length === 0 || rows.length === 0) return [];
+
+  // Geomean of absolute medians per series. Computed in log space for
+  // numerical stability when projects span very different magnitudes.
+  const geomean: Record<string, number> = {};
+  for (const sid of visibleSeries) {
+    let logSum = 0;
+    for (const r of rows) logSum += Math.log(r[sid]);
+    geomean[sid] = Math.exp(logSum / rows.length);
+  }
+
+  // Single normalization pass against the slowest aggregate, so the slowest
+  // series lands on exactly 1.00× and the rest read as "X× the slowest."
+  const slowest = Math.max(...visibleSeries.map(sid => geomean[sid]));
+
+  const out = visibleSeries.map(sid => ({
+    id: sid,
+    name: seriesMeta[sid].name,
+    normalized: geomean[sid] / slowest,
+    color: SERIES_COLORS[sid],
+    accent: seriesMeta[sid].accent,
+  }));
 
   out.sort((a, b) => a.normalized - b.normalized);
   return out;
 }
 
 function SummaryCard({title, agg}: {title: string; agg: ReturnType<typeof aggregate>}): JSX.Element {
-  const max = Math.max(...agg.map(a => a.normalized));
-
   return (
     <div className="summary-card">
       <h4>{title}</h4>
@@ -74,7 +79,7 @@ function SummaryCard({title, agg}: {title: string; agg: ReturnType<typeof aggreg
               <div
                 className={`fill${a.accent ? ` self` : ``}`}
                 style={{
-                  [`--w` as any]: (a.normalized / max).toFixed(3),
+                  [`--w` as any]: a.normalized.toFixed(3),
                   ...(!a.accent ? {background: a.color} : {}),
                 }}
               />
@@ -103,7 +108,7 @@ export function BenchmarkSummary({data, seriesOrder, seriesMeta, projects, muted
         <div className="mono text-[11px] text-[var(--fg-mute)] tracking-[0.12em] uppercase mb-2">&sect; Aggregate</div>
         <h2 className="text-[26px] font-medium tracking-[-0.015em] m-0">Median across all scenarios.</h2>
         <p className="text-[14.5px] text-[var(--fg-dim)] leading-[1.6] mt-2 max-w-[680px] text-pretty">
-          Geometric mean of cell medians, normalized to the slowest in each row so the chart compares relative performance across scenarios of different absolute scale. Lower is faster.
+          Geometric mean of per-project medians for each series, then normalized so the slowest series reads as 1.00&times;. Every other series is the ratio of its average run time to the slowest. Lower is faster.
         </p>
       </div>
       <div className="summary">

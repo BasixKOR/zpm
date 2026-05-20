@@ -121,7 +121,8 @@
     .btn:focus-visible { outline: none; }
     .btn::-moz-focus-inner { border: 0; }
     .btn svg { width: 14px; height: 14px; display: block; }
-    .btn.reset {
+    .btn.reset,
+    .btn.present {
       font-size: 11px;
       font-weight: 500;
       letter-spacing: 0.02em;
@@ -129,7 +130,8 @@
       gap: 6px;
       color: rgba(255,255,255,0.72);
     }
-    .btn.reset .kbd {
+    .btn.reset .kbd,
+    .btn.present .kbd {
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -211,6 +213,7 @@
       this._slides = [];
       this._hideTimer = null;
       this._mouseIdleTimer = null;
+      this._isPresenting = false;
 
       this._onKey = this._onKey.bind(this);
       this._onResize = this._onResize.bind(this);
@@ -218,6 +221,8 @@
       this._onMouseMove = this._onMouseMove.bind(this);
       this._onTapBack = this._onTapBack.bind(this);
       this._onTapForward = this._onTapForward.bind(this);
+      this._onFullscreenChange = this._onFullscreenChange.bind(this);
+      this._togglePresent = this._togglePresent.bind(this);
     }
 
     get designWidth() {
@@ -232,12 +237,14 @@
       window.addEventListener('keydown', this._onKey);
       window.addEventListener('resize', this._onResize);
       window.addEventListener('mousemove', this._onMouseMove, { passive: true });
+      document.addEventListener('fullscreenchange', this._onFullscreenChange);
     }
 
     disconnectedCallback() {
       window.removeEventListener('keydown', this._onKey);
       window.removeEventListener('resize', this._onResize);
       window.removeEventListener('mousemove', this._onMouseMove);
+      document.removeEventListener('fullscreenchange', this._onFullscreenChange);
       if (this._hideTimer) clearTimeout(this._hideTimer);
       if (this._mouseIdleTimer) clearTimeout(this._mouseIdleTimer);
     }
@@ -299,11 +306,13 @@
         </button>
         <span class="divider"></span>
         <button class="btn reset" type="button" aria-label="Reset to first slide" title="Reset (R)">Reset<span class="kbd">R</span></button>
+        <button class="btn present" type="button" aria-label="Present (fullscreen)" title="Present (P)">Present<span class="kbd">P</span></button>
       `;
 
       overlay.querySelector('.prev').addEventListener('click', () => this._go(this._index - 1, 'click'));
       overlay.querySelector('.next').addEventListener('click', () => this._go(this._index + 1, 'click'));
       overlay.querySelector('.reset').addEventListener('click', () => this._go(0, 'click'));
+      overlay.querySelector('.present').addEventListener('click', this._togglePresent);
 
       this._root.append(style, stage, tapzones, overlay);
       this._canvas = canvas;
@@ -331,7 +340,18 @@
         slide.setAttribute('data-deck-slide', String(i));
       });
 
-      if (this._totalEl) this._totalEl.textContent = String(this._slides.length || 1);
+      const total = this._slides.length || 1;
+      const totalStr = pad2(total);
+      if (this._totalEl) this._totalEl.textContent = String(total);
+      this._slides.forEach((slide, i) => {
+        const slideStr = pad2(i + 1);
+        slide.querySelectorAll('[data-deck-slide-fill]').forEach((el) => {
+          el.textContent = slideStr;
+        });
+        slide.querySelectorAll('[data-deck-total-fill]').forEach((el) => {
+          el.textContent = totalStr;
+        });
+      });
       if (this._index >= this._slides.length) this._index = Math.max(0, this._slides.length - 1);
     }
 
@@ -376,11 +396,33 @@
 
     _flashOverlay() {
       if (!this._overlay) return;
+      if (this._isPresenting) return;
       this._overlay.setAttribute('data-visible', '');
       if (this._hideTimer) clearTimeout(this._hideTimer);
       this._hideTimer = setTimeout(() => {
         this._overlay.removeAttribute('data-visible');
       }, OVERLAY_HIDE_MS);
+    }
+
+    _togglePresent() {
+      if (document.fullscreenElement) {
+        if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+      } else {
+        const el = document.documentElement;
+        if (el && el.requestFullscreen) el.requestFullscreen().catch(() => {});
+      }
+    }
+
+    _onFullscreenChange() {
+      this._isPresenting = !!document.fullscreenElement;
+      if (!this._overlay) return;
+      if (this._isPresenting) {
+        this._overlay.removeAttribute('data-visible');
+        if (this._hideTimer) {
+          clearTimeout(this._hideTimer);
+          this._hideTimer = null;
+        }
+      }
     }
 
     _fit() {
@@ -429,6 +471,8 @@
         this._go(this._slides.length - 1, 'keyboard');
       } else if (key === 'r' || key === 'R') {
         this._go(0, 'keyboard');
+      } else if (key === 'p' || key === 'P') {
+        this._togglePresent();
       } else if (/^[0-9]$/.test(key)) {
         const n = key === '0' ? 9 : parseInt(key, 10) - 1;
         if (n < this._slides.length) this._go(n, 'keyboard');

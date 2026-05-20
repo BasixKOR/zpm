@@ -1,12 +1,12 @@
 ---
 import ContentSlide from '../ContentSlide.astro';
 import CodeBlock from '../CodeBlock.astro';
+import { titleToSectionTag } from '../sectionTag';
 
 interface Props {
   eyebrow: string;
   title: string;
   titleSize?: string;
-  sectionTag: string;
   bottomLeft?: string;
   bottomRight?: string;
   label?: string;
@@ -18,10 +18,12 @@ interface Props {
   maxWidth?: string;
 }
 
-const { eyebrow, title, titleSize = `60px`, sectionTag, bottomLeft, bottomRight, label, filename, lang, code, compact = false, caption, maxWidth = `1400px` } = Astro.props;
+const { eyebrow, title, titleSize = `60px`, bottomLeft, bottomRight, label, filename, lang, code, compact = false, caption, maxWidth = `1400px` } = Astro.props;
+
+const sectionTag = titleToSectionTag(title);
 ---
 
-<ContentSlide sectionTag={sectionTag} bottomLeft={bottomLeft} bottomRight={bottomRight} label={label}>
+<ContentSlide sectionTag={sectionTag} bottomLeft={bottomLeft} bottomRight={bottomRight} autoCounter label={label}>
   <div class="reveal reveal-1 font-mono text-sm tracking-[0.14em] text-[var(--fg-mute)] uppercase mb-7">
     {eyebrow}
   </div>

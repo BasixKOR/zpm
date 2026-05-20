@@ -5,17 +5,19 @@ interface Props {
   sectionTag: string;
   bottomLeft?: string;
   bottomRight?: string;
+  autoCounter?: boolean;
   label?: string;
   colRule?: boolean;
 }
 
-const { sectionTag, bottomLeft, bottomRight, label, colRule = false } = Astro.props;
+const { sectionTag, bottomLeft, bottomRight, autoCounter = false, label, colRule = false } = Astro.props;
 ---
 
-<section class="slide relative w-[1920px] h-[1080px] overflow-hidden text-[var(--fg)] font-['Space_Grotesk',system-ui,sans-serif] bg-transparent!" data-screen-label={label}>
-  <SlideChrome tag={sectionTag} bottomLeft={bottomLeft} bottomRight={bottomRight} />
-
-  <div class:list={['relative z-2 px-[140px] pt-[110px] pb-[130px] h-full flex flex-col', { 'slide-col-rule': colRule }]}>
+<section
+  class:list={[`slide relative w-[1920px] h-[1080px] overflow-hidden text-[var(--fg)] font-['Space_Grotesk',system-ui,sans-serif] bg-transparent! flex flex-col px-[88px] py-[56px]`, { 'slide-col-rule': colRule }]}
+  data-screen-label={label}
+>
+  <SlideChrome tag={sectionTag} bottomLeft={bottomLeft} bottomRight={bottomRight} autoCounter={autoCounter}>
     <slot />
-  </div>
+  </SlideChrome>
 </section>
