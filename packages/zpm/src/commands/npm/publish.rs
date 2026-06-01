@@ -8,7 +8,7 @@ use zpm_parsers::{JsonDocument, RawJsonOwnedValue};
 use zpm_utils::{DataType, IoResultExt, Provider, Sha1, Sha512, ToFileString, ToHumanString, is_ci};
 
 use crate::{
-    error::Error, http::HttpClient, http_npm::{self, AuthorizationMode, GetIdTokenOptions, NpmHttpParams}, npm, pack::{PackOptions, pack_workspace}, project::Project, provenance::attest, script::ScriptEnvironment
+    error::Error, http::HttpClient, http_npm::{self, AuthorizationMode, GetIdTokenOptions, NpmHttpParams}, npm, pack::{PackOptions, pack_workspace}, project::Project, provenance::attest, report::{with_report_result, StreamReport, StreamReportConfig}, script::ScriptEnvironment
 };
 
 #[zpm_enum(or_else = |s| Err(Error::InvalidNpmPublishAccess(s.to_string())))]
@@ -66,6 +66,19 @@ impl Publish {
         let mut project
             = Project::new(None).await?;
 
+        let report = StreamReport::new(StreamReportConfig {
+            json: self.json,
+            ..StreamReportConfig::from_config(&project.config)
+        });
+
+        with_report_result(report, async {
+            self.execute_with_project(&mut project).await
+        }).await?;
+
+        Ok(())
+    }
+
+    async fn execute_with_project(&self, project: &mut Project) -> Result<(), Error> {
         let published_workspace
             = project.active_workspace()?;
 
@@ -77,7 +90,7 @@ impl Publish {
             = published_workspace.locator();
 
         let pack_result
-            = pack_workspace(&mut project, &published_workspace_locator, &PackOptions {
+            = pack_workspace(project, &published_workspace_locator, &PackOptions {
                 preserve_workspaces: false,
             }).await?;
 

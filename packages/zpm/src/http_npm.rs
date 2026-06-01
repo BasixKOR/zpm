@@ -851,9 +851,17 @@ async fn ask_for_otp(params: &NpmHttpParams<'_>, response: &Response) -> Result<
 
     render_otp_notice(&response).await;
 
-    let otp = current_report().await.as_ref()
-        .map(|report| report.prompt(PromptType::Input("One-time password".to_string())))
-        .unwrap()
+    let report_guard
+        = current_report().await;
+
+    let Some(report) = report_guard.as_ref() else {
+        return Err(Error::AuthenticationError(
+            "One-time password required; rerun this command with --otp <code>".to_string()
+        ));
+    };
+
+    let otp = report
+        .prompt(PromptType::Input("One-time password".to_string()))
         .await;
 
     Ok(otp)

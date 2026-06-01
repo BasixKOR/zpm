@@ -74,6 +74,20 @@ describe(`publish`, () =>   {
     })).resolves.toBeTruthy();
   }));
 
+  test(`should accept an injected otp when required`, makeTemporaryEnv({
+    name: `otp-prompt-required`,
+    version: `1.0.0`,
+  }, async ({path, run, source}) => {
+    await run(`install`);
+
+    await expect(run(`npm`, `publish`, {
+      env: {
+        YARN_NPM_AUTH_TOKEN: validLogins.otpUser.npmAuthToken,
+        YARN_INJECT_NPM_2FA_TOKEN: validLogins.otpUser.npmOtpToken,
+      },
+    })).resolves.toBeTruthy();
+  }));
+
   test(`should publish a package with the readme content`, makeTemporaryEnv({
     name: `readme-required`,
     version: `1.0.0`,
