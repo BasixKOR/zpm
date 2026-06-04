@@ -43,7 +43,7 @@ This page reflects the state of each tool as of early 2026. Package managers evo
 
 - **Monorepo tooling.** Both have strong workspace support, but Yarn adds [constraints](/concepts/constraints) for dependency tree linting, [workspace profiles](/concepts/profiles), the [`catalog:` protocol](/concepts/protocols), and a built-in [task runner](/concepts/tasks) with cross-workspace dependencies.
 
-- **Node.js management.** Yarn can manage Node.js as a [regular project dependency](/concepts/nvm) via `@builtin/node`, locked in `yarn.lock`. pnpm provides `pnpm env` commands for managing Node.js versions, but not as a project dependency.
+- **Node.js management.** Yarn can manage Node.js as a [regular project dependency](/concepts/nvm) via `@yarnpkg/node`, locked in `yarn.lock`. pnpm provides `pnpm env` commands for managing Node.js versions, but not as a project dependency.
 
 - **Linker flexibility.** Yarn supports [three linker modes](/concepts/node-linkers) — PnP, pnpm-style symlinks, and traditional `node_modules` — all as first-class options from the same tool.
 

@@ -23,9 +23,9 @@ That's true, and that's why we don't recommend checking-in your `node_modules` d
 
 These files are [Node.js loaders](https://nodejs.org/api/module.html#customization-hooks) that contains a mapping of all dependencies to their respective locations on disk, allowing Yarn to resolve dependencies without needing to generate a `node_modules` directory. Their content is deterministic, so they can safely be checked-in to version control.
 
-Those loaders are one key to Zero Installs, but not the only one. The `.pnp.cjs` file will contain by default references to dependencies from your global filesystem cache. This cache is unique to your machine, so if someone else uses it they will probably be missing some packages. But Yarn has a way to address that, thanks to the `enableLocalCache` option.
+Those loaders are one key to Zero Installs, but not the only one. The `.pnp.cjs` file will contain by default references to dependencies from your global filesystem cache. This cache is unique to your machine, so if someone else uses it they will probably be missing some packages. But Yarn has a way to address that, thanks to the `enableGlobalCache` option.
 
-With this setting set, Yarn will keep your project's cache into your project, in the `.yarn/cache` directory. Thanks to that, any package you add to your project will be stored as a separate unique zip file in that directory. And while you might think keeping binary files into your repository is an unfathomable idea, it turns out Git providers are perfectly fine with this pattern.
+With this setting set to `false`, Yarn will keep your project's cache into your project, in the `.yarn/cache` directory. Thanks to that, any package you add to your project will be stored as a separate unique zip file in that directory. And while you might think keeping binary files into your repository is an unfathomable idea, it turns out Git providers are perfectly fine with this pattern.
 
 It also solves the issues we discussed with checking-in `node_modules` folders:
 

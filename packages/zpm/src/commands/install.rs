@@ -43,7 +43,7 @@ pub struct Install {
     check_resolutions: bool,
 
     /// Abort with an error exit code if the lockfile was to be modified
-    #[cli::option("--immutable")]
+    #[cli::option("--immutable,--frozen-lockfile")]
     immutable: Option<bool>,
 
     /// Abort with an error exit code if the cache folder was to be modified

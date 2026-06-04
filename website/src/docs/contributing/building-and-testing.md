@@ -43,24 +43,21 @@ yarn switch link target/release/yarn-bin
 
 ## Testing Yarn
 
-One of the reasons why the migration from the Classic codebase to the Berry one was so painful was that we lost all our testing framework. All Classic tests were written using internal primitives, so they couldn't be reused after the redesign.
-
-We learned from that mistake, and the Berry tests were written using the regular CLI as interface. This means it's easy to swap the binary from Berry to ZPM and run the full Yarn testsuite!
-
-Start by cloning the Berry repository:
+The CLI integration tests run against the binary you just built. From the repository root, run:
 
 ```bash
-git clone https://github.com/yarnpkg/berry.git ~/berry
+cargo build -r
+yarn test:integration <jest options>
 ```
 
-Export a `BERRY_DIR` environment variable pointing to the Berry repository:
+For example, to run only the install command tests:
 
 ```bash
-export BERRY_DIR=~/berry
+yarn test:integration commands/install.test.ts
 ```
 
-Then run the `yarn berry` command from the ZPM repository:
+Ecosystem end-to-end tests are shell scenarios under `tests/e2e`. Run them by name, without the `.sh` suffix:
 
 ```bash
-yarn berry test:integration commands/add.test
+yarn test:e2e <e2e test name>
 ```

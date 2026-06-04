@@ -10,7 +10,7 @@ export default [
       `**/*.rs`,
       `**/dist`,
       `tests/acceptance-tests/pkg-tests-fixtures`,
-      `documentation/.astro`,
+      `website/.astro`,
       `packages/zpm/src/constraints/constraints.tpl.js`,
       `**/generated/**`,
       `**/*.generated.ts`,
@@ -20,7 +20,7 @@ export default [
   ...reactEslintConfig,
   {
     files: [
-      `documentation/src/**/*.tsx`,
+      `website/**/*.tsx`,
     ],
     rules: {
       [`arca/no-default-export`]: `off`,

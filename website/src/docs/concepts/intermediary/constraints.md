@@ -11,9 +11,9 @@ Constraints are a powerful feature in Yarn that allow you to define and enforce 
 
 Unlike Eslint-based linting, constraints have access to the project's entire dependency tree, allowing them to enforce rules that would be difficult to implement with static analysis alone - think circular dependencies or version consistency checks.
 
-## Definining constraints
+## Defining constraints
 
-Constraints are created by adding a `yarn.config.cjs` file at the root of your project. This file should export an object with a `constraints` method. This method will be called by the constraints engine, and must define the rules to enforce on the project, using the provided API. For example:
+Constraints are created by adding a `yarn.config.ts`, `yarn.config.mjs`, or `yarn.config.cjs` file at the root of your project. This file should export an object with a `constraints` method. This method will be called by the constraints engine, and must define the rules to enforce on the project, using the provided API. For example:
 
 ### Enforcing dependency versions
 
@@ -60,7 +60,7 @@ module.exports = {
 
 ## TypeScript support
 
-Yarn provides a type package to make it easier to write constraints. To use them, first add the package to your top-level dependencies:
+Yarn provides a type package to make it easier to write constraints. To use it, first add the package to your top-level dependencies:
 
 ```
 yarn add @yarnpkg/types
@@ -73,7 +73,9 @@ import {defineConfig} from '@yarnpkg/types';
 
 export default defineConfig({
   async constraints({ Yarn }) {
-    // `Yarn` is now well-typed ✨
+    // `Yarn` is now well-typed.
   },
 });
 ```
+
+The TypeScript configuration file uses the same `constraints` API as the JavaScript forms, so examples can usually be copied directly after wrapping them with `defineConfig`.

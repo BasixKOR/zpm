@@ -3,15 +3,15 @@
     "version": 9
   },
   "workspaces": {
-    "@yarnpkg/documentation": "b5681dfb402f445039c9d0086c0ac6ecff3f6af4a9d6ba5515f9845e4dbc8e8fe3d066e1bab619b3d0b96e9691152a014c0dc48d93ed7743c316a183508f8cc0",
-    "@yarnpkg/monorepo": "f5e81432184d8250cce7f479f2ebb436a9b0900c22d0393bf1502e06cdad038193a88a7c6d3d6341963c6426eef186f390b1b44eff3242dc606b9f4a5cdb5846",
+    "@yarnpkg/documentation": "77b92fa91203f1c6074d382c0f1f45f37b9b6a6a5ad469e8e3ea94976afcf7508b3e9c1244cdd26fa984e22f2e9d42732c3e69e922bca2768400bf3309b9a5de",
+    "@yarnpkg/monorepo": "eddbbccdb321f78248af868f80ac6c9a9a2c7ac3703e8d1e9a52a14f8f61231eadae404f19111b09d93b5d999e71bfe46b009500ee55183f4bfcd935c9db7638",
     "@yarnpkg/website": "1ff467d0a2ccbd39504fb7a01b023a23d46d1999b000b6375a0059fb0058890fdc716733a5850c7779a374f0da60ee23d1dbc820e24d37effe89e697b4c5510a",
     "@yarnpkg/zpm-constraints": "a602e3cc3ea1dd931ef50091753a9f1de3a06ff9ee0efb29c8222fb3491132ccbac1581220770e74dcf06e2c30189f636b1d7eb691bfdeff36012d3169630bc6",
-    "@yarnpkg/zpm-daemon-ui": "eeab3988f3f683099d2ac293259ca85accca0b08345680953771cb8aea311d570c309aa1dd19294742d23e95a728c70c96b985684fe454ac4a0415ae333e16ee",
-    "acceptance-tests": "e3fd8d082d2569f2db5632be90586713161177de887b3baef196e920aa6eb7a15447fb097a93339f72786bb1de1dab65e30bc9954296037e4fc72a9835d3e178",
+    "@yarnpkg/zpm-daemon-ui": "c7ca05eb5a4d7c70d789b59619d2b12edf79de647fcd3495cec8d50914a2cd74b51dad090c562716eab187f7d407122678fd2ee2aafeb858e55a81599c6ce530",
+    "acceptance-tests": "2c1ffd88b6971fe22e14338775531c02f85ab6101125903525acebdfdfc9d86df2763ab2160473a70f7c0ccb9be9a8f7a129130f8c4ccca9dd8d0745e05c12ab",
     "pkg-tests-core": "27dc1794f148dca7d11639e6ea0877781dcf88daf2e38af45bae8a0f9f259d4f49cb3f960e27849a3ee1e9d702da717d0060409c37fe6b26b23e509382d945e9",
     "pkg-tests-fixtures": "634e2d39424349e30ef9ace3cbe374d6c2b404ab29491084908f538e4f9823567caa6d900e0c15e78c1515ed8b1418294c0e3063027fb7475982d0ddd62c2b64",
-    "pkg-tests-specs": "5cdd5861797fecf735eae28ef1480c96e7cbf11168c7459eaef247e8e9c8ab19a9940ba6436d7a982863a08286a2ca01d1a76cc926501a860822dda6f627ff4a"
+    "pkg-tests-specs": "377aaa5abdb3d7c57990e82ed0fa6e4f0ac62d7fbcdd45dd3e69ab4eb1406232d7181d99bf55cb6aace05c7f94eccbe198b834dfcc25dd400e3084df68a22195"
   },
   "entries": {
     "@ai-sdk/gateway@npm:1.0.33": {
@@ -8214,17 +8214,17 @@
         }
       }
     },
-    "@yarnpkg/eslint-config@npm:^3.1.0": {
-      "checksum": "83e4ef5858a934cd2ad1991544528161236dc44ecaf78db0d19ac2d654038aef5bcb01abfecdeeed28bf4e8f8865b138f6da0d923baca9d34a95a2224ea25570",
+    "@yarnpkg/eslint-config@npm:^3.1.1": {
+      "checksum": "f353ad1752668bf8631a067155153537a8b51ca21b15761f750514531813c049fcb8baeb66d3ed9ac8597428a34fbd24f71f3748d707d68cdbf9fa8355528b51",
       "resolution": {
-        "resolution": "@yarnpkg/eslint-config@npm:3.1.0",
-        "version": "3.1.0",
+        "resolution": "@yarnpkg/eslint-config@npm:3.1.1",
+        "version": "3.1.1",
         "dependencies": {
           "@stylistic/eslint-plugin": "^5.3.1",
           "@stylistic/eslint-plugin-jsx": "^3.1.0",
           "@typescript-eslint/eslint-plugin": "^8.42.0",
           "@typescript-eslint/parser": "^8.42.0",
-          "eslint-plugin-arca": "^0.16.0",
+          "eslint-plugin-arca": "^0.17.0",
           "eslint-plugin-react": "^7.37.4",
           "globals": "^15.15.0",
           "tslib": "^2.4.0"
@@ -12521,11 +12521,14 @@
         ]
       }
     },
-    "eslint-plugin-arca@npm:^0.16.0": {
-      "checksum": "4c9b72bb7d80d943291c2af82a0d04f3768ae6706f16a3e0e12564f64a6976663819a9769bf3743f1baf65bf7a9f3820cbc1b51d29a4f28db6978d5fb4f45d87",
+    "eslint-plugin-arca@npm:^0.17.0": {
+      "checksum": "a754345c512e727bddce56e173b275af82c1e59673bb35075e738ae7840c10f3827f32c5c6d9eed146fdf81b5ed56e8f43ab86bf8f8f3544522ce3cdc8896bab",
       "resolution": {
-        "resolution": "eslint-plugin-arca@npm:0.16.0",
-        "version": "0.16.0"
+        "resolution": "eslint-plugin-arca@npm:0.17.0",
+        "version": "0.17.0",
+        "peerDependencies": {
+          "eslint": ">=10.0.0"
+        }
       }
     },
     "eslint-plugin-react@npm:^7.37.4": {

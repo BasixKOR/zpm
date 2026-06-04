@@ -35,7 +35,7 @@ Yarn ships features that other package managers leave to third-party tools:
 
 - [**Dependency patching**](/concepts/patches) lets you fix a bug in a dependency without forking the repository.
 
-- [**Node.js management**](/concepts/nvm) treats Node.js as a project dependency via `@builtin/node`. The version is locked in `yarn.lock`, so every team member and CI runner uses exactly the same one.
+- [**Node.js management**](/concepts/nvm) treats Node.js as a project dependency via `@yarnpkg/node`. The version is locked in `yarn.lock`, so every team member and CI runner uses exactly the same one.
 
 - [**Workspace profiles**](/concepts/profiles) let you declare shared dev dependencies once and apply them to any workspace, keeping your monorepo configuration DRY.
 

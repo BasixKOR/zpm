@@ -15,6 +15,83 @@ function formatType(prop: Record<string, any>): string {
   return prop.type || `any`;
 }
 
+function scalarToYaml(value: any): string {
+  if (typeof value === `string`)
+    return JSON.stringify(value);
+
+  if (typeof value === `number` || typeof value === `boolean`)
+    return String(value);
+
+  if (value === null)
+    return `null`;
+
+  return JSON.stringify(value);
+}
+
+function valueToYaml(value: any, indent = 0): string {
+  const prefix = ` `.repeat(indent);
+
+  if (Array.isArray(value)) {
+    if (value.length === 0)
+      return `[]`;
+
+    return value.map(item => {
+      if (item !== null && typeof item === `object`)
+        return `${prefix}-\n${valueToYaml(item, indent + 2)}`;
+
+      return `${prefix}- ${scalarToYaml(item)}`;
+    }).join(`\n`);
+  }
+
+  if (value !== null && typeof value === `object`) {
+    const entries = Object.entries(value);
+
+    if (entries.length === 0)
+      return `{}`;
+
+    return entries.map(([key, item]) => {
+      const formattedKey = /^[a-zA-Z0-9_-]+$/.test(key)
+        ? key
+        : JSON.stringify(key);
+
+      if (item !== null && typeof item === `object`) {
+        const nested = valueToYaml(item, indent + 2);
+
+        if (Array.isArray(item) && item.length === 0)
+          return `${prefix}${formattedKey}: []`;
+
+        if (!Array.isArray(item) && Object.keys(item).length === 0)
+          return `${prefix}${formattedKey}: {}`;
+
+        return `${prefix}${formattedKey}:\n${nested}`;
+      }
+
+      return `${prefix}${formattedKey}: ${scalarToYaml(item)}`;
+    }).join(`\n`);
+  }
+
+  return scalarToYaml(value);
+}
+
+function yamlComment(s: string): string {
+  return s
+    .split(/\r?\n/)
+    .map(line => `# ${line}`)
+    .join(`\n`);
+}
+
+function exampleToYaml(name: string, example: any): string {
+  const description = example?.description || `Example`;
+  const value = example !== null && typeof example === `object` && Object.prototype.hasOwnProperty.call(example, `value`)
+    ? example.value
+    : example;
+
+  return [
+    yamlComment(description),
+    valueToYaml({[name]: value}),
+  ].join(`\n`);
+}
+
 function propertyToMarkdown(name: string, prop: Record<string, any>): string {
   const pills = [`:type[${escapeDirective(formatType(prop))}]`];
 
@@ -29,13 +106,28 @@ function propertyToMarkdown(name: string, prop: Record<string, any>): string {
   if (prop.description)
     lines.push(``, prop.description);
 
+  if (Array.isArray(prop._examples) && prop._examples.length > 0)
+    lines.push(
+      ``,
+      `\`\`\`yaml`,
+      prop._examples.map((example: any) => exampleToYaml(name, example)).join(`\n\n`),
+      `\`\`\``,
+    );
+
   return lines.join(`\n`);
+}
+
+function isHidden(prop: Record<string, any>): boolean {
+  return prop._hidden === true;
 }
 
 function flattenToMarkdown(properties: Record<string, any>, prefix = ``): string[] {
   const sections: string[] = [];
 
   for (const [key, prop] of Object.entries(properties)) {
+    if (isHidden(prop as Record<string, any>))
+      continue;
+
     const name = prefix + key;
     sections.push(propertyToMarkdown(name, prop as Record<string, any>));
 
@@ -61,6 +153,9 @@ function flattenFieldNames(properties: Record<string, any>, prefix = ``): string
   const names: string[] = [];
 
   for (const [key, prop] of Object.entries(properties)) {
+    if (isHidden(prop as Record<string, any>))
+      continue;
+
     const name = prefix + key;
     names.push(name);
 

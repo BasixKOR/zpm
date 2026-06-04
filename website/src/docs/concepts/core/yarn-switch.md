@@ -63,7 +63,7 @@ RUN yarn switch cache --install
 
 ### How to upgrade to a new Yarn version?
 
-Running `yarn set version latest` will make Yarn bump the `packageManager` field in your `package.json` file to the new release.
+Running `yarn switch up` will make Yarn Switch bump the `packageManager` field in your `package.json` file to the latest available release on the configured release line.
 
 ### Are the binaries signed?
 

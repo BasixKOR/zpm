@@ -6,7 +6,7 @@ import Breadcrumb from '../../components/Breadcrumb.astro';
 import { schemaToMarkdown, schemaFieldNames } from '../../utils/schema';
 import { renderDocsMarkdown } from '../../utils/render-markdown';
 
-import schema from '../../../../documentation/src/utils/configuration/yarnrc.json';
+import schema from '../../../config/yarnrc.json';
 
 const html = await renderDocsMarkdown(schemaToMarkdown(schema));
 const fields = schemaFieldNames(schema);

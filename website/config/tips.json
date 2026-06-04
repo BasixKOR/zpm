@@ -1,6 +1,6 @@
 [
   "Yarn's <span class=\"mono\">exec:</span> protocol can run a Node.js script at install time to generate a package on the fly — useful for codegen or platform-specific builds.",
-  "You can declare Node.js itself as a project dependency via <span class=\"mono\">@builtin/node</span>. The version is locked in <span class=\"mono\">yarn.lock</span>, and every contributor gets the exact same binary.",
+  "You can declare Node.js itself as a project dependency via <span class=\"mono\">@yarnpkg/node</span>. The version is locked in <span class=\"mono\">yarn.lock</span>, and every contributor gets the exact same binary.",
   "Scripts with a colon in their name (like <span class=\"mono\">g:tsc</span>) can be called from any workspace — <span class=\"mono\">$INIT_CWD</span> tells you where the call came from.",
   "Yarn Constraints use a declarative model: you describe the expected state of every <span class=\"mono\">package.json</span>, and Yarn diffs reality against it — no <span class=\"mono\">if</span> checks needed.",
   "When you use zero-installs, storing archives <em>uncompressed</em> in Git actually saves space: Git's delta algorithm works better, shrinking one test repo from 2.1 GiB to 1.25 GiB.",
@@ -9,8 +9,7 @@
   "Virtual packages solve the peer-dependency problem by creating separate instances of the same package for each unique set of peers — something flat <span class=\"mono\">node_modules</span> can't do.",
   "Virtual packages use a virtual filesystem layer, not symlinks — avoiding <span class=\"mono\">realpath</span> issues and improving Windows compatibility.",
   "Yarn's architecture supports multiple linkers simultaneously. A JavaScript package could theoretically depend on a Python package, each resolved by its own linker.",
-  "When using <span class=\"mono\">git:</span> dependencies, Yarn detects whether the repo uses Yarn, npm, or pnpm (via its lock file) and packs it with the right tool automatically.",
-  "Yarn's telemetry is batched roughly every seven days, not per-command. The data goes through <span class=\"mono\">registry.yarnpkg.com</span>, which is just a CNAME to npm's registry — no Yarn backend ever sees the HTTP logs.",
+  "When using <span class=\"mono\">git:</span> dependencies, Yarn detects whether the repo uses Yarn, pnpm, or npm (via its lock file) and packs it with the right tool automatically.",
   "The <span class=\"mono\">.pnp.cjs</span> file is fully deterministic — you can commit it to version control without creating unnecessary diffs across machines.",
   "Yarn maintains an unofficial patch for TypeScript that adds PnP support. It's applied to every downloaded TypeScript version, even if you're using <span class=\"mono\">node-modules</span> linker.",
   "Task dependencies support mixed parallelism: suffix a dep with <span class=\"mono\">&amp;</span> to run it in parallel, omit it for a sequential barrier — all in one definition.",

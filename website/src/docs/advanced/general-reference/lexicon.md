@@ -31,7 +31,7 @@ A descriptor is a combination of a package name (for example `lodash`) and a pac
 
 A dependency (listed in the `devDependencies` field of the manifest) describes a relationship between two packages.
 
-Development dependencies are very much like regular dependencies except that they only matter for local packages. Packages fetched from remote registries such as npm will not be able to access their development dependencies, but packages installed from local sources (such as [workspaces](#workspaces) or the [`portal:` protocol](#portals)) will.
+Development dependencies are very much like regular dependencies except that they only matter for workspaces. Packages fetched from remote registries such as npm will not be able to access their development dependencies, and neither will packages referenced through protocols such as `portal:`.
 
 See also: [Dependency](#dependency), [Peer Dependency](#peer-dependency)
 
@@ -205,7 +205,7 @@ See also: [Workspaces](/features/workspaces)
 
 ### Yarn
 
-Yarn is a command line tool used to manage programming environments. Written in Javascript, it is mostly used along with other Javascript projects but has capabilities that make it suitable to be used in various situations.
+Yarn is a command line tool used to manage programming environments. This codebase is primarily written in Rust, with TypeScript used for support packages, tests, and website tooling.
 
 ### Zero-Install
 

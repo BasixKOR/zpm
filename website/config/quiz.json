@@ -18,7 +18,7 @@
       "wrongLine": "It can — Node.js is treated as a regular locked dependency.",
       "rightLine": "Right — and it's locked in <code>yarn.lock</code> like any other package.",
       "explain": [
-        "Yarn lets you declare Node.js as a project dependency via <code>@builtin/node</code>. The version is pinned in <code>yarn.lock</code>, and Yarn automatically downloads the correct binary for each developer's OS and architecture.",
+        "Yarn lets you declare Node.js as a project dependency via <code>@yarnpkg/node</code>. The version is pinned in <code>yarn.lock</code>, and Yarn automatically downloads the correct binary for each developer's OS and architecture.",
         "This means every contributor gets the exact same Node.js version without needing nvm, fnm, or any external version manager — it's part of the dependency graph."
       ]
     },

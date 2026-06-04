@@ -7,6 +7,10 @@ description: How git dependencies work in Yarn.
 
 The `git:` protocol fetches packages directly from a git repository. This is useful when you need to use a version of a package that has not been published to the npm registry.
 
+:::caution
+Git dependencies are only allowed when their repository matches an entry in the `approvedGitRepositories` setting. The default allowlist is empty, so projects must opt in before Yarn will fetch from git.
+:::
+
 ```
 yarn add typanion@git@github.com/arcanis/typanion.git
 ```
@@ -18,7 +22,7 @@ The target repository won't be used as-is - it will first be packed using [`pack
 :::note
 To be sure the output is identical to what the linked repository would look like after being published, the packing will look at its configuration to decide which package manager to use.
 
-In other words, the project will be packed using Yarn if there's a `yarn.lock`, npm if there's a `package-lock.json`, or pnpm if there's a `pnpm-lock.yaml`.
+In other words, the project will be packed using Yarn if there's a `yarn.lock`, pnpm if there's a `pnpm-lock.yaml`, npm if there's a `package-lock.json`, and Yarn otherwise.
 :::
 
 ## Commit pinning

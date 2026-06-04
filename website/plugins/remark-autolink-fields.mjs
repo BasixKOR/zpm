@@ -1,6 +1,7 @@
-import {visit} from 'unist-util-visit';
+import {createRequire}    from 'module';
+import {visit}            from 'unist-util-visit';
+
 import {schemaFieldNames} from '../src/utils/schema.ts';
-import {createRequire} from 'module';
 
 const require = createRequire(import.meta.url);
 
@@ -13,19 +14,19 @@ function slugify(s) {
 }
 
 function buildFieldMap() {
-  const manifest = require(`../../documentation/src/utils/configuration/manifest.json`);
-  const yarnrc = require(`../../documentation/src/utils/configuration/yarnrc.json`);
+  const manifest = require(`../config/manifest.json`);
+  const yarnrc = require(`../config/yarnrc.json`);
 
   const map = new Map();
 
-  for (const name of schemaFieldNames(manifest)) {
+  for (const name of schemaFieldNames(manifest))
     map.set(name, {url: `/configuration/manifest.html`, anchor: `field-${slugify(name)}`});
-  }
 
-  for (const name of schemaFieldNames(yarnrc)) {
+
+  for (const name of schemaFieldNames(yarnrc))
     if (!map.has(name))
       map.set(name, {url: `/configuration/yarnrc.html`, anchor: `field-${slugify(name)}`});
-  }
+
 
   map.set(`package.json`, {url: `/configuration/manifest.html`, anchor: null});
   map.set(`.yarnrc.yml`, {url: `/configuration/yarnrc.html`, anchor: null});

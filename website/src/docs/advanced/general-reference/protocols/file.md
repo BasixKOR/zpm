@@ -14,7 +14,7 @@ yarn add my-pkg@file:./relative/path/to/dependency/folder
 ## Packing
 
 :::caution
-Unlike [`git:` dependencies](/protocol/git), the folder pointed to by `file:` is not packed before being imported in the project. This is something we'll likely fix in a future major version.
+Unlike [`git:` dependencies](/protocol/git), the folder pointed to by `file:` doesn't go through `yarn pack` before being imported in the project. Yarn still snapshots the folder into a cache archive and hashes that archive, but package lifecycle scripts and publish-time packing rules aren't applied.
 :::
 
 ## Folder-based links

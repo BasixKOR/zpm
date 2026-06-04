@@ -30,7 +30,7 @@ struct MyCommand {
 }
 
 impl MyCommand {
-  fn run(&self) -> Result<(), String> {
+  pub async fn execute(&self) -> Result<(), String> {
     // ...
     Ok(())
   }

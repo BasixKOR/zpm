@@ -190,7 +190,7 @@ When Yarn got created, the npm registry used to be served through Fastly. This w
 
 At some point npm switched to Cloudflare as well, and we turned off the proxy to replace it by a [CNAME](https://en.wikipedia.org/wiki/CNAME_record) ([proof](https://toolbox.googleapps.com/apps/dig/#CNAME/registry.yarnpkg.com)). We still keep the hostname for reliability reasons - while it stands to reason that the Yarn domain name will keep being maintained for as long as Yarn is being used, the same isn't necessarily true of the npm domain name. That gives us the ability to redirect to a read-only copy of the registry should the primary source become unavailable.
 
-While we do gather some basic [client-side telemetry](/advanced/telemetry), no http logs can ever even reach the Yarn project infrastructure - and even less Facebook, which has no control over the project (see also, [Is Yarn operated by Facebook?](/getting-started/qa#is-yarn-operated-by-facebook)).
+No http logs can ever even reach the Yarn project infrastructure - and even less Facebook, which has no control over the project (see also, [Is Yarn operated by Facebook?](/getting-started/qa#is-yarn-operated-by-facebook)).
 
 ## Queries to `registry.yarnpkg.com` return a 404/500/...; is it down?
 

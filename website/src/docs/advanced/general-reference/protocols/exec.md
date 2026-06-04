@@ -11,6 +11,10 @@ The `exec:` protocol executes a Node.js script inside a temporary directory at f
 yarn add my-pkg@exec:./package-builder.js
 ```
 
+:::caution
+Only workspaces may depend on `exec:` packages. Since the generator runs code during install, it also follows the same script safety rules as build scripts: it won't run when scripts are disabled unless the dependency is explicitly allowed through `dependenciesMeta[].built`.
+:::
+
 ## Why would you want that
 
 Typical Yarn fetchers download packages from the internet - this works fine if the project you want to use got packaged beforehand, but fails short as soon as you need to bundle it yourself. Yarn's builtin mechanism allows you to run the `prepare` script on compatible git repositories and use the result as final package, but even that isn't always enough - you may need to clone a specific branch, go into a specific directory, run a specific build script ... all things that makes it hard for us to support every single use case.
@@ -19,13 +23,13 @@ The `exec:` protocol represents a way to define yourself how the specified packa
 
 ## Generator scripts & `require`
 
-Because the generator will be called in a very special context (before any package has been installed on the disk), it won't be able to call the `require` function (not even with relative paths). Should you need very complex generators, just bundle them up beforehand in a single script using tools such as Webpack or Rollup.
+Because the generator will be called in a very special context (before any package has been installed on the disk), it cannot rely on project dependencies or the Plug'n'Play loader being available. Relative CommonJS `require` calls still work, but generators that need third-party dependencies should be bundled beforehand in a single script using tools such as Webpack or Rollup.
 
-Because of this restriction, and because generators will pretty much always need to use the Node builtin modules, those are made available in the global scope - in a very similar way to what the Node REPL already does. As a result, no need to manually require the `fs` module: it's available through the global `fs` variable!
+Because generators will pretty much always need to use the Node builtin modules, those are also made available in the global scope - in a very similar way to what the Node REPL already does. As a result, no need to manually require the `fs` module: it's available through the global `fs` variable!
 
 ## Runtime environment
 
-In order to let the script knows about the various predefined folders involved in the generation process, Yarn will inject a special `execEnv` global variable available to the script. This object's [interface](/api/plugin-exec/interface/ExecEnv) is defined as such:
+In order to let the script knows about the various predefined folders involved in the generation process, Yarn will inject a special `execEnv` global variable available to the script. This object is defined as such:
 
 | Property   | Type     | Description                                                                                                                                         |
 | ---------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |

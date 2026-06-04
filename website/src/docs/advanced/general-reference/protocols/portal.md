@@ -5,7 +5,7 @@ title: Portal Protocol
 description: How portal dependencies work in Yarn.
 ---
 
-The `portal:` protocol is similar to the [`link:` protocol](/protocol/link) (it must be a relative path to a folder which will be made available without copies), but the target is assumed to be a [package](/advanced/lexicon#package) instead.
+The `portal:` protocol is similar to the [`link:` protocol](/protocol/link) (it points to a local folder which will be made available without copies), but the target is assumed to be a [package](/advanced/lexicon#package) instead. Relative paths are the common form, but absolute local paths are accepted as well.
 
 ```
 yarn add react-dom@portal:./my-react-dom

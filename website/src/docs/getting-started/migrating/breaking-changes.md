@@ -43,7 +43,7 @@ Some new features have been implemented. They are not "breaking changes" per se,
 
 - Support for the `yarnPath` field has been dropped. Use [Yarn Switch](/concepts/switch) to manage Yarn versions in your repository. Use `yarn switch link` should you need to use a local binary.
 
-- Support for the `--cwd` flag has been dropped. Instead, pass the cwd path as first argument on the CLI (for example `yarn ./packages/foo add lodash`, or `yarn /path/to/project install`). As long as it contains a slash, it'll be interpreted as a path (this syntax works with both Yarn Berry and Yarn ZPM).
+- The path-first cwd syntax is now preferred: pass the cwd path as first argument on the CLI (for example `yarn ./packages/foo add lodash`, or `yarn /path/to/project install`). As long as it contains a slash, it'll be interpreted as a path (this syntax works with both Yarn Berry and Yarn ZPM). The `--cwd` flag remains supported for compatibility.
 
 ### Internal design
 

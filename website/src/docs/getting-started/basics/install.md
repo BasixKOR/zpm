@@ -28,10 +28,10 @@ It instructs Yarn Switch to download the latest version of Yarn on its `zpm` rel
 Any time you'll want to update Yarn to the latest version, just run:
 
 ```bash
-yarn set version latest
+yarn switch up
 ```
 
-Yarn will then configure your project to use the most recent stable binary.
+Yarn Switch will then update your project to the latest available Yarn version on the configured release line.
 
 ## Alternative installs
 

@@ -31,76 +31,52 @@ It might be difficult to know where to start on a fresh codebase. To help a bit 
 
 Finally, feel free to pop on our [Discord channel](https://discordapp.com/invite/yarnpkg) to ask for help and guidance. We're always happy to see new blood, and will help you our best to make your first open-source contribution a success!
 
-## Writing your feature
-
-Our repository is set up in such a way that calling `yarn` inside it will always use the TypeScript sources themselves - you don't have to rebuild anything for your changes to be applied there (we use `esbuild` to automatically transpile the files as we require them). The downside is that it's slower than the regular Yarn, but the improved developer experience is well worth it.
-
-```bash
-yarn install # Will automatically pick up any changes you made to sources
-```
-
 ## Testing your code
 
-We currently have two testsuites, built for different purposes. The first one is unit tests and can be triggered by running the following command from anywhere within the repository:
+Most of the CLI is written in Rust, so build the binaries before running integration tests:
 
 ```bash
-yarn test:unit
+cargo build -r
 ```
 
-While various subcomponents that have a strict JS interface contract are tested via unit tests (for example the portable shell library, or the various util libraries we ship), Yarn as a whole relies on integration tests. Being much closer to what our users experience, they give us a higher confidence when refactoring the application that everything will work according to plan. Those tests can be triggered by running the following command (again, from anywhere within the repository):
+The CLI integration tests are Jest tests backed by the freshly built binary:
 
 ```bash
-yarn build:cli
-yarn test:integration
+yarn test:integration <jest options>
 ```
 
-Note that because we want to avoid adding the `esbuild` overhead to each Yarn call the CLI will need to be prebuilt for the integration tests to run - that's what the `yarn build:cli` command is for. This unfortunately means that you will need to rebuild the CLI after each modification if you want the integration tests to pick up your changes.
-
-Both unit tests and integration tests use Jest, which means that you can filter the tests you want to run by using the `-t` flag (or simply the file path):
+You can filter the tests you want to run by passing normal Jest options:
 
 ```bash
-yarn test:unit yarnpkg-shell
+yarn test:integration commands/install.test.ts
 yarn test:integration -t 'it should correctly install a single dependency that contains no sub-dependencies'
 ```
 
-Should you need to write a test (and you certainly will if you add a feature or fix a bug 😉), they are located in the following directories:
-
-- **Unit tests:** [`packages/*/tests`](https://github.com/search?utf8=%E2%9C%93&q=repo%3Ayarnpkg%2Fberry+filename%3Atest.ts+language%3ATypeScript+language%3ATypeScript&type=Code&ref=advsearch&l=TypeScript&l=TypeScript)
-- **Integration tests:** [`packages/acceptance-tests/pkg-test-specs/sources`](https://github.com/yarnpkg/berry/tree/master/packages/acceptance-tests/pkg-tests-specs/sources)
-
-The `makeTemporaryEnv` utility generates a very basic temporary environment just for the context of your test. The first parameter will be used to generate a `package.json` file, the second to generate a `.yarnrc.yml` file, and the third is the callback that will be run once the temporary environment has been created.
-
-## Formatting your code
-
-Before submitting your code for review, please make sure your code is properly formatted by using the following command from anywhere within the repository:
+The ecosystem e2e tests are shell scenarios:
 
 ```bash
-yarn test:lint
+yarn test:e2e <e2e test name, minus the .sh>
 ```
 
-We use ESLint to check this, so using the `--fix` flag will cause ESLint to attempt to automatically correct most errors that might be left in your code:
-
-```bash
-yarn test:lint --fix
-```
+Should you need to write a test, the integration specs are located in `tests/acceptance-tests/pkg-tests-specs/sources`. The `makeTemporaryEnv` utility generates a temporary project; the first parameter becomes `package.json`, the second becomes `.yarnrc.yml`, and the callback runs inside that project.
 
 ## Checking Constraints
 
-We use [constraints](/features/constraints) to enforce various rules across the repository. They are declared inside the [`constraints.pro` file](https://github.com/yarnpkg/berry/blob/master/constraints.pro) and their purposes are documented with comments.
+We use [constraints](/concepts/constraints) to enforce various rules across the repository. They are declared from `yarn.config.ts`, `yarn.config.mjs`, or `yarn.config.cjs` files using the JavaScript constraints API.
 
 Constraints can be checked with `yarn constraints`, and fixed with `yarn constraints --fix`. Generally speaking:
 
-- Workspaces must not depend on conflicting ranges of dependencies. Use the `-i,--interactive` flag and select "Reuse" when installing dependencies and you shouldn't ever have to deal with this rule.
+- Workspaces must not depend on conflicting ranges of dependencies.
 
-- Workspaces must not depend on non-workspace ranges of available workspaces. Use the `-i,--interactive` flag and select "Reuse" or "Attach" when installing dependencies and you shouldn't ever have to deal with this rule.
+- Workspaces must not depend on non-workspace ranges of available workspaces.
 
-- Workspaces that are part of the standard bundle or plugins must have specific build scripts. The ones that aren't, must be declared inside the `constraints.pro` file with `inline_compile`.
+- Repository-specific workspace rules should be expressed through the JavaScript constraints API.
 
 - Workspaces must point our repository through the `repository` field.
 
 ## Preparing your PR to be released
 
-In order to track which packages need to be released, we use the workflow described in the [following document](/features/release-workflow). To summarize, you must run `yarn version check --interactive` on each PR you make, and select which packages should be released again for your changes to be effective (and to which version), if any.
+In order to track which packages need to be released, we use deferred version files. When a package needs a release, run the appropriate version command with `--deferred`, for example `yarn version patch --deferred`, `yarn version minor --deferred`, or `yarn version decline --deferred`.
 
 You can check if you've set everything correctly with `yarn version check`.
 
@@ -111,14 +87,10 @@ git checkout -b my-feature
 git checkout -
 git reset --hard upstream/master
 git checkout -
-yarn version check --interactive
+yarn version check
 ```
 
 If it fails and you have no idea why, feel free to ping a maintainer and we'll do our best to help you.
-
-:::note
-If you modify one of the [default plugins](https://github.com/yarnpkg/berry#default-plugins), you will also need to bump `@yarnpkg/cli`.
-:::
 
 ## Reviewing other PRs
 
@@ -127,30 +99,32 @@ It's generally seen as [bad form](https://twitter.com/brian_d_vaughn/status/1224
 
 ## Writing documentation
 
-We use [Docusaurus](https://docusaurus.io/docs) to generate HTML pages from [mdx](https://mdxjs.com/docs/) sources files.
+We use Astro to generate HTML pages from Markdown sources.
 
-Our website is stored within the [`packages/docusaurus`](https://github.com/yarnpkg/berry/tree/master/packages/docusaurus) directory. You can change a page by modifying the corresponding `.mdx` file in the `docs` folder. For example, you'd edit this very page [here](https://github.com/yarnpkg/berry/blob/master/packages/docusaurus/docs/advanced/04-technical/contributing.mdx).
+Our website is stored within the `website` directory. You can change a page by modifying the corresponding Markdown file in `website/src/docs`, or the corresponding Astro route in `website/src/pages`.
 
 Then run the following command to spawn a local server and see your changes:
 
 ```bash
-yarn start
+yarn --cwd website dev
 ```
 
-Once you're happy with what the documentation looks like, just commit your local changes and open a PR. Netlify will pick up your changes and create a fresh preview for everyone to see:
+Before opening a PR, make sure the website still builds:
 
-![](https://user-images.githubusercontent.com/1037931/61949789-3cc09300-afac-11e9-9817-89e97771a4e1.png)
+```bash
+yarn --cwd website build
+```
 
 ## Profiling
 
-Run the following command to generate an unminified bundle:
+Build a release binary before profiling:
 
 ```bash
-yarn build:cli --no-minify
+cargo build -r
 ```
 
-Use a profiler on the generated bundle at `packages/yarnpkg-cli/bundles/yarn.js`. Here is an example which uses the Node.js built-in profiler:
+Then run your profiler against the generated binary at `target/release/yarn-bin`.
 
 ```bash
-YARN_IGNORE_PATH=1 node --prof packages/yarnpkg-cli/bundles/yarn.js
+target/release/yarn-bin install
 ```

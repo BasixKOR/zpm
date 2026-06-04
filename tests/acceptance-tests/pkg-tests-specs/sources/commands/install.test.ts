@@ -130,6 +130,17 @@ describe(`Commands`, () => {
     );
 
     test(
+      `it should refuse to create a lockfile when using --frozen-lockfile`,
+      makeTemporaryEnv({
+        dependencies: {
+          [`no-deps`]: `1.0.0`,
+        },
+      }, async ({path, run, source}) => {
+        await expect(run(`install`, `--frozen-lockfile`)).rejects.toThrow(/The lockfile would have been created by this install/);
+      }),
+    );
+
+    test(
       `it should refuse to change the lockfile when using --immutable`,
       makeTemporaryEnv({}, async ({path, run, source}) => {
         await run(`install`);
