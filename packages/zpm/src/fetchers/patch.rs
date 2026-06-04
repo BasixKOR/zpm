@@ -1,7 +1,7 @@
 use zpm_formats::{iter_ext::IterExt, zip::ZipSupport};
 use zpm_parsers::JsonDocument;
 use zpm_primitives::{Ident, Locator, PatchReference};
-use zpm_utils::Hash64;
+use zpm_utils::{Hash64, Path};
 
 use crate::{
     error::Error, install::{FetchResult, InstallContext, InstallOpResult}, manifest::RemoteManifest, misc::unpack_brotli_data, npm::NpmEntryExt, patch::apply::apply_patch, resolvers::Resolution
@@ -60,6 +60,11 @@ pub async fn fetch_locator<'a>(context: &InstallContext<'a>, locator: &Locator, 
         path if path.starts_with("~/") => {
             project.project_cwd
                 .with_join_str(&path[2..])
+                .fs_read_text_with_zip()?
+        },
+
+        path if Path::try_from(path).map(|path| path.is_absolute()).unwrap_or(false) => {
+            Path::try_from(path)?
                 .fs_read_text_with_zip()?
         },
 

@@ -102,3 +102,13 @@ pub enum LogLevel {
     #[literal("error")]
     ErrorLevel,
 }
+
+#[zpm_enum(error = ConfigurationError, or_else = |s| Err(ConfigurationError::EnumError(s.to_string())))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NpmPublishAccess {
+    #[literal("public")]
+    Public,
+
+    #[literal("restricted")]
+    Restricted,
+}

@@ -236,6 +236,10 @@ impl Project {
         let path
             = &self.config.settings.deferred_version_folder.value;
 
+        self.project_path(path)
+    }
+
+    pub fn project_path(&self, path: &Path) -> Path {
         if path.is_relative() {
             self.project_cwd.with_join(path)
         } else {
@@ -243,12 +247,16 @@ impl Project {
         }
     }
 
+    pub fn patch_folder_path(&self) -> Path {
+        self.project_path(&self.config.settings.patch_folder.value)
+    }
+
     pub fn migration_path(&self) -> Path {
         self.ignore_path().with_join_str("migration")
     }
 
     pub fn unplugged_path(&self) -> Path {
-        self.project_cwd.with_join_str(".yarn/unplugged")
+        self.project_path(&self.config.settings.pnp_unplugged_folder.value)
     }
 
     pub fn install_state_path(&self) -> Path {

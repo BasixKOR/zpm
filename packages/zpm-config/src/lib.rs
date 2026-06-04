@@ -1316,6 +1316,7 @@ merge_settings!(crate::types::NmHoistingLimits, |s: &str| FromFileString::from_f
 merge_settings!(crate::types::NmMode, |s: &str| FromFileString::from_file_string(s).unwrap());
 merge_settings!(crate::types::WinLinkType, |s: &str| FromFileString::from_file_string(s).unwrap());
 merge_settings!(crate::types::LogLevel, |s: &str| FromFileString::from_file_string(s).unwrap());
+merge_settings!(crate::types::NpmPublishAccess, |s: &str| FromFileString::from_file_string(s).unwrap());
 merge_optional_settings!(crate::types::NodeLinker);
 merge_optional_settings!(crate::types::IslandLinker);
 merge_optional_settings!(crate::types::PnpFallbackMode);
@@ -1323,4 +1324,5 @@ merge_optional_settings!(crate::types::NmHoistingLimits);
 merge_optional_settings!(crate::types::NmMode);
 merge_optional_settings!(crate::types::WinLinkType);
 merge_optional_settings!(crate::types::LogLevel);
+merge_optional_settings!(crate::types::NpmPublishAccess);
 merge_optional_settings!(Path);

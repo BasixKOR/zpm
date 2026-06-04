@@ -67,10 +67,18 @@ impl PatchCommit {
             return Ok(());
         }
 
-        let patch_rel_path
-            = Path::try_from(format!(".yarn/patches/{}.patch", locator.slug()))?;
+        let patch_file_name
+            = format!("{}.patch", locator.slug());
+        let patch_config_path
+            = project.config.settings.patch_folder.value.with_join_str(&patch_file_name);
+        let patch_abs_path
+            = project.patch_folder_path().with_join_str(&patch_file_name);
         let patch_str
-            = format!("~/{}", patch_rel_path.to_file_string());
+            = if patch_config_path.is_relative() {
+                format!("~/{}", patch_config_path.to_file_string())
+            } else {
+                patch_config_path.to_file_string()
+            };
 
         project
             .import_install_state()?;
@@ -169,8 +177,7 @@ impl PatchCommit {
             }
         }
 
-        project.project_cwd
-            .with_join(&patch_rel_path)
+        patch_abs_path
             .fs_create_parent()?
             .fs_write(&diff)?;
 

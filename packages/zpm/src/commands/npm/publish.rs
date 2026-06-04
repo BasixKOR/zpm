@@ -103,6 +103,10 @@ impl Publish {
 
         let registry_base
             = http_npm::get_registry(&project.config, ident.scope(), true)?;
+        let configured_access
+            = project.config.settings.npm_publish_access.value.map(NpmPublishAccess::from);
+        let publish_access
+            = self.access.as_ref().or(configured_access.as_ref());
 
         if self.tolerate_republish {
             let check_url
@@ -266,7 +270,7 @@ impl Publish {
             id: ident,
             attachments: attachments,
             name: ident,
-            access: self.access.as_ref(),
+            access: publish_access,
             dist_tags: dist_tags,
             versions: versions,
             readme: readme,
@@ -326,7 +330,7 @@ impl Publish {
                 registry: &registry_base,
                 tag: &self.tag,
                 files: pack_result.pack_list.iter().map(|p| p.to_file_string()).collect(),
-                access: self.access.as_ref(),
+                access: publish_access,
                 dry_run: self.dry_run,
                 published: !self.dry_run,
                 message: message.clone(),
@@ -339,6 +343,15 @@ impl Publish {
         }
 
         Ok(())
+    }
+}
+
+impl From<zpm_config::NpmPublishAccess> for NpmPublishAccess {
+    fn from(value: zpm_config::NpmPublishAccess) -> Self {
+        match value {
+            zpm_config::NpmPublishAccess::Public => NpmPublishAccess::Public,
+            zpm_config::NpmPublishAccess::Restricted => NpmPublishAccess::Restricted,
+        }
     }
 }
 
