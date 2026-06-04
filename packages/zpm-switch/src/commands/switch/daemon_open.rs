@@ -16,11 +16,17 @@ use crate::{
     yarn_enums::ReleaseLine,
 };
 
+/// Start or print the daemon endpoint for the current project
+///
+/// This command starts the selected Yarn daemon when needed and prints its WebSocket URL. `--open` is intended for machine callers that only need
+/// the endpoint, while `--start` also allows human-readable status output.
+///
 #[cli::command]
 #[cli::path("switch", "daemon")]
 #[cli::category("Daemon management")]
 #[derive(Debug)]
 pub struct DaemonOpenCommand {
+    /// Start the daemon or print an existing daemon endpoint
     #[cli::option("--open,--start")]
     open: bool,
 }
@@ -239,6 +245,8 @@ impl DaemonOpenCommand {
 
 }
 
+/// Send a raw JSON request to the current project daemon
+///
 #[cli::command]
 #[cli::path("switch", "daemon")]
 #[cli::category("Daemon management")]

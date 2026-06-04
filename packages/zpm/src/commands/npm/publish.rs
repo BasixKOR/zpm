@@ -22,41 +22,48 @@ enum NpmPublishAccess {
     Restricted,
 }
 
-/// Print the username associated with the current authentication settings to the standard output.
+/// Publish the active workspace to an npm registry.
 ///
-/// When using `-s,--scope`, the username printed will be the one that matches the authentication settings of the registry associated with the given scope (those settings can be overriden using the `npmRegistries` map, and the registry associated with the scope is configured via the `npmScopes` map).
+/// This command packs the active workspace and uploads it to the registry selected for publishing. The registry is resolved from
+/// `publishConfig.registry` when present, then from `npmPublishRegistry`, then from the regular npm registry configuration.
 ///
-/// When using `--publish`, the registry we'll select will by default be the one used when publishing packages (`publishConfig.registry` or `npmPublishRegistry` if available, otherwise we'll fallback to the regular `npmRegistryServer`).
+/// The published package must have both a `name` and a `version`, and workspaces marked as `private: true` cannot be published.
+///
+/// The publish access is selected in order of precedence: the `--access` option, then `publishConfig.access`, then the
+/// `npmPublishAccess` configuration setting. The supported values are `public` and `restricted`.
+///
+/// By default, attempting to publish a version that already exists on the registry is an error. Use `--tolerate-republish` to check first and skip
+/// the upload when the same version is already known by the registry.
 ///
 #[cli::command]
 #[cli::path("npm", "publish")]
 #[cli::category("Npm-related commands")]
 pub struct Publish {
-    /// The access for the published package (public or restricted)
+    /// Access level for the published package (`public` or `restricted`)
     #[cli::option("-a,--access")]
     access: Option<NpmPublishAccess>,
 
-    /// The tag on the registry that the package should be attached to
+    /// Dist-tag to attach to the published version
     #[cli::option("--tag", default = "latest".to_string())]
     tag: String,
 
-    /// Warn and exit when republishing an already existing version of a package
+    /// Skip the upload if the registry already contains this version
     #[cli::option("--tolerate-republish", default = false)]
     tolerate_republish: bool,
 
-    /// The OTP token to use with the command
+    /// One-time password to use when the registry requires two-factor authentication
     #[cli::option("--otp")]
     otp: Option<String>,
 
-    /// Generate provenance for the package
+    /// Generate and upload a provenance statement for the package
     #[cli::option("--provenance", default = false)]
     provenance: bool,
 
-    /// Show what would be published without actually publishing
+    /// Print what would be published without uploading anything
     #[cli::option("--dry-run", default = false)]
     dry_run: bool,
 
-    /// Output the result in JSON format
+    /// Output the result as JSON
     #[cli::option("--json", default = false)]
     json: bool,
 }

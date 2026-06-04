@@ -8,12 +8,12 @@ use clipanion::cli;
 use crate::{commands::tasks::run_silent_dependencies::TaskRunSilentDependencies, error::Error, project, script::ScriptEnvironment};
 use super::tasks as task_run;
 
-/// List local scripts
+/// List scripts from the current workspace
 #[cli::command]
 #[cli::path("run")]
 #[cli::category("Scripting commands")]
 pub struct RunList {
-    /// If set, the output will follow a JSON-stream output
+    /// Format the output as an NDJSON stream
     #[cli::option("--json", default = false)]
     json: bool,
 }
@@ -39,53 +39,52 @@ impl RunList {
 
 /// Run a dependency binary or local script
 ///
-/// This command will run a tool. The exact tool that will be executed will depend on the current state of your workspace:
+/// This command runs a tool selected from the current workspace:
 ///
-/// - If the `scripts` field from your local package.json contains a matching script name, its definition will get executed.
+/// - If the local package.json `scripts` field contains a matching script name, Yarn executes that script.
 ///
-/// - Otherwise, if a `taskfile` exists in the workspace and contains a task with the matching name, that task will be executed
+/// - Otherwise, if a `taskfile` exists in the workspace and contains a task with the matching name, Yarn runs that task
 ///   (including all its dependencies in the correct order).
 ///
-/// - Otherwise, if one of the local workspace's dependencies exposes a binary with a matching name, this binary will get executed.
+/// - Otherwise, if one of the local workspace's dependencies exposes a binary with a matching name, Yarn runs that binary.
 ///
 /// - Otherwise, if the specified name contains a colon character and if one of the workspaces in the project contains exactly one script with a
-///   matching name, then this script will get executed.
+///   matching name, Yarn runs that script.
 ///
-/// Whatever happens, the cwd of the spawned process will be the workspace that declares the script (which makes it possible to call commands
-/// cross-workspaces using the third syntax).
+/// Script commands run from the workspace that declares them. Dependency binaries run from the current working directory unless `--run-cwd` is set.
 #[cli::command(default, proxy)]
 #[cli::path("run")]
 #[cli::category("Scripting commands")]
 pub struct Run {
-    /// If set, the script or binary used will be the one in the top-level workspace
+    /// Resolve scripts and binaries from the top-level workspace
     #[cli::option("-T,--top-level", default = false)]
     top_level: bool,
 
-    // If set, only binaries will be considered
+    /// Only consider dependency binaries, not package scripts or tasks
     #[cli::option("-B,--binaries-only", default = false)]
     binaries_only: bool,
 
-    /// If set (the default), an error will be returned if the script or binary is not found
+    /// Return an error when the script, task, or binary cannot be found
     #[cli::option("--error-if-missing", default = true)]
     error_if_missing: bool,
 
-    /// The directory in which to run the script or binary
+    /// Directory from which to run the selected script or binary
     #[cli::option("--run-cwd")]
     run_cwd: Option<Path>,
 
-    /// Forwarded to the underlying Node process when executing a binary
+    /// Forward `--inspect` to Node.js when executing a Node binary
     #[cli::option("--inspect")]
     inspect: Option<Option<String>>,
 
-    /// Forwarded to the underlying Node process when executing a binary
+    /// Forward `--inspect-brk` to Node.js when executing a Node binary
     #[cli::option("--inspect-brk")]
     inspect_brk: Option<Option<String>>,
 
-    /// Forwarded to the underlying Node process when executing a binary
+    /// Forward `--inspect-wait` to Node.js when executing a Node binary
     #[cli::option("--inspect-wait")]
     inspect_wait: Option<Option<String>>,
 
-    /// Forwarded to the underlying Node process when executing a binary
+    /// Preload a module through Node.js `--require` when executing a Node binary
     #[cli::option("--require")]
     require: Option<String>,
 
