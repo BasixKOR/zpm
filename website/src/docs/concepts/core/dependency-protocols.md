@@ -28,6 +28,7 @@ Some of these protocols have alternative syntaxes, such as the git protocol whic
 | `npm:` | Download a package from the npm registry. |
 | `patch:` | Apply a patch to an existing package. |
 | `portal:` | Connect the project to a package in another folder. |
+| `pypi:` | Download a package from the Python Package Index. |
 | `workspace:` | Connect a workspace to another workspace. |
 
 </div>
