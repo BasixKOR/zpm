@@ -4990,7 +4990,7 @@ dependencies = [
 
 [[package]]
 name = "zpm-switch"
-version = "6.0.0-rc.18"
+version = "6.0.0-rc.19"
 dependencies = [
  "assert_cmd",
  "base64",
