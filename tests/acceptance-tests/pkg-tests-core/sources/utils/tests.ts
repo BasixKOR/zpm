@@ -381,6 +381,115 @@ const PYPI_FIXTURES: Record<string, Record<string, PypiFixtureRelease>> = {
       }],
     },
   },
+  [`pypi-extra-provider`]: {
+    [`1.0.0`]: {
+      requiresDist: [
+        `pypi-no-deps (>=1.0.0); extra == "feature"`,
+        `pypi-entry-points (>=1.0.0); extra == "tools"`,
+        `pypi-entry-points (>=1.0.0); extra == "Feature_Name"`,
+      ],
+      files: [{
+        filename: `pypi_extra_provider-1.0.0-py3-none-any.whl`,
+        packagetype: `bdist_wheel`,
+        path: `/repositories/pypi/pypi_extra_provider-1.0.0-py3-none-any.whl`,
+        uploadTime: `2024-08-01T00:00:00Z`,
+      }],
+    },
+  },
+  [`pypi-extra-forwarder`]: {
+    [`1.0.0`]: {
+      requiresDist: [
+        `pypi-extra-provider[feature] (>=1.0.0)`,
+      ],
+      files: [{
+        filename: `pypi_extra_forwarder-1.0.0-py3-none-any.whl`,
+        packagetype: `bdist_wheel`,
+        path: `/repositories/pypi/pypi_extra_forwarder-1.0.0-py3-none-any.whl`,
+        uploadTime: `2024-08-02T00:00:00Z`,
+      }],
+    },
+  },
+  [`pypi-base-with-base-forwarder`]: {
+    [`1.0.0`]: {
+      requiresDist: [
+        `pypi-extra-with-base (>=1.0.0)`,
+      ],
+      files: [{
+        filename: `pypi_base_with_base_forwarder-1.0.0-py3-none-any.whl`,
+        packagetype: `bdist_wheel`,
+        path: `/repositories/pypi/pypi_base_with_base_forwarder-1.0.0-py3-none-any.whl`,
+        uploadTime: `2024-08-05T00:00:00Z`,
+      }],
+    },
+  },
+  [`pypi-extra-with-base-forwarder`]: {
+    [`1.0.0`]: {
+      requiresDist: [
+        `pypi-extra-with-base[feature] (>=1.0.0)`,
+      ],
+      files: [{
+        filename: `pypi_extra_with_base_forwarder-1.0.0-py3-none-any.whl`,
+        packagetype: `bdist_wheel`,
+        path: `/repositories/pypi/pypi_extra_with_base_forwarder-1.0.0-py3-none-any.whl`,
+        uploadTime: `2024-08-06T00:00:00Z`,
+      }],
+    },
+  },
+  [`pypi-extra-with-base-chain-forwarder`]: {
+    [`1.0.0`]: {
+      requiresDist: [
+        `pypi-extra-with-base-forwarder (>=1.0.0)`,
+      ],
+      files: [{
+        filename: `pypi_extra_with_base_chain_forwarder-1.0.0-py3-none-any.whl`,
+        packagetype: `bdist_wheel`,
+        path: `/repositories/pypi/pypi_extra_with_base_chain_forwarder-1.0.0-py3-none-any.whl`,
+        uploadTime: `2024-08-07T00:00:00Z`,
+      }],
+    },
+  },
+  [`pypi-extra-overrides-base`]: {
+    [`1.0.0`]: {
+      requiresDist: [
+        `pypi-no-deps (==1.0.0)`,
+        `pypi-no-deps (>=1.1.0); extra == "feature"`,
+      ],
+      files: [{
+        filename: `pypi_extra_overrides_base-1.0.0-py3-none-any.whl`,
+        packagetype: `bdist_wheel`,
+        path: `/repositories/pypi/pypi_extra_overrides_base-1.0.0-py3-none-any.whl`,
+        uploadTime: `2024-08-03T00:00:00Z`,
+      }],
+    },
+  },
+  [`pypi-extra-narrows-base`]: {
+    [`1.0.0`]: {
+      requiresDist: [
+        `pypi-no-deps (>=1.0.0)`,
+        `pypi-no-deps (==1.0.0); extra == "feature"`,
+      ],
+      files: [{
+        filename: `pypi_extra_narrows_base-1.0.0-py3-none-any.whl`,
+        packagetype: `bdist_wheel`,
+        path: `/repositories/pypi/pypi_extra_narrows_base-1.0.0-py3-none-any.whl`,
+        uploadTime: `2024-08-08T00:00:00Z`,
+      }],
+    },
+  },
+  [`pypi-extra-with-base`]: {
+    [`1.0.0`]: {
+      requiresDist: [
+        `pypi-entry-points (>=1.0.0)`,
+        `pypi-no-deps (>=1.0.0); extra == "feature"`,
+      ],
+      files: [{
+        filename: `pypi_extra_with_base-1.0.0-py3-none-any.whl`,
+        packagetype: `bdist_wheel`,
+        path: `/repositories/pypi/pypi_extra_with_base-1.0.0-py3-none-any.whl`,
+        uploadTime: `2024-08-04T00:00:00Z`,
+      }],
+    },
+  },
   [`pypi-entry-points`]: {
     [`1.0.0`]: {
       files: [{
