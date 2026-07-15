@@ -1449,6 +1449,7 @@ merge_optional_settings!(zpm_utils::Secret<String>);
 merge_settings!(crate::types::NodeLinker, |s: &str| FromFileString::from_file_string(s).unwrap());
 merge_settings!(crate::types::NodePackageMapType, |s: &str| FromFileString::from_file_string(s).unwrap());
 merge_settings!(crate::types::IslandLinker, |s: &str| FromFileString::from_file_string(s).unwrap());
+merge_settings!(crate::types::LazyInstallMode, |s: &str| FromFileString::from_file_string(s).unwrap());
 merge_settings!(crate::types::PnpFallbackMode, |s: &str| FromFileString::from_file_string(s).unwrap());
 merge_settings!(crate::types::NmHoistingLimits, |s: &str| FromFileString::from_file_string(s).unwrap());
 merge_settings!(crate::types::NmMode, |s: &str| FromFileString::from_file_string(s).unwrap());
@@ -1459,6 +1460,7 @@ merge_settings!(crate::types::EcosystemFilter, |s: &str| FromFileString::from_fi
 merge_optional_settings!(crate::types::NodeLinker);
 merge_optional_settings!(crate::types::NodePackageMapType);
 merge_optional_settings!(crate::types::IslandLinker);
+merge_optional_settings!(crate::types::LazyInstallMode);
 merge_optional_settings!(crate::types::PnpFallbackMode);
 merge_optional_settings!(crate::types::NmHoistingLimits);
 merge_optional_settings!(crate::types::NmMode);
