@@ -1,5 +1,7 @@
-import {Filename, xfs, ppath, npath} from '@yarnpkg/fslib';
-import {tests, misc}                 from 'pkg-tests-core';
+import {Filename, PortablePath, xfs, ppath, npath} from '@yarnpkg/fslib';
+import {tests, misc}                               from 'pkg-tests-core';
+
+const {getPackageArchivePath} = tests;
 
 describe(`Commands`, () => {
   describe(`install`, () => {
@@ -998,5 +1000,336 @@ describe(`Commands`, () => {
         await run(`install`);
       }),
     );
+
+    describe(`up-to-date fast path`, () => {
+      test(
+        `it should skip the install when nothing changed since the previous one`,
+        makeTemporaryEnv({
+          dependencies: {
+            [`no-deps`]: `1.0.0`,
+          },
+        }, async ({path, run, source}) => {
+          await run(`install`);
+
+          // The fast path doesn't validate artifact contents; a
+          // corrupted artifact surviving the second install proves the
+          // install was skipped.
+          const pnpPath = ppath.join(path, Filename.pnpCjs);
+          await xfs.writeFilePromise(pnpPath, `corrupted`);
+
+          const {stdout} = await run(`install`);
+
+          // The `--force` part of the message is colorized, so only
+          // assert the stable prefix.
+          expect(stdout).toContain(`All dependencies are up-to-date, nothing to do.`);
+          await expect(xfs.readFilePromise(pnpPath, `utf8`)).resolves.toEqual(`corrupted`);
+        }),
+      );
+
+      test(
+        `it should run a full install when --force is set`,
+        makeTemporaryEnv({
+          dependencies: {
+            [`no-deps`]: `1.0.0`,
+          },
+        }, async ({path, run, source}) => {
+          await run(`install`);
+
+          const pnpPath = ppath.join(path, Filename.pnpCjs);
+          await xfs.writeFilePromise(pnpPath, `corrupted`);
+
+          await run(`install`, `--force`);
+
+          await expect(xfs.readFilePromise(pnpPath, `utf8`)).resolves.not.toEqual(`corrupted`);
+          await expect(source(`require('no-deps')`)).resolves.toEqual({name: `no-deps`, version: `1.0.0`});
+        }),
+      );
+
+      test(
+        `it should run a full install when the lockfile was modified out-of-band`,
+        makeTemporaryEnv({
+          dependencies: {
+            [`no-deps`]: `1.0.0`,
+          },
+        }, async ({path, run, source}) => {
+          await run(`install`);
+
+          const pnpPath = ppath.join(path, Filename.pnpCjs);
+          await xfs.writeFilePromise(pnpPath, `corrupted`);
+
+          // Only bump the lockfile mtime; its content is already correct.
+          const lockfilePath = ppath.join(path, Filename.lockfile);
+          const newTime = new Date(Date.now() + 5000);
+          await xfs.utimesPromise(lockfilePath, newTime, newTime);
+
+          await run(`install`);
+
+          await expect(xfs.readFilePromise(pnpPath, `utf8`)).resolves.not.toEqual(`corrupted`);
+        }),
+      );
+
+      test(
+        `it should run a full install when a workspace manifest changed`,
+        makeTemporaryEnv({
+          dependencies: {
+            [`no-deps`]: `1.0.0`,
+          },
+        }, async ({path, run, source}) => {
+          await run(`install`);
+
+          const pnpPath = ppath.join(path, Filename.pnpCjs);
+          await xfs.writeFilePromise(pnpPath, `corrupted`);
+
+          const manifestPath = ppath.join(path, Filename.manifest);
+          const newTime = new Date(Date.now() + 5000);
+          await xfs.utimesPromise(manifestPath, newTime, newTime);
+
+          await run(`install`);
+
+          await expect(xfs.readFilePromise(pnpPath, `utf8`)).resolves.not.toEqual(`corrupted`);
+        }),
+      );
+
+      test(
+        `it should run a full install when the linker artifacts are missing`,
+        makeTemporaryEnv({
+          dependencies: {
+            [`no-deps`]: `1.0.0`,
+          },
+        }, async ({path, run, source}) => {
+          await run(`install`);
+
+          const pnpPath = ppath.join(path, Filename.pnpCjs);
+          await xfs.removePromise(pnpPath);
+
+          await run(`install`);
+
+          await expect(xfs.existsPromise(pnpPath)).resolves.toEqual(true);
+          await expect(source(`require('no-deps')`)).resolves.toEqual({name: `no-deps`, version: `1.0.0`});
+        }),
+      );
+
+      test(
+        `it should run a full install when node_modules was removed`,
+        makeTemporaryEnv(
+          {
+            dependencies: {
+              [`no-deps`]: `1.0.0`,
+            },
+          },
+          {
+            nodeLinker: `node-modules`,
+          },
+          async ({path, run, source}) => {
+            await run(`install`);
+
+            await xfs.removePromise(ppath.join(path, Filename.nodeModules));
+
+            await run(`install`);
+
+            await expect(source(`require('no-deps')`)).resolves.toEqual({name: `no-deps`, version: `1.0.0`});
+          },
+        ),
+      );
+
+      test(
+        `it should take the fast path when dependencies use registry aliases`,
+        makeTemporaryEnv({
+          dependencies: {
+            [`aliased`]: `npm:no-deps@1.0.0`,
+          },
+        }, async ({path, run, source}) => {
+          await run(`install`);
+
+          // Registry aliases are immutable; they must not disable the
+          // fast path. A corrupted artifact surviving the second
+          // install proves it was skipped.
+          const pnpPath = ppath.join(path, Filename.pnpCjs);
+          await xfs.writeFilePromise(pnpPath, `corrupted`);
+
+          await run(`install`);
+
+          await expect(xfs.readFilePromise(pnpPath, `utf8`)).resolves.toEqual(`corrupted`);
+        }),
+      );
+
+      test(
+        `it should take the fast path with file: tarballs until they change`,
+        makeTemporaryEnv({
+          dependencies: {
+            [`pkg`]: `file:./pkg.tgz`,
+          },
+        }, async ({path, run, source}) => {
+          const noDeps1 = await getPackageArchivePath(`no-deps`, `1.0.0`);
+          const noDeps2 = await getPackageArchivePath(`no-deps`, `2.0.0`);
+
+          const destination = ppath.join(path, `pkg.tgz`);
+
+          await xfs.copyPromise(destination, noDeps1);
+          await run(`install`);
+
+          const pnpPath = ppath.join(path, Filename.pnpCjs);
+          await xfs.writeFilePromise(pnpPath, `corrupted`);
+
+          // The tarball didn't change: fast path.
+          await run(`install`);
+          await expect(xfs.readFilePromise(pnpPath, `utf8`)).resolves.toEqual(`corrupted`);
+
+          // The tarball changed: full install.
+          await xfs.copyPromise(destination, noDeps2);
+          await run(`install`);
+
+          await expect(xfs.readFilePromise(pnpPath, `utf8`)).resolves.not.toEqual(`corrupted`);
+          await expect(source(`require('pkg/package.json')`)).resolves.toMatchObject({
+            version: `2.0.0`,
+          });
+        }),
+      );
+
+      test(
+        `it should take the fast path with file: folders until their content changes`,
+        makeTemporaryEnv({
+          dependencies: {
+            [`local-pkg`]: `file:./local-pkg`,
+          },
+        }, async ({path, run, source}) => {
+          await xfs.mkdirPromise(ppath.join(path, `local-pkg`));
+          await xfs.writeJsonPromise(ppath.join(path, `local-pkg/package.json`), {name: `local-pkg`, version: `1.0.0`});
+          await xfs.writeFilePromise(ppath.join(path, `local-pkg/index.js`), `module.exports = 1;\n`);
+
+          await run(`install`);
+
+          const pnpPath = ppath.join(path, Filename.pnpCjs);
+          await xfs.writeFilePromise(pnpPath, `corrupted`);
+
+          // The folder didn't change: fast path.
+          await run(`install`);
+          await expect(xfs.readFilePromise(pnpPath, `utf8`)).resolves.toEqual(`corrupted`);
+
+          // The folder content changed: full install.
+          await xfs.writeFilePromise(ppath.join(path, `local-pkg/index.js`), `module.exports = 2;\n`);
+          await run(`install`);
+
+          await expect(xfs.readFilePromise(pnpPath, `utf8`)).resolves.not.toEqual(`corrupted`);
+          await expect(source(`require('local-pkg')`)).resolves.toEqual(2);
+        }),
+      );
+
+      test(
+        `it should re-run the install when a portal target's manifest changes`,
+        makeTemporaryEnv({
+          dependencies: {
+            [`portaled`]: `portal:./portaled`,
+          },
+        }, async ({path, run, source}) => {
+          await xfs.mkdirPromise(ppath.join(path, `portaled`));
+          await xfs.writeJsonPromise(ppath.join(path, `portaled/package.json`), {name: `portaled`, version: `1.0.0`});
+
+          await run(`install`);
+
+          const pnpPath = ppath.join(path, Filename.pnpCjs);
+          await xfs.writeFilePromise(pnpPath, `corrupted`);
+
+          // Nothing changed: fast path.
+          await run(`install`);
+          await expect(xfs.readFilePromise(pnpPath, `utf8`)).resolves.toEqual(`corrupted`);
+
+          // The portal target's manifest changed: full install.
+          await xfs.writeJsonPromise(ppath.join(path, `portaled/package.json`), {
+            name: `portaled`,
+            version: `1.0.0`,
+            dependencies: {
+              [`no-deps`]: `1.0.0`,
+            },
+          });
+
+          await run(`install`);
+
+          await expect(xfs.readFilePromise(pnpPath, `utf8`)).resolves.not.toEqual(`corrupted`);
+        }),
+      );
+
+      test(
+        `it should not take the fast path while builds are pending after --mode=skip-build`,
+        makeTemporaryEnv({
+          dependencies: {
+            [`no-deps-scripted`]: `1.0.0`,
+          },
+        }, async ({path, run, source}) => {
+          await run(`install`, `--mode=skip-build`);
+
+          // The skipped builds are still pending; a plain install must
+          // run them rather than declare the project up-to-date.
+          const {stdout} = await run(`install`, `--inline-builds`);
+
+          expect(stdout).toContain(`no-deps-scripted@npm:1.0.0 must be built because it never has been before`);
+
+          // Once the builds went through, the fast path resumes.
+          const {stdout: secondStdout} = await run(`install`);
+
+          expect(secondStdout).toContain(`All dependencies are up-to-date, nothing to do.`);
+        }),
+      );
+
+      test(
+        `it should run a full install when a workspace's node_modules was removed`,
+        makeTemporaryEnv(
+          {
+            private: true,
+            workspaces: [`ws`],
+            dependencies: {
+              [`no-deps`]: `2.0.0`,
+            },
+          },
+          {
+            nodeLinker: `node-modules`,
+          },
+          async ({path, run, source}) => {
+            await xfs.mkdirPromise(ppath.join(path, `ws`));
+            await xfs.writeJsonPromise(ppath.join(path, `ws/package.json`), {
+              name: `ws`,
+              dependencies: {
+                [`no-deps`]: `1.0.0`,
+              },
+            });
+
+            await run(`install`);
+
+            // The conflicting version nests inside the workspace's own
+            // node_modules; wiping that folder must not be masked by
+            // the fast path.
+            await expect(xfs.existsPromise(ppath.join(path, `ws/node_modules/no-deps` as PortablePath))).resolves.toEqual(true);
+
+            await xfs.removePromise(ppath.join(path, `ws/node_modules` as PortablePath));
+
+            await run(`install`);
+
+            await expect(xfs.existsPromise(ppath.join(path, `ws/node_modules/no-deps` as PortablePath))).resolves.toEqual(true);
+          },
+        ),
+      );
+
+      test(
+        `it should run a full install when the configuration changed`,
+        makeTemporaryEnv({
+          dependencies: {
+            [`no-deps`]: `1.0.0`,
+          },
+        }, async ({path, run, source}) => {
+          await run(`install`);
+
+          const pnpPath = ppath.join(path, Filename.pnpCjs);
+          await xfs.writeFilePromise(pnpPath, `corrupted`);
+
+          await run(`install`, {
+            env: {
+              YARN_ENABLE_TIMERS: `true`,
+            },
+          });
+
+          await expect(xfs.readFilePromise(pnpPath, `utf8`)).resolves.not.toEqual(`corrupted`);
+        }),
+      );
+    });
   });
 });

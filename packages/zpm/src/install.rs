@@ -846,6 +846,13 @@ pub struct InstallState {
     /// install states deserialize.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub nm_mode: Option<String>,
+
+    /// Modification time of the lockfile as of when this install state
+    /// was written. The manifest mtime guard can't see out-of-band
+    /// lockfile edits (a `git pull` touching only `yarn.lock`), so the
+    /// up-to-date fast path compares against this instead.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lockfile_changed_at: Option<u128>,
 }
 
 impl Default for InstallState {
@@ -867,6 +874,7 @@ impl Default for InstallState {
             island_normalized_resolutions: BTreeMap::new(),
             cache_checksums: BTreeMap::new(),
             nm_mode: None,
+            lockfile_changed_at: None,
         }
     }
 }
@@ -885,6 +893,7 @@ pub struct Install {
     pub skip_lockfile_update: bool,
     pub constraints_check: bool,
     pub inline_builds: bool,
+    pub force: bool,
     pub extension_tracking: Arc<Mutex<ExtensionTracking>>,
 }
 
@@ -1080,27 +1089,57 @@ impl Install {
             self.install_state.install_config_hash
                 = Some(project.install_config_hash());
 
-            project.attach_install_state(self.install_state)?;
-
+            // The lockfile must hit the disk before we record its mtime
+            // in the install state, so the state is only persisted once
+            // everything it vouches for actually exists.
             if !self.skip_lockfile_update {
                 project.write_lockfile(&self.lockfile)?;
             }
 
-            if !self.skip_build && !link_result.build_requests.entries.is_empty() {
+            let has_pending_builds
+                = !link_result.build_requests.entries.is_empty();
+
+            // The freshness marker only goes in once the builds went
+            // through: stamping earlier would let an interrupted (or
+            // `--mode=skip-build`) install pass the fast path with
+            // builds still pending.
+            self.install_state.lockfile_changed_at = if has_pending_builds {
+                None
+            } else {
+                project.lockfile_changed_at()?
+            };
+
+            project.attach_install_state(self.install_state)?;
+
+            if !self.skip_build && has_pending_builds {
                 let build_future
                     = build::BuildManager::new(link_result.build_requests).run(project);
 
                 let build_result
-                    = async_section("Building packages", build_future).await?;
+                    = async_section("Building packages", build_future).await;
 
-                if !build_result.build_errors.is_empty() {
-                    return Err(Error::SilentError);
+                let build_succeeded = match &build_result {
+                    Ok(build) => build.build_errors.is_empty(),
+                    Err(_) => false,
+                };
+
+                if build_succeeded {
+                    if let Some(mut install_state) = project.install_state.take() {
+                        install_state.lockfile_changed_at = project.lockfile_changed_at()?;
+                        project.attach_install_state(install_state)?;
+                    }
+                }
+
+                match build_result {
+                    Err(e) => return Err(e),
+                    Ok(build) if !build.build_errors.is_empty() => return Err(Error::SilentError),
+                    Ok(_) => {},
                 }
             }
         }
 
         if self.constraints_check {
-            async_section("Checking constraints", async {
+            let constraints_result = async_section("Checking constraints", async {
                 let output
                     = check_constraints(project, false).await?;
 
@@ -1109,7 +1148,12 @@ impl Install {
                 }
 
                 Ok(())
-            }).await?;
+            }).await;
+
+            if let Err(e) = constraints_result {
+                invalidate_install_freshness(project)?;
+                return Err(e);
+            }
         }
 
         project.ignore_path()
@@ -1121,6 +1165,19 @@ impl Install {
             package_data: self.package_data,
         })
     }
+}
+
+/// Drops the freshness marker from the persisted install state so the
+/// next `yarn install` can't take the up-to-date fast path — used when
+/// an install completed its link step but failed afterwards (builds,
+/// constraints), leaving the project in a state that needs another pass.
+fn invalidate_install_freshness(project: &mut Project) -> Result<(), Error> {
+    if let Some(mut install_state) = project.install_state.take() {
+        install_state.lockfile_changed_at = None;
+        project.attach_install_state(install_state)?;
+    }
+
+    Ok(())
 }
 
 pub struct InstallManager<'a> {
@@ -1183,6 +1240,11 @@ impl<'a> InstallManager<'a> {
 
     pub fn with_skip_lockfile_update(mut self, skip_lockfile_update: bool) -> Self {
         self.result.skip_lockfile_update = skip_lockfile_update;
+        self
+    }
+
+    pub fn with_force(mut self, force: bool) -> Self {
+        self.result.force = force;
         self
     }
 

@@ -6,8 +6,9 @@ use zpm_config::{Configuration, ConfigurationContext, IslandLinker, Source};
 use zpm_macro_enum::zpm_enum;
 use zpm_parsers::JsonDocument;
 use zpm_primitives::{Descriptor, Ident, Locator, Range, Reference, WorkspaceIdentReference, WorkspaceMagicRange, WorkspacePathReference};
+use zpm_switch::get_bin_version;
 use zpm_tasks::{parse as parse_taskfile, ResolvedTasks, TaskFile, TaskId};
-use zpm_utils::{DataType, Glob, Hash64, IoResultExt, LastModifiedAt, Path, ToFileString, ToHumanString, is_terminal, start_progress};
+use zpm_utils::{DataType, Glob, Hash64, Hash64Writer, IoResultExt, LastModifiedAt, Path, ToFileString, ToHumanString, is_terminal, start_progress};
 use serde::Deserialize;
 use zpm_formats::zip::ZipSupport;
 
@@ -23,6 +24,7 @@ use crate::{
     lockfile::{Lockfile, LockfileMetadata, from_legacy_berry_lockfile, from_pnpm_node_modules},
     manifest::{Manifest, helpers::read_manifest_with_size},
     manifest_finder::CachedManifestFinder,
+    npm::NpmEntryExt,
     primitives_exts::RangeExt,
     report::{StreamReport, StreamReportConfig, async_section, current_report, with_report_result},
     script::{Binary, ScriptEnvironment},
@@ -124,6 +126,7 @@ pub struct RunInstallOptions {
     pub silent_or_error: bool,
     pub json: bool,
     pub inline_builds: bool,
+    pub force: bool,
 }
 
 pub struct Project {
@@ -1016,10 +1019,317 @@ impl Project {
     }
 
     pub(crate) fn install_config_hash(&self) -> Hash64 {
-        Hash64::from_data(
-            serde_json::to_vec(&self.config.settings)
-                .expect("configuration settings should always be serializable"),
-        )
+        let mut writer
+            = Hash64Writer::new();
+
+        // The binary version participates so that an upgraded Yarn
+        // always runs one full install: builtin patches, linker
+        // layouts, and install fix-ups can all change across releases
+        // in ways the other freshness checks can't see.
+        writer.update(get_bin_version().as_bytes());
+
+        writer.update(serde_json::to_vec(&self.config.settings)
+            .expect("configuration settings should always be serializable"));
+
+        writer.finalize()
+    }
+
+    /// The "quick pass" behind the up-to-date fast path: re-derives
+    /// the content hashes feeding transient resolutions (`file:`
+    /// tarballs and folders, `exec:` scripts, patch files, portal
+    /// manifests) and compares them with the locators recorded by the
+    /// previous install. Registry-backed ranges (including `npm:`
+    /// aliases) are immutable and never checked, so this costs nothing
+    /// for projects without local sources. Returns `false` when
+    /// anything changed - the regular install then redoes the work for
+    /// real - or when a hash can't be re-derived cheaply.
+    fn transient_resolutions_unchanged(&self, install_state: &InstallState) -> Result<bool, Error> {
+        fn resolve_local_path(context_directory: &Path, raw_path: &str) -> Result<Path, Error> {
+            let path = Path::try_from(raw_path)?;
+
+            Ok(if path.is_absolute() {
+                path
+            } else {
+                context_directory.with_join(&path)
+            })
+        }
+
+        let mut cache_packer
+            = None;
+
+        for (descriptor, locator) in &install_state.descriptor_to_locator {
+            let range = descriptor.range.physical_range();
+
+            if !matches!(range, Range::Tarball(_) | Range::Folder(_) | Range::Exec(_) | Range::Patch(_) | Range::Portal(_)) {
+                continue;
+            }
+
+            if let Range::Patch(params) = range {
+                // Builtin patches ship with the binary; nothing on
+                // disk to watch.
+                if params.path == "<builtin>" {
+                    continue;
+                }
+
+                // A patch over another transient package would need
+                // its inner source re-derived through the parent
+                // chain; too exotic to bother, never skip.
+                if matches!(
+                    params.inner.0.range.physical_range(),
+                    Range::Tarball(_) | Range::Folder(_) | Range::Exec(_) | Range::Portal(_),
+                ) {
+                    return Ok(false);
+                }
+            }
+
+            // Relative paths hang from the parent package. Workspace
+            // parents are mutable and re-derivable; zip-backed parents
+            // are immutable snapshots whose inner files can't change
+            // under us; disk-backed parents (portals, links) are
+            // mutable but can't be verified from here.
+            let context_directory = match &descriptor.parent {
+                Some(parent) => {
+                    let physical = parent.physical_locator();
+
+                    match self.try_workspace_by_locator(&physical)? {
+                        Some(workspace) => workspace.path.clone(),
+
+                        None => {
+                            let parent_reference = physical.reference.physical_reference();
+
+                            if parent_reference.is_portal() || parent_reference.is_link() {
+                                return Ok(false);
+                            }
+
+                            continue;
+                        },
+                    }
+                },
+
+                None => self.project_cwd.clone(),
+            };
+
+            let unchanged = match (range, locator.reference.physical_reference()) {
+                (Range::Tarball(_), Reference::Tarball(reference_params)) => {
+                    let tarball_path
+                        = resolve_local_path(&context_directory, &reference_params.path)?;
+
+                    match tarball_path.fs_read() {
+                        Ok(data) => reference_params.hash == Some(Hash64::from_data(data)),
+                        Err(_) => false,
+                    }
+                },
+
+                (Range::Exec(_), Reference::Exec(reference_params)) => {
+                    let script_path
+                        = resolve_local_path(&context_directory, &reference_params.path)?;
+
+                    match script_path.fs_read() {
+                        Ok(data) => {
+                            // Mirrors `resolvers::exec::compute_exec_hash`.
+                            let mut writer = Hash64Writer::new();
+                            writer.update(b"exec-v2");
+                            writer.update(data);
+
+                            reference_params.hash == Some(writer.finalize())
+                        },
+                        Err(_) => false,
+                    }
+                },
+
+                (Range::Folder(_), Reference::Folder(reference_params)) => {
+                    let folder_path
+                        = resolve_local_path(&context_directory, &reference_params.path)?;
+
+                    let packer = match &cache_packer {
+                        Some(packer) => packer,
+                        None => cache_packer.insert(self.package_cache()?.packer()),
+                    };
+
+                    // Mirrors `resolvers::folder::compute_folder_hash`.
+                    let hash = zpm_formats::entries_from_folder(&folder_path)
+                        .map_err(Error::from)
+                        .and_then(|entries| {
+                            entries
+                                .into_iter()
+                                .prepare_npm_entries(&descriptor.ident.nm_subdir())
+                                .map_err(Error::from)
+                        })
+                        .and_then(|entries| packer.pack(entries).map_err(Error::from))
+                        .map(|archive| {
+                            let mut writer = Hash64Writer::new();
+                            writer.update(b"file-folder-v2");
+                            writer.update(archive);
+
+                            writer.finalize()
+                        });
+
+                    match hash {
+                        Ok(hash) => reference_params.hash == Some(hash),
+                        Err(_) => false,
+                    }
+                },
+
+                (Range::Portal(_), Reference::Portal(reference_params)) => {
+                    let manifest_path = resolve_local_path(&context_directory, &reference_params.path)?
+                        .with_join_str(MANIFEST_NAME);
+
+                    match manifest_path.fs_read_text() {
+                        Ok(manifest_text) => {
+                            reference_params.hash
+                                == Some(crate::resolvers::portal::compute_portal_manifest_hash(&manifest_text))
+                        },
+                        Err(_) => false,
+                    }
+                },
+
+                (Range::Patch(_), Reference::Patch(reference_params)) => {
+                    // Path handling mirrors the patch fetcher: `~/` is
+                    // project-relative, anything else resolves against
+                    // the parent.
+                    let patch_path = match reference_params.path.as_str() {
+                        path if path.starts_with("~/") => self.project_cwd.with_join_str(&path[2..]),
+                        path => resolve_local_path(&context_directory, path)?,
+                    };
+
+                    match patch_path.fs_read_text() {
+                        Ok(patch_content) => reference_params.checksum == Some(Hash64::from_string(&patch_content)),
+                        Err(_) => false,
+                    }
+                },
+
+                // The recorded locator doesn't match the range shape;
+                // never skip on inconsistent state.
+                _ => false,
+            };
+
+            if !unchanged {
+                return Ok(false);
+            }
+        }
+
+        Ok(true)
+    }
+
+    /// Modification time of the lockfile, in nanoseconds since the
+    /// epoch; `None` when the lockfile doesn't exist.
+    pub fn lockfile_changed_at(&self) -> Result<Option<u128>, Error> {
+        let metadata = match self.lockfile_path().fs_metadata() {
+            Ok(metadata) => metadata,
+            Err(err) => return match err.io_kind() {
+                Some(ErrorKind::NotFound) | Some(ErrorKind::NotADirectory) => Ok(None),
+                _ => Err(err.into()),
+            },
+        };
+
+        Ok(Some(metadata.modified()?
+            .duration_since(UNIX_EPOCH).unwrap()
+            .as_nanos()))
+    }
+
+    /// Cheap check that the artifacts of the last install are still
+    /// current: the install state is fresh, the configuration didn't
+    /// change, the lockfile wasn't edited out-of-band, and the cache
+    /// and linker outputs are still on disk. `yarn install` uses this
+    /// to skip installs that are provably no-ops; anything uncertain
+    /// falls through to a full install.
+    pub fn is_install_up_to_date(&mut self) -> Result<bool, Error> {
+        match self.import_install_state() {
+            Ok(_) => {},
+
+            Err(Error::InstallStateNotFound | Error::InvalidInstallState) => {
+                self.install_state = None;
+                return Ok(false);
+            },
+
+            Err(e) => {
+                return Err(e);
+            },
+        };
+
+        let Some(install_state) = &self.install_state else {
+            return Ok(false);
+        };
+
+        // A focused install may have skipped part of the project; an
+        // explicit `yarn install` must bring everything up to date.
+        if install_state.installed_workspaces.is_some() {
+            return Ok(false);
+        }
+
+        if self.last_modified_at.has_changed_since(install_state.last_installed_at) {
+            return Ok(false);
+        }
+
+        if install_state.install_config_hash.as_ref() != Some(&self.install_config_hash()) {
+            return Ok(false);
+        }
+
+        if !self.config.settings.unstable_islands.is_empty() {
+            return Ok(false);
+        }
+
+        if install_state.lockfile_changed_at.is_none()
+            || install_state.lockfile_changed_at != self.lockfile_changed_at()?
+        {
+            return Ok(false);
+        }
+
+        if !self.preferred_cache_path().fs_exists() {
+            return Ok(false);
+        }
+
+        let linker_artifact = match self.config.settings.node_linker.value {
+            zpm_config::NodeLinker::Pnp
+                => self.pnp_path(),
+            zpm_config::NodeLinker::NodeModules | zpm_config::NodeLinker::Pnpm
+                => self.package_map_path(None),
+        };
+
+        if !linker_artifact.fs_exists() {
+            return Ok(false);
+        }
+
+        // The nm linker guarantees every workspace a node_modules
+        // folder, so a missing one means the tree was wiped and needs
+        // relinking. (Deletions *inside* a package folder are on
+        // --force, like any other manual damage.)
+        if self.config.settings.node_linker.value == zpm_config::NodeLinker::NodeModules {
+            let all_workspace_trees_present = self.workspaces.iter()
+                .all(|workspace| workspace.path.with_join_str("node_modules").fs_exists());
+
+            if !all_workspace_trees_present {
+                return Ok(false);
+            }
+        }
+
+        // PnP installs materialize some packages on disk (build scripts,
+        // `prefer_extracted`, optional zips); if any package may be in
+        // that situation, a missing unplugged folder means the project
+        // needs a repair pass. Over-approximating is fine — it only
+        // costs a full install when the folder is legitimately absent.
+        if self.config.settings.node_linker.value == zpm_config::NodeLinker::Pnp {
+            let needs_unplugged = !install_state.optional_packages.is_empty()
+                || install_state.content_flags.values().any(|flags| {
+                    flags.prefer_extracted
+                        .unwrap_or(flags.suggest_extracted || !flags.build_commands.is_empty())
+                });
+
+            if needs_unplugged && !self.unplugged_path().fs_exists() {
+                return Ok(false);
+            }
+        }
+
+        // Transient ranges (file:, exec:, patches, portals) resolve
+        // from content that can change without any manifest or
+        // lockfile edit; re-derive their hashes and compare them with
+        // the recorded resolutions. This is the costliest check
+        // (packing file: folders reads them in full), so it runs last.
+        if !self.transient_resolutions_unchanged(install_state)? {
+            return Ok(false);
+        }
+
+        Ok(true)
     }
 
     fn find_visible_dependency_location(&self, issuer_location: &Path, ident: &Ident, locator: &Locator) -> Result<Option<Path>, Error> {
@@ -1349,6 +1659,7 @@ impl Project {
                     .with_constraints_check(!options.silent_or_error && self.config.settings.enable_constraints_checks.value && options.roots.is_none())
                     .with_skip_link_step(options.mode == Some(InstallMode::UpdateLockfile))
                     .with_skip_lockfile_update(options.roots.is_some())
+                    .with_force(options.force)
                     .resolve_and_fetch().await?
                     .link_and_build(self).await?;
 
